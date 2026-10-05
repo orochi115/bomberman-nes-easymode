@@ -155,10 +155,14 @@ INCLUDE "vars.asm"
 
 .DRAW_TIMER
   ; Lives left (changes without a redraw in revive mode)
-  LDA #&20:LDX #&5C ; Y=2, X=28
+  LDA GAME_INF_LIVES
+  BNE lives_drawn ; "无限" is drawn by TIME_AND_LIFE
+  LDA #&20:LDX #&5B ; Y=2, X=27
   JSR VRAMADDR
   LDA LIFELEFT
   JSR PUTNUMBER
+
+.lives_drawn
 
   LDA #&20:LDX #&46 ; Y=2, X=6
   JSR VRAMADDR
@@ -184,6 +188,7 @@ INCLUDE "vars.asm"
 
 .UPDATE_FPS
   LDA PPU_STATUS
+  JSR NMI_TIME_FLASH ; Flash the status bar red (last 10 seconds)
   JSR PPU_RESTORE
   INC FRAME_CNT
   LDA GAME_SLOW   ; In slow mode this runs on game time (UPDATE_TICK)
@@ -837,11 +842,15 @@ INCLUDE "input.asm"
   LDA #8:STA APU_MUSIC
   JSR WAITTUNE
 
-  ; Loose a life
+  ; Loose a life (unless lives are unlimited)
+  LDA GAME_INF_LIVES
+  BNE lives_left
   DEC LIFELEFT
 
   ; If we're out of lives, then it's game over
   BMI GAME_OVER
+
+.lives_left
 
   JMP START_STAGE
 }
@@ -1237,6 +1246,9 @@ INCLUDE "input.asm"
 
   ; Reduce time left by 1 second
   DEC TIMELEFT
+  PHP
+  JSR TIME_TICKED ; Flash the status bar for the last 10 seconds
+  PLP
 
   ; Continue if some time left
   BNE STAGE_TIMER_END
@@ -1265,8 +1277,7 @@ INCLUDE "input.asm"
 
   ; Reduce time left by 1 second
   DEC TIMELEFT
-
-  RTS
+  JMP TIME_TICKED ; Flash the status bar for the last 10 seconds
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5158,8 +5169,15 @@ INCLUDE "input.asm"
   LDA #lo(ZH_HUD_LEFT):LDX #hi(ZH_HUD_LEFT)
   JSR PRINT_ZH
 
+  ; Unlimited lives
+  LDA GAME_INF_LIVES
+  BEQ lives_number
+  LDA #lo(ZH_HUD_INF):LDX #hi(ZH_HUD_INF)
+  JMP PRINT_ZH
+
+.lives_number
   ; Draw the number of extra lives remaining (with leading spaces)
-  LDA #&20:LDX #&5C
+  LDA #&20:LDX #&5B
   JSR VRAMADDR
 
   LDA LIFELEFT

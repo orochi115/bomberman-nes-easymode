@@ -308,7 +308,15 @@ ENDMACRO
   CMP #OPT_KIND_TIME
   BEQ time_value
   BCS bool_value
+  CMP #OPT_KIND_LIVES
+  BNE number_value
 
+  ; Lives, a number or unlimited
+  LDA OPT_STAGE,X
+  CMP #OPT_LIVES_INF
+  BEQ unlimited
+
+.number_value
   ; Number, two digits with a leading blank
   LDA #2:STA OPT_W
   LDA OPT_STAGE,X

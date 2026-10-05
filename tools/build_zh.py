@@ -55,7 +55,7 @@ def title_tiles():
 
 
 KEEP = {
-    'GAME': None,  # Special case, only A-Z are freed (see free_tiles)
+    'GAME': None,  # Special case (see free_tiles)
     'TITLE': lambda: title_tiles() | DIGITS | {BLANK, 0xFD, 0xFE}
     | letters('TM AND HUDSON SOFT LICENSED BY NINTENDO OF AMERICA INC'),
     'TEXT': lambda: DIGITS | {BLANK} | set(range(0x68, 0x6C)),  # bricks
@@ -65,7 +65,8 @@ KEEP = {
 
 def free_tiles(bank):
     if bank == 'GAME':
-        return list(range(0x41, 0x5B))
+        # A-Z, and the title logo tiles which the game never uses
+        return list(range(0x41, 0x5B)) + [t for t in range(0xAC, 0x100) if t != BLANK]
     keep = KEEP[bank]()
     return [t for t in range(256) if t not in keep]
 

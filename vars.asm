@@ -140,7 +140,7 @@ BONUS_ENEMY_TYPE    = &7E
 
 ; Options screen settings ($7F..$8C), kept until reset
 OPT_STAGE           = &7F ; 1..50
-OPT_LIVES           = &80 ; 1..9
+OPT_LIVES           = &80 ; 1..9, OPT_LIVES_INF = unlimited
 OPT_POWER           = &81 ; 1..5 (bomb range in squares)
 OPT_BOMBS           = &82 ; 1..10
 OPT_TIME            = &83 ; Index into OPT_TIME_TAB (0..3, 3 = unlimited)
@@ -286,6 +286,9 @@ SNAP_REMOTE         = &05F9
 SNAP_BOMBWALK       = &05FA
 SNAP_FIRESUIT       = &05FB
 COSMETIC_CNT        = &05FC ; Animation counter for frozen frames (slow mode)
+GAME_INF_LIVES      = &05FD ; Boolean, unlimited lives (rule for the game in progress)
+TIME_FLASH          = &05FE ; Frames left of the red status bar flash (last 10 seconds)
+TIME_FLASH_ON       = &05FF ; Boolean, status bar currently shown red
 
 TILE_TAB            = &0600
 

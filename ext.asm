@@ -132,6 +132,66 @@ MENU_CURSOR_OPTS = &2272  ; Row 19, column 18
 }
 
 ; =============== S U B R O U T I N E =======================================
+; Called each time the level timer goes down: flash the status bar red for
+; the last 10 seconds
+TIME_FLASH_FRAMES = 10
+HUD_ATTR = &23C0  ; Attribute bytes for the status bar (tile rows 0-3)
+HUD_ATTR_RED = %01010101 ; Background palette 1 (reds) for the whole bar
+
+.TIME_TICKED
+{
+  LDA TIMELEFT
+  CMP #10
+  BCS done
+
+  LDA #TIME_FLASH_FRAMES:STA TIME_FLASH
+
+.done
+  RTS
+}
+
+; Called from NMI during vblank: switch the status bar attributes to the red
+; palette while TIME_FLASH runs, and back to palette 0 afterwards
+.NMI_TIME_FLASH
+{
+  LDA STAGE_STARTED
+  BEQ done
+
+  LDA TIME_FLASH
+  BEQ flash_off
+
+  DEC TIME_FLASH
+
+  LDA TIME_FLASH_ON
+  BNE done ; Already red
+
+  LDA #YES:STA TIME_FLASH_ON
+  LDA #HUD_ATTR_RED
+  BNE write_attr
+
+.flash_off
+  LDA TIME_FLASH_ON
+  BEQ done ; Already normal
+
+  LDA #NO:STA TIME_FLASH_ON
+  ; A = 0, palette 0
+
+.write_attr
+  LDX #hi(HUD_ATTR):STX PPU_ADDRESS
+  LDX #lo(HUD_ATTR):STX PPU_ADDRESS
+
+  LDX #8 ; One row of attribute bytes
+
+.attr_loop
+  STA PPU_DATA
+  DEX
+  BNE attr_loop
+
+.done
+  RTS
+}
+
+; =============== S U B R O U T I N E =======================================
 ; VRAM update buffer, written by the NMI when VBUF_READY is set.
 ; Entries are: PPU address hi, lo, count, bytes. A hi byte of 0 ends it.
 
@@ -198,6 +258,7 @@ MENU_CURSOR_OPTS = &2272  ; Row 19, column 18
   STA GAME_REVIVE
   STA GAME_SLOW
   STA GAME_INVINC
+  STA GAME_INF_LIVES
 
   LDA #SECONDSPERLEVEL:STA GAME_TIME
 
@@ -212,14 +273,17 @@ MENU_CURSOR_OPTS = &2272  ; Row 19, column 18
 .OPT_MIN
   EQUB 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .OPT_MAX
-  EQUB MAP_LEVELS, 9, MAX_BOMB_RANGE, MAX_BOMB, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1
+  EQUB MAP_LEVELS, OPT_LIVES_INF, MAX_BOMB_RANGE, MAX_BOMB, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1
 
 ; How each option value is shown
 OPT_KIND_NUMBER = 0
-OPT_KIND_TIME = 1
-OPT_KIND_BOOL = 2
+OPT_KIND_LIVES = 1 ; Number, or unlimited
+OPT_KIND_TIME = 2
+OPT_KIND_BOOL = 3
 .OPT_KIND
-  EQUB 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2
+  EQUB 0, 1, 0, 0, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3
+
+OPT_LIVES_INF = 10 ; OPT_LIVES value for unlimited lives
 
 ; Seconds per level for each OPT_TIME value (0 = unlimited)
 .OPT_TIME_TAB
@@ -242,7 +306,15 @@ OPT_KIND_BOOL = 2
 
   STA INVULNERABLE_TIMER
 
-  LDX OPT_LIVES:DEX:STX LIFELEFT
+  ; Lives (unlimited lives start with the normal number, which never drops)
+  LDX OPT_LIVES
+  CPX #OPT_LIVES_INF
+  BNE limited_lives
+  LDA #YES:STA GAME_INF_LIVES
+  LDX #LIVESATSTART
+
+.limited_lives
+  DEX:STX LIFELEFT
 
   ; Bomb range in multiples of 16
   LDA OPT_POWER
@@ -319,7 +391,9 @@ OPT_KIND_BOOL = 2
   LDA #8:STA APU_MUSIC
   JSR WAITTUNE
 
-  ; Loose a life
+  ; Loose a life (unless lives are unlimited)
+  LDA GAME_INF_LIVES
+  BNE respawn
   DEC LIFELEFT
   BPL respawn
 
