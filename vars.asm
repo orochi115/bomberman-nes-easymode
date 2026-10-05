@@ -244,6 +244,7 @@ OPT_REPEAT          = &0185 ; .. auto repeat timer
 OPT_W               = &0186 ; Width of the value being drawn
 PAUSE_SHOWN         = &0187 ; Boolean, status bar shows the pause message
 PAUSE_SCROLL        = &0188 ; Horizontal scroll while looking round the map
+GAME_LIVES          = &0189 ; Lives setting of the game in progress (revive restarts)
 
 stage_buffer        = &0200
 

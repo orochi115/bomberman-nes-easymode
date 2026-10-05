@@ -682,9 +682,17 @@ INCLUDE "input.asm"
 
   ; Not in demo, so check if game started from the options screen
   LDA CURSOR
-  BEQ skip_cursor
+  BEQ start_default
 
   JSR OPTS_APPLY ; Set stage, lives, power-ups and rules from the options
+  JMP START_STAGE
+
+.start_default
+  ; "开始游戏" uses the settings from the build configuration
+  ; (config/default.asm is the same as the original game)
+  LDA #lo(OPT_DEFAULTS):STA ZH_PTR
+  LDA #hi(OPT_DEFAULTS):STA ZH_PTR+1
+  JSR OPTS_APPLY_FROM
   JMP START_STAGE
 
 .skip_cursor
