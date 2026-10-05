@@ -11,8 +11,7 @@
 
 # In-game status bar (replaces TIME / LEFT)
 GAME   HUD_TIME     1   1    时间
-GAME   HUD_LEFT     1   22   剩余
-GAME   HUD_INF      1   27   无限
+GAME   HUD_LEFT     1   24   剩余
 
 # Title menu
 TITLE  MENU_START   19  8    开始游戏

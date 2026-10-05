@@ -119,15 +119,24 @@ MENU_CURSOR_OPTS = &2272  ; Row 19, column 18
 }
 
 ; =============== S U B R O U T I N E =======================================
-; Write "999" for unlimited time in the status bar (called from NMI, the
-; PPU address has already been set)
-.DRAW_TIME_UNLIMITED
+; Gamepad state for GET_INPUT (not in demo). In slow mode SELECT only makes
+; time pass, so it's left out here: holding it must not stop the remote
+; detonator from seeing B released (LAST_INPUT).
+.READ_PADS
 {
-  LDA #'9'
-  STA PPU_DATA
-  STA PPU_DATA
-  STA PPU_DATA
+  ; Only LDA/ORA/AND here: the carry flag must be left alone, as the
+  ; original code didn't touch it (enemy AI random numbers depend on it)
+  LDA GAME_SLOW
+  BNE slow
 
+  LDA JOYPAD1
+  ORA JOYPAD2
+  RTS
+
+.slow
+  LDA JOYPAD1
+  ORA JOYPAD2
+  AND #&FF-(PAD_SELECT + PAD_START)
   RTS
 }
 
@@ -628,7 +637,7 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 
 ; =============== S U B R O U T I N E =======================================
 ; Decide if game time advances this frame (called once per game loop).
-; In slow mode time only passes while a direction or B is held.
+; In slow mode time only passes while a direction, B or SELECT is held.
 .UPDATE_TICK
 {
   LDA GAME_SLOW
@@ -636,7 +645,7 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 
   LDA JOYPAD1
   ORA JOYPAD2
-  AND #(PAD_UP + PAD_DOWN + PAD_LEFT + PAD_RIGHT + PAD_B)
+  AND #(PAD_UP + PAD_DOWN + PAD_LEFT + PAD_RIGHT + PAD_B + PAD_SELECT)
   BEQ frozen
 
   INC GAME_TICK

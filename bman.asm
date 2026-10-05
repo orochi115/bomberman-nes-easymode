@@ -156,8 +156,8 @@ INCLUDE "vars.asm"
 .DRAW_TIMER
   ; Lives left (changes without a redraw in revive mode)
   LDA GAME_INF_LIVES
-  BNE lives_drawn ; "无限" is drawn by TIME_AND_LIFE
-  LDA #&20:LDX #&5B ; Y=2, X=27
+  BNE lives_drawn ; Unlimited lives aren't shown
+  LDA #&20:LDX #&5C ; Y=2, X=28
   JSR VRAMADDR
   LDA LIFELEFT
   JSR PUTNUMBER
@@ -167,13 +167,11 @@ INCLUDE "vars.asm"
   LDA #&20:LDX #&46 ; Y=2, X=6
   JSR VRAMADDR
 
-  ; Unlimited time shows as 999
+  ; Unlimited time isn't shown
   LDA GAME_TIME
   BNE time_limited
   LDA INVULNERABLE ; Only set on bonus stages, which always have a time limit
-  BNE time_limited
-  JSR DRAW_TIME_UNLIMITED
-  JMP UPDATE_FPS
+  BEQ UPDATE_FPS
 
 .time_limited
   ; Check for time overflow
@@ -976,6 +974,7 @@ INCLUDE "input.asm"
 
   JSR VBLD
   JSR BUILD_CONCRETE_WALLS ; Build level
+  LDA #YES:STA INVULNERABLE ; Set early so the status bar shows the time
   JSR SPAWN       ; Spawn enemies and bomberman
   JSR PICTURE_ON  ; Turn on screen and sprites
   JSR STAGE_CLEANUP
@@ -1189,6 +1188,11 @@ INCLUDE "input.asm"
   BEQ NOT_PAUSED
   LDA DEMOPLAY
   BNE ABORT_DEMOPLAY
+
+  ; SELECT + START quits to the title screen
+  LDA JOYPAD1
+  AND #PAD_SELECT
+  BNE QUIT_TO_MENU
 
   LDA #YES:STA APU_DISABLE
 
@@ -3102,10 +3106,7 @@ INCLUDE "input.asm"
 
   ; Not in demo mode, so read (and combine) actual pads
 .NOT_DEMO
-  LDA JOYPAD1
-  ORA JOYPAD2
-
-  RTS
+  JMP READ_PADS
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5151,9 +5152,16 @@ INCLUDE "input.asm"
   DEX
   BNE space_loop
 
-  ; Draw "时间" (time) text (time value is drawn elsewhere)
+  ; Draw "时间" (time) text (time value is drawn elsewhere), unless the
+  ; time is unlimited (bonus stages always have a time limit)
+  LDA GAME_TIME
+  ORA INVULNERABLE
+  BEQ no_time
+
   LDA #lo(ZH_HUD_TIME):LDX #hi(ZH_HUD_TIME)
   JSR PRINT_ZH
+
+.no_time
 
   ; Draw trailing zeroes of score (as it's always a multiple of 100)
   ; Set screen pointer for next character to write
@@ -5165,19 +5173,18 @@ INCLUDE "input.asm"
   STA PPU_DATA
   STA PPU_DATA
 
+  ; Unlimited lives aren't shown
+  LDA GAME_INF_LIVES
+  BEQ lives_shown
+  RTS
+
+.lives_shown
   ; Draw "剩余" (left) text
   LDA #lo(ZH_HUD_LEFT):LDX #hi(ZH_HUD_LEFT)
   JSR PRINT_ZH
 
-  ; Unlimited lives
-  LDA GAME_INF_LIVES
-  BEQ lives_number
-  LDA #lo(ZH_HUD_INF):LDX #hi(ZH_HUD_INF)
-  JMP PRINT_ZH
-
-.lives_number
   ; Draw the number of extra lives remaining (with leading spaces)
-  LDA #&20:LDX #&5B
+  LDA #&20:LDX #&5C
   JSR VRAMADDR
 
   LDA LIFELEFT
