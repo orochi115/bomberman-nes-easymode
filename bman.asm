@@ -126,6 +126,10 @@ INCLUDE "vars.asm"
   LDA STAGE_STARTED
   BEQ UPDATE_FPS
 
+  ; The status bar shows the pause message instead
+  LDA PAUSE_SHOWN
+  BNE UPDATE_FPS
+
   LDA TILE_CNT
   CMP #4
   BCC UPDATE_FPS
@@ -583,6 +587,7 @@ INCLUDE "input.asm"
   STA APU_DISABLE    ; Clear sound disabled flag
   STA STAGE_STARTED  ; Set stage as not started
   STA DEMO_WAIT_HI   ; Clear demo wait timer
+  STA PAUSE_SHOWN    ; In case we quit from the pause screen
 
   ; Draw the main menu
   JSR DRAWMENU
@@ -1213,16 +1218,9 @@ INCLUDE "input.asm"
 
   JSR WAITUNPRESS ; Wait for button to be released
 
-.WAIT_START
-  ; SELECT while paused quits to the title screen
-  LDA JOYPAD1
-  AND #PAD_SELECT
-  BNE QUIT_TO_MENU
-
-  ; Wait for START to be pressed to resume
-  LDA JOYPAD1
-  AND #PAD_START
-  BEQ WAIT_START
+  ; Show "暂停" and let the map be scrolled until START is pressed again
+  ; (SELECT quits to the title screen)
+  JSR PAUSE_SCREEN
 
   ; Play sound 6 (Pause/Unpause)
   LDA #6:STA APU_SOUND

@@ -32,6 +32,7 @@ BANKS = ['GAME', 'TITLE', 'TEXT', 'OPTS']
 BG = 0x1000  # Background pattern table offset within a bank
 
 BLANK = 0xB0  # Blank tile (colour 0), as used by CLS
+HUD_BLANK = 0x3A  # ':' is a tile filled with colour 2, the status bar background
 
 # Glyph placement of the 12x12 em box inside the 16x16 cell
 GLYPH_X = 1
@@ -198,7 +199,10 @@ def main():
     orig = open(os.path.join(SRC, 'bomber.chr'), 'rb').read()
     assert len(orig) == 8192
     banks = {b: bytearray(orig) for b in BANKS}
-    free = {b: free_tiles(b) for b in BANKS}
+    # Letters and digits used by a bank's strings must keep their tiles
+    used_ascii = {b: {ord(c) for s in strings if s[0] == b for c in s[4]
+                      if c.isdigit() or 'A' <= c <= 'Z'} for b in BANKS}
+    free = {b: [t for t in free_tiles(b) if t not in used_ascii[b]] for b in BANKS}
     alloc = {b: {} for b in BANKS}  # char -> (top tiles, bottom tiles)
 
     def tiles_for(bank, ch):
@@ -223,19 +227,21 @@ def main():
            ';         width in tiles, top row tiles, bottom row tiles', '']
     for bank, sid, row, col, text in strings:
         top, bot = [], []
+        # The status bar background is the filled ':' tile, not the blank one
+        blank = HUD_BLANK if bank == 'GAME' else BLANK
         for ch in text:
             if is_wide(ch):
                 t, b = tiles_for(bank, ch)
                 top += t
                 bot += b
             elif ch == '　':
-                top += [BLANK, BLANK]
-                bot += [BLANK, BLANK]
+                top += [blank, blank]
+                bot += [blank, blank]
             elif ch == ' ':
-                top.append(BLANK)
-                bot.append(BLANK)
+                top.append(blank)
+                bot.append(blank)
             elif ch.isdigit() or 'A' <= ch <= 'Z':
-                top.append(BLANK)
+                top.append(blank)
                 bot.append(ord(ch))
             else:
                 sys.exit('Unsupported character %r in %s' % (ch, sid))

@@ -225,14 +225,7 @@ ENDMACRO
 .OPT_REDRAW
 {
   JSR OPT_COMPOSE
-
-  LDA #YES:STA VBUF_READY
-
-.wait
-  LDA VBUF_READY
-  BNE wait
-
-  RTS
+  JMP VBUF_SEND
 }
 
 ; =============== S U B R O U T I N E =======================================

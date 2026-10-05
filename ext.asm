@@ -218,6 +218,18 @@ HUD_ATTR_RED = %01010101 ; Background palette 1 (reds) for the whole bar
   RTS
 }
 
+; Have the NMI write VBUF and wait until it has (screen on)
+.VBUF_SEND
+{
+  LDA #YES:STA VBUF_READY
+
+.wait
+  LDA VBUF_READY
+  BNE wait
+
+  RTS
+}
+
 ; Copy VBUF to the PPU (rendering must be off, or in vblank)
 .VBUF_FLUSH
 {
@@ -762,4 +774,5 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 }
 
 INCLUDE "options.asm"
+INCLUDE "pause.asm"
 INCLUDE "zh_text.asm"

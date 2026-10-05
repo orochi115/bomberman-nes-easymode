@@ -234,14 +234,16 @@ APU_SDELAY          = &E4
 ; Lower memory ($0100-$07FF).
 ; ---------------------------------------------------------------------------
 ; Bottom of the stack page (the stack never gets this deep)
-VBUF                = &0180 ; VRAM update buffer written by the NMI (48 bytes)
-VBUF_READY          = &01B0 ; Boolean, VBUF waiting to be written
-OPT_ITEM            = &01B1 ; Options screen item being drawn
-OPT_PAD             = &01B2 ; Options screen gamepad state ..
-OPT_NEW             = &01B3 ; .. newly pressed buttons
-OPT_PREV            = &01B4 ; .. previous frame
-OPT_REPEAT          = &01B5 ; .. auto repeat timer
-OPT_W               = &01B6 ; Width of the value being drawn
+VBUF                = &0100 ; VRAM update buffer written by the NMI (128 bytes)
+VBUF_READY          = &0180 ; Boolean, VBUF waiting to be written
+OPT_ITEM            = &0181 ; Options screen item being drawn
+OPT_PAD             = &0182 ; Options screen gamepad state ..
+OPT_NEW             = &0183 ; .. newly pressed buttons
+OPT_PREV            = &0184 ; .. previous frame
+OPT_REPEAT          = &0185 ; .. auto repeat timer
+OPT_W               = &0186 ; Width of the value being drawn
+PAUSE_SHOWN         = &0187 ; Boolean, status bar shows the pause message
+PAUSE_SCROLL        = &0188 ; Horizontal scroll while looking round the map
 
 stage_buffer        = &0200
 
