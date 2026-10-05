@@ -2,7 +2,7 @@
 # Build bomberman.nes: iNES header + 32KB PRG + 32KB CHR (CNROM).
 #
 # Usage: build.sh [-l zh|en] [-c config/NAME.asm]
-#   -l  language of the in-game text (default zh)
+#   -l  language of the in-game text (default en)
 #   -c  settings used by "开始游戏" / START and as the options screen
 #       defaults (default config/default.asm, the original rules)
 set -eu
@@ -14,7 +14,7 @@ if [ ! -x "$BEEBASM" ]; then
   BEEBASM="$(command -v beebasm)"
 fi
 
-LANG_OPT=zh
+LANG_OPT=en
 CONFIG=config/default.asm
 while getopts "l:c:" opt; do
   case "$opt" in

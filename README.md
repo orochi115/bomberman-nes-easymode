@@ -23,9 +23,10 @@ options:
 
 Needs [BeebAsm](https://github.com/stardot/beebasm) and Python 3.
 
-    ./build.sh                    # Chinese, original rules for "开始游戏"
-    ./build.sh -l en              # English
+    ./build.sh                    # English, original rules for START
+    ./build.sh -l zh              # Chinese
     ./build.sh -c config/casual.asm
+    ./run-casual.sh               # Chinese with config/casual.asm, in ares
     ./run-ares.sh [same options]  # builds and runs it in ares (macOS)
 
 `-c` picks the settings file used by "开始游戏" (START) and as the options
