@@ -7,7 +7,7 @@ asmops.cpp, main.cpp). It is a faithful port: the same syntax, the same
 addressing-mode rules, the same error messages and the same output bytes.
 
 Usage:
-    breakasm.py [-l <file.lst>] <source.asm> <output.prg>
+    breakasm.py [-l <file.lst>] [-D NAME[=VALUE]]... <source.asm> <output.prg>
 
 The PRG file is always 64 Kbytes (the size of the 6502 address space).
 The -l option writes an assembly listing (address, emitted bytes, source line).
@@ -20,6 +20,9 @@ Features:
       forward-referenced labels below $100)
     - the ABS directive forces the absolute opcode for the next instruction
     - INCLUDE, DEFINE, BYTE, WORD, ORG, END, PROCESSOR directives
+    - conditional assembly: IFDEF name / IFNDEF name / ELSE / ENDIF (nestable);
+      a name counts as defined if it was set with DEFINE or with -D on the
+      command line
 """
 
 import sys
@@ -285,6 +288,8 @@ class Assembler(object):
         self.linenum_stack = []
         self.prev_labels = {}       # lower name -> orig (from the previous pass)
         self.listing_lines = []
+        self.predefines = []        # (name, replace) pairs from the command line
+        self.cond_stack = []        # [parent_active, active, else_seen] per open IFDEF
 
     # ------------------------------------------------------------------
     # Diagnostics
@@ -1182,6 +1187,14 @@ class Assembler(object):
         for line in lines:
             label, cmd, op = self.parse_line(line)
 
+            # Conditional assembly
+            if self.do_conditional(cmd.upper(), op):
+                self.nextline()
+                continue
+            if self.cond_stack and not self.cond_stack[-1][1]:
+                self.nextline()
+                continue
+
             # Add label
             if len(label) > 1:
                 self.add_label(label, self.org)
@@ -1208,6 +1221,33 @@ class Assembler(object):
                                                      label, cmd_upper if len(cmd) > 1 else '', op))
 
             self.nextline()
+
+    def do_conditional(self, cmd_upper, op):
+        """Handle IFDEF/IFNDEF/ELSE/ENDIF. Returns True if the line was one of them."""
+        if cmd_upper in ("IFDEF", "IFNDEF"):
+            parent = not self.cond_stack or self.cond_stack[-1][1]
+            name = op.strip()
+            if not name:
+                self.not_enough_parameters(cmd_upper)
+            defined = name.lower() in self.defines
+            cond = defined if cmd_upper == "IFDEF" else not defined
+            self.cond_stack.append([parent, parent and cond, False])
+            return True
+        if cmd_upper == "ELSE":
+            if not self.cond_stack or self.cond_stack[-1][2]:
+                self.error("ELSE without IFDEF, or a second ELSE")
+                return True
+            top = self.cond_stack[-1]
+            top[1] = top[0] and not top[1]
+            top[2] = True
+            return True
+        if cmd_upper == "ENDIF":
+            if not self.cond_stack:
+                self.error("ENDIF without IFDEF")
+            else:
+                self.cond_stack.pop()
+            return True
+        return False
 
     def add_keywords(self):
         self.add_label("A", KEYWORD)
@@ -1239,11 +1279,16 @@ class Assembler(object):
         self.labels = {}
         self.patches = []
         self.defines = {}
+        self.cond_stack = []
         self.source_stack = [source_name]
         self.linenum_stack = [0]
         self.add_keywords()
+        for name, replace in self.predefines:
+            self.add_define(name, replace)
         self.nextline()
         self.assemble_text(text)
+        if self.cond_stack:
+            self.error("IFDEF without ENDIF")
         self.do_expr_labels()
         self.do_patch()
 
@@ -1325,15 +1370,17 @@ OPTAB.update({
 
 def usage():
     print("Breakasm, ver. %s" % BREAKASM_VERSION)
-    print("Use: breakasm.py [-l <file.lst>] <source.asm> <output.prg>")
+    print("Use: breakasm.py [-l <file.lst>] [-D NAME[=VALUE]]... <source.asm> <output.prg>")
     print("Example: breakasm.py -l test.lst test.asm test.prg")
     print("The -l option writes an assembly listing (address, bytes, source line) to the given file.")
+    print("The -D option defines NAME (as with DEFINE NAME VALUE; VALUE defaults to 1).")
 
 
 def main(argv):
     listing_name = None
     source_name = None
     out_name = None
+    predefines = []
 
     i = 1
     while i < len(argv):
@@ -1341,6 +1388,14 @@ def main(argv):
         if a == "-l" and i + 1 < len(argv):
             listing_name = argv[i + 1]
             i += 2
+        elif a == "-D" and i + 1 < len(argv):
+            name, _, value = argv[i + 1].partition("=")
+            predefines.append((name, value or "1"))
+            i += 2
+        elif a.startswith("-D") and len(a) > 2:
+            name, _, value = a[2:].partition("=")
+            predefines.append((name, value or "1"))
+            i += 1
         elif source_name is None:
             source_name = a
             i += 1
@@ -1383,6 +1438,7 @@ def main(argv):
     # Assemble
     asm = Assembler()
     asm.list_file = list_file
+    asm.predefines = predefines
     err_count = asm.assemble(text, source_name)
 
     if list_file is not None:

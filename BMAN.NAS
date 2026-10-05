@@ -9,9 +9,11 @@
 
 RESET:
         SEI                             ; Reset PPU. Disable NMI, turn off background and sprites.
+    IFNDEF REGION_JP
         LDA #0
         STA PPU_CTRL_REG2
         STA PPU_CTRL_REG1 ; Reset PPU
+    ENDIF
         CLD                             ; The NES 6502 CPU has no BCD mode, reset the flag just in case.
         LDX #$FF                        ; Set the stack pointer to the initial position
         TXS ; Clear stack
@@ -108,7 +110,11 @@ DRAW_MENU_ARROW:
         LDA INMENU
         BEQ DRAW_ARROW_SKIP
         LDA #$22 ; '"'
+    IFDEF REGION_JP
+        LDX #$AA ; START and CONTINUE are on separate rows
+    ELSE
         LDX #$68 ; 'h'
+    ENDIF
         JSR VRAMADDR
         LDY #$B0 ; '-'
         LDA CURSOR
@@ -118,7 +124,11 @@ DRAW_MENU_ARROW:
 DRAW_ARROW_START:           
         STY PPU_DATA
         LDA #$22 ; '"'
+    IFDEF REGION_JP
+        LDX #$EA
+    ELSE
         LDX #$70 ; 'p'
+    ENDIF
         JSR VRAMADDR
         LDY #$B0 ; '-'
         LDA CURSOR
@@ -705,9 +715,9 @@ dont_clear_score:
         STA SEED+2
         STA SEED+3
         STA FRAME_CNT
-        LDA #$F4
+        LDA #((DEMO_KEYDATA+2) & #$FF)
         STA DEMOKEY_DATA
-        LDA #$ED
+        LDA #((DEMO_KEYDATA+2) >> #8)
         STA DEMOKEY_DATA+1
         LDA DEMO_KEYDATA
         STA DEMOKEY_TIMEOUT
@@ -1902,7 +1912,7 @@ sub_CB65:
         CLC
         ADC #$20 ; ' '
         STA PPU_ADDRESS
-        LDA $D9C8,X
+        LDA TILE_MAP+2,X
         STA PPU_DATA
         LDA TILE_MAP+3,X
         STA PPU_DATA
@@ -2718,9 +2728,9 @@ loc_CFCF:
         ASL
         TAY
         JSR ENEMY_SAVE  ; Put the description of the current monster in temporary variables
-        LDA #$CF
+        LDA #((THINK_RETURN-1) >> #8)
         PHA
-        LDA #$E2
+        LDA #((THINK_RETURN-1) & #$FF)
         PHA
         LDA THINK_PROC-1,Y
         PHA
@@ -2728,6 +2738,7 @@ loc_CFCF:
         PHA
         RTS
 ; ---------------------------------------------------------------------------
+THINK_RETURN:
         JSR ENEMY_LOAD  ; Return point after the THINK monster procedure
         JSR loc_D006
 
@@ -2966,7 +2977,8 @@ MONSTER_TILE:   BYTE $18,$19,$1A,$19,$1C,$1D,$1E,$1D,$20,$21,$22,$21,$24,$25,$26
 MONSTER_ATTR:   BYTE   1,  1,  1,  1,  3,  3,  3,  3,  2,  2,  2,  2,  1,  1,  1,  1
         BYTE   3,  3,  3,  3,  2,  2,  2,  2,  1,  1,  1,  1,  1,  2,  1,  2
         BYTE   1,  3,  2,  1,  3,  2,  1,  1,  1,  1,  1,  1,  1,  0,  1,  2
-        BYTE   3,  1,  1,  2,  4,  8, $A,$14,$28,$50,$64,$C8,  2,  4,  5, $A
+        BYTE   3
+MONSTER_SCORES: BYTE 1,  1,  2,  4,  8, $A,$14,$28,$50,$64,$C8,  2,  4,  5, $A
         BYTE $14,$28 ; 400,000
 
 ; =============== S U B R O U T I N E =======================================
@@ -3038,24 +3050,26 @@ loc_D242:
 
 ; ---------------------------------------------------------------------------
 THINK_PROC:
-        WORD $D320     ; Pink bulb
-        WORD $D2E7     ; Blue Pepper
-        WORD $D2C8     ; Barrel
-        WORD $D305     ; Kolobok
-        WORD $D2B4     ; Cloud
-        WORD $D319     ; Medusa
-        WORD $D3A0     ; Boar
-        WORD $D38A     ; Coin
-        WORD $D2A2
-        WORD $D264
-        WORD $D25B
+        WORD THINK_PINK_BULB-1     ; Pink bulb
+        WORD THINK_BLUE_PEPPER-1     ; Blue Pepper
+        WORD THINK_BARREL-1     ; Barrel
+        WORD THINK_KOLOBOK-1     ; Kolobok
+        WORD THINK_CLOUD-1     ; Cloud
+        WORD THINK_MEDUSA-1     ; Medusa
+        WORD THINK_BOAR-1     ; Boar
+        WORD THINK_COIN-1     ; Coin
+        WORD THINK_9-1
+        WORD THINK_10-1
+        WORD THINK_11-1
 ; ---------------------------------------------------------------------------
+THINK_11:
         DEC byte_49
         BNE think_done
         LDA #0
         STA M_TYPE
         RTS
 ; ---------------------------------------------------------------------------
+THINK_10:
         DEC byte_49
         BNE think_done
         LDA #10
@@ -3075,7 +3089,7 @@ THINK_PROC:
         LDY #$10
 
 add_score_multiple:               
-        LDA $D1B7,Y
+        LDA MONSTER_SCORES,Y
         TAX
 
 score_multiply:               
@@ -3087,7 +3101,7 @@ score_multiply:
 ; ---------------------------------------------------------------------------
 
 add_score_hundreds:               
-        LDA $D1B7,Y ; Get score (in hundreds)
+        LDA MONSTER_SCORES,Y ; Get score (in hundreds)
         JSR SCORE_100
 
 loc_D29A:               
@@ -3099,6 +3113,7 @@ loc_D29A:
 think_done:                
         RTS
 ; ---------------------------------------------------------------------------
+THINK_9:
         DEC byte_49
         BNE locret_D2B3
         LDA #10
@@ -3115,6 +3130,7 @@ locret_D2B3:
 done_think_4:                
         RTS
 ; ---------------------------------------------------------------------------
+THINK_CLOUD:
         LDA #$10        ; The fifth monster is a cloud
         LDY #$13
         JSR ENEMY_ADVANCE_FRAME
@@ -3128,6 +3144,7 @@ done_think_4:
 done_think_2:                
         RTS
 ; ---------------------------------------------------------------------------
+THINK_BARREL:
         LDA #8      ; The Third Monster - The Barrel
         LDY #$B
         JSR ENEMY_ADVANCE_FRAME
@@ -3148,6 +3165,7 @@ loc_D2E4:
 done_think_1:                
         RTS
 ; ---------------------------------------------------------------------------
+THINK_BLUE_PEPPER:
         LDA #4      ; The second monster is a blue pepper
         LDY #7
         JSR ENEMY_ADVANCE_FRAME
@@ -3164,6 +3182,7 @@ done_think_1:
 loc_D303:               
         JMP loc_D33F
 ; ---------------------------------------------------------------------------
+THINK_KOLOBOK:
         LDA #$C     ; The fourth monster is Kolobok.
         LDY #$F
         JSR ENEMY_ADVANCE_FRAME
@@ -3179,10 +3198,12 @@ loc_D310:
 THINK_SKIP:             
         RTS
 ; ---------------------------------------------------------------------------
+THINK_MEDUSA:
         LDA #20     ; The sixth monster is Medusa
         LDY #23
         JMP loc_D325
 ; ---------------------------------------------------------------------------
+THINK_PINK_BULB:
         LDA #0      ; The first monster is a pink bulb
         LDY #3
 
@@ -3262,6 +3283,7 @@ loc_D388:
         RTS
 
 ; ---------------------------------------------------------------------------
+THINK_COIN:
         LDA #$1C        ; The eighth monster is a coin
         LDY #$1F
         JSR ENEMY_ADVANCE_FRAME
@@ -3275,6 +3297,7 @@ loc_D39C:
         STY byte_48
         JMP loc_D3AB
 ; ---------------------------------------------------------------------------
+THINK_BOAR:
         LDA #$18        ; The seventh monster is a boar
         LDY #$1B
         JSR ENEMY_ADVANCE_FRAME
@@ -3862,8 +3885,8 @@ SPAWN_MONSTERS:
         CMP #(MAP_LEVELS/2)+1
         BCC early_levels
         SBC #(MAP_LEVELS/2)
-        LDX #2
-        LDY #$D8 ; '+'
+        LDX #(MONSTER_TAB_LATE & #$FF)
+        LDY #(MONSTER_TAB_LATE >> #8)
         BNE save_pointer
 
 early_levels:               
@@ -3955,6 +3978,7 @@ MONSTER_TAB:
     BYTE    3, 3, 4, 4, 5, 5, 6, 6, 7, 0 
     BYTE    3, 4, 5, 6, 6, 5, 6, 6, 7, 0 
     BYTE    2, 2, 3, 4, 5, 5, 6, 6, 7, 0 
+MONSTER_TAB_LATE: ; Levels 26-50 (SPAWN_MONSTERS subtracts 25 from the level)
     BYTE    1, 2, 3, 4, 5, 5, 6, 6, 7, 0 
     BYTE    1, 2, 6, 6, 6, 5, 6, 6, 7, 0 
     BYTE    2, 3, 3, 3, 4, 4, 4, 6, 7, 0 
@@ -4208,7 +4232,7 @@ READ_PASSWORD:
         STA STAGE_STARTED
         STA INMENU
         STA APU_MUSIC
-        LDY #$9F
+        LDY #(STR_ENTER_CODE-STRING_TABLE)
         LDA #$20
         LDX #$E7 ; Position cursor for write
         JSR PRINT_ASCIIZ
@@ -4444,6 +4468,17 @@ DRAW_GAME_COMPLETED:
         LDA #6
         JSR SETSPR3PAL
         LDY #0
+    IFDEF REGION_JP
+        LDA #$20
+        LDX #$E8
+        JSR PRINT_ASCIIZ
+        LDA #$21
+        LDX #$23
+        JSR PRINT_ASCIIZ
+        LDA #$21
+        LDX #$62
+        JSR PRINT_ASCIIZ
+    ELSE
         JSR PRINT_XY_ASCIIZ
         JSR PRINT_XY_ASCIIZ
         JSR PRINT_XY_ASCIIZ
@@ -4451,6 +4486,7 @@ DRAW_GAME_COMPLETED:
         JSR PRINT_XY_ASCIIZ
         JSR PRINT_XY_ASCIIZ
         JSR PRINT_XY_ASCIIZ
+    ENDIF
         LDA #$A
         STA CACHE_Y ; Y position
         LDA #0
@@ -4468,11 +4504,13 @@ loc_DC26:
 
 ; ---------------------------------------------------------------------------
 
+    IFNDEF REGION_JP
 PRINT_XY_ASCIIZ:               
         LDA STRING_TABLE,Y
         INY
         LDX STRING_TABLE,Y
         INY
+    ENDIF
 
 ; =============== S U B R O U T I N E =======================================
 
@@ -4493,7 +4531,16 @@ locret_DC52:
         RTS
 
 ; ---------------------------------------------------------------------------
-STRING_TABLE:   BYTE $20       
+STRING_TABLE:
+    IFDEF REGION_JP
+        BYTE "CONGRATULATIONS"
+        BYTE   0
+        BYTE "BOMBER:MAN:BECOMES:RUNNER"
+        BYTE   0
+        BYTE "SEE:YOU:AGAIN:IN:LODE:RUNNER"
+        BYTE   0
+    ELSE
+        BYTE $20
         BYTE $88
         BYTE "CONGRATULATIONS"
         BYTE   0
@@ -4524,6 +4571,8 @@ STRING_TABLE:   BYTE $20
         BYTE $4B
         BYTE "GOOD:BYE"
         BYTE   0
+    ENDIF
+STR_ENTER_CODE:
         BYTE "ENTER:SECRET:CODE"
         BYTE   0
 
@@ -4783,7 +4832,20 @@ pal_loop:
         CPX #$10
         BNE pal_loop
         JSR VRAMADDRZ
+    IFDEF REGION_JP
+        LDA #$23
+        LDX #$83
+        JSR VRAMADDR
+        LDX #25
+
+copyright_loop:
+        LDA TITLE_COPYRIGHT,X ; Title strings are stored reversed
+        STA PPU_DATA
+        DEX
+        BPL copyright_loop
+    ELSE
         JSR DRAWMENUTEXT    ; Draw text in the menu (copyright, license)
+    ENDIF
         LDA #$20 ; ' '
         LDX #0
         JSR VRAMADDR
@@ -4807,9 +4869,50 @@ logo_bottom_loop:
         STA PPU_DATA
         INX
         BNE logo_bottom_loop
+    IFDEF REGION_JP
+
+logo_extra_loop:
+        LDA MAINMENU_EXTRA,X
+        STA PPU_DATA
+        INX
+        CPX #$40
+        BNE logo_extra_loop
+        LDA #$22
+        LDX #$AD
+        JSR VRAMADDR
+        LDX #4
+
+start_text_loop:
+        LDA TITLE_START,X
+        STA PPU_DATA
+        DEX
+        BPL start_text_loop
+        LDA #$22
+        LDX #$ED
+        JSR VRAMADDR
+        LDX #7
+
+continue_text_loop:
+        LDA TITLE_CONTINUE,X
+        STA PPU_DATA
+        DEX
+        BPL continue_text_loop
+        LDA #$23
+        LDX #$48
+        JSR VRAMADDR
+        LDA #$54 ; 'T'
+        STA PPU_DATA
+        LDA #$4F ; 'O'
+        STA PPU_DATA
+        LDA #$50 ; 'P'
+        STA PPU_DATA
+        LDA #$3A ; ':'
+        STA PPU_DATA
+    ELSE
         LDA #$22
         LDX #$AE
         JSR VRAMADDR
+    ENDIF
         LDX #0
 
 print_leading_spaces:               
@@ -4838,13 +4941,19 @@ top_score_done:
         LDA #$23 ; '#'
         LDX #$C0 ; 'L'
         JSR VRAMADDR
+    IFDEF REGION_JP
+        LDX #$28
+        LDA #0 ; Palette 0 for whole block
+    ELSE
         LDX #$20 ; ' '
         LDA #0 ; Palette 0 for whole block
+    ENDIF
 
 title_attr_loop:               
         STA PPU_DATA
         DEX
         BNE title_attr_loop
+    IFNDEF REGION_JP
         LDX #8
         LDA #$50 ; 'P'
 
@@ -4852,6 +4961,7 @@ option_attr_loop:
         STA PPU_DATA
         DEX
         BNE option_attr_loop
+    ENDIF
         LDX #$18
         LDA #$55 ; 'U'
 
@@ -4953,11 +5063,58 @@ DONE_TENS2:
         RTS
 
 ; ---------------------------------------------------------------------------
+    IFDEF REGION_JP
+; Title screen strings, stored reversed (drawn right to left)
+TITLE_COPYRIGHT: BYTE "TFOS",$B0,"NOSDUH",$B0,"5891",$B0,"THGIRYPOC" ; COPYRIGHT 1985 HUDSON SOFT
+TITLE_START:     BYTE "TRATS"    ; START
+TITLE_CONTINUE:  BYTE "EUNITNOC" ; CONTINUE
+    ENDIF
 STAGEPAL:   BYTE  $F,  0, $F,$30 ; S0 /      GREY  BLACK WHITE
 MENUPAL:    BYTE  $F,  5,$30,$28, $F,  0, $F,$30 ; S1 / M0   PINK  WHITE GOLD
         BYTE  $F,  6,$26,$37, $F, $F, $F, $F ; S3 / M2   RED   CORAL GREY
 PW_DECODE_TABLE:  BYTE   5,  0,  9,  4, $D,  7,  2,  6 ; P
         BYTE  $A, $F, $C,  3,  8, $B, $E,  1 ; H
+    IFDEF REGION_JP
+; Title logo (Japanese version: extra top and shadow rows, no TM mark)
+MAINMENU_HI:    BYTE $B0,$B0,$DE,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD
+        BYTE $DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$DD,$F6,$B0
+        BYTE $B0,$B0,$DF,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C1,$C2,$C0,$B6,$E9,$B8
+        BYTE $C2,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C2,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$C1,$D9,$D3,$B3,$C1,$D9,$CB,$D3,$B3,$C1,$C5,$C6,$C1
+        BYTE $B3,$C1,$D9,$D3,$B3,$C1,$D9,$CB,$CB,$C1,$D9,$D3,$B3,$EE,$F8,$B0
+        BYTE $B0,$B0,$DF,$C1,$D0,$D1,$D2,$C1,$CF,$E9,$C4,$B3,$C1,$D5,$D6,$D7
+        BYTE $B3,$C1,$D0,$D1,$D2,$C1,$D0,$DC,$E9,$C1,$D0,$D1,$D2,$EB,$F8,$B0
+        BYTE $B0,$B0,$DF,$C1,$E0,$E1,$E2,$C1,$CF,$E9,$C4,$B3,$C1,$B7,$E6,$E7
+        BYTE $B3,$C1,$E0,$E1,$E2,$C1,$E0,$F5,$EC,$C1,$E0,$E1,$E2,$EF,$F8,$B0
+        BYTE $B0,$B0,$DF,$C1,$E8,$DA,$B3,$C1,$CF,$E9,$C4,$B3,$C1,$CF,$E5,$F0
+        BYTE $B3,$C1,$E8,$DA,$B3,$C1,$E8,$DB,$ED,$C1,$E8,$DA,$B3,$EB,$F8,$B0
+        BYTE $B0,$B0,$DF,$C1,$B5,$E3,$B3,$C1,$B5,$E9,$E3,$B3,$C1,$CF,$E9,$C4
+        BYTE $B3,$C1,$B5,$E3,$B3,$C1,$B5,$E9,$E9,$C1,$CF,$C4,$B3,$EB,$F8,$B0
+        BYTE $B0,$B0,$DF,$B1,$C1,$F1,$C3,$C7,$C1,$C1,$F1,$C3,$B4,$CF,$E9,$B2
+        BYTE $C3,$C7,$C1,$F1,$C3,$C7,$C1,$C1,$C3,$B4,$CF,$B2,$C3,$EB,$F8,$B0
+MAINMENU_LO:    BYTE $B0,$B0,$DF,$CA,$CB,$CB,$CB,$CE,$CB,$CB,$CB,$CB,$CE,$D8,$E9,$E9
+        BYTE $EA,$CE,$CB,$CB,$CB,$CE,$CB,$CB,$CB,$CE,$D8,$E9,$EA,$CD,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C0,$B6,$E9,$B8,$C2,$C0
+        BYTE $C1,$C1,$C2,$C0,$BC,$E4,$C2,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C1,$C5,$C6,$C1,$B3,$C1
+        BYTE $D9,$D3,$B3,$C1,$BD,$C4,$B3,$EE,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C1,$D5,$D6,$D7,$B3,$C1
+        BYTE $D0,$D1,$B3,$C1,$BE,$F2,$B3,$EB,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C1,$B7,$E6,$E7,$B3,$C1
+        BYTE $E0,$E1,$B3,$C1,$B9,$BF,$B3,$EB,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C1,$CF,$E5,$F0,$B3,$C1
+        BYTE $E8,$DA,$B3,$C1,$BB,$C8,$B3,$EB,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$C1,$CF,$E9,$C4,$B3,$C1
+        BYTE $CF,$C4,$B3,$C1,$C9,$C1,$B3,$EB,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$D4,$CF,$E9,$B2,$C3,$B4
+        BYTE $CF,$B2,$C3,$B4,$CF,$BA,$C3,$EB,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+MAINMENU_EXTRA: BYTE $B0,$B0,$DF,$E9,$E9,$E9,$E9,$E9,$E9,$E9,$CA,$D8,$E9,$E9,$EA,$CE
+        BYTE $D8,$E9,$EA,$CE,$D8,$F3,$CB,$CD,$E9,$E9,$E9,$E9,$E9,$E9,$F8,$B0
+        BYTE $B0,$B0,$F4,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9
+        BYTE $F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F9,$F7,$B0
+        BYTE $B0,$B0,$B0,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF
+        BYTE $AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$AF,$B0,$B0
+    ELSE
 MAINMENU_HI:    BYTE $B0,$B0,$DF,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C1,$C2,$C0,$B6,$E9,$B8
         BYTE $C2,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C2,$C0,$C1,$C1,$C2,$E9,$F8,$B0
         BYTE $B0,$B0,$DF,$C1,$D9,$D3,$B3,$C1,$D9,$CB,$D3,$B3,$C1,$C5,$C6,$C1
@@ -5066,6 +5223,7 @@ MENUTEXT:   BYTE $22
         BYTE "NINTENDO",$B0,"OF",$B0,"AMERICA",$B0,"INC"
         BYTE FULLSTOP
         BYTE END_OF_STRING
+    ENDIF
 STAGE_ROWS: BYTE   1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1
         BYTE   1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1
         BYTE   1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  0,  1,  1
@@ -5443,6 +5601,12 @@ DEMO_KEYDATA:   BYTE $3D,  1,  3,$81,  3,$80,$1B,  4,  6,$84,$1B,  4,  2,  5,$34
         BYTE $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
         BYTE $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
         BYTE $FF,$FF,$FF,$FF,$FF,$FF
+    IFDEF REGION_JP
+; The Japanese code is $2C bytes shorter, pad the rest
+        BYTE $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        BYTE $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        BYTE $FF,$FF,$FF,$FF
+    ENDIF
 
     ORG     $F000
     INCLUDE "BOOM.NAS"
