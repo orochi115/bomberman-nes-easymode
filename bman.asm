@@ -603,17 +603,29 @@ INCLUDE "input.asm"
 .DEMO_WAIT_LOOP
   JSR NEXTFRAME ; Wait for start of next frame
 
+  ; START, A or B (right hand side of the pad) chooses the menu item
   LDA JOYPAD1
-  AND #PAD_START
-  BNE START_PRESSED   ; Check for START being pressed
+  AND #(PAD_START + PAD_A + PAD_B)
+  BNE START_PRESSED
 
+  ; Left and right pick an item, SELECT, up and down toggle
   LDA JOYPAD1
-  AND #PAD_SELECT
-  BEQ UPDATE_RAND ; START/SELECT not pressed, so update random number generator seed
+  AND #(PAD_SELECT + PAD_UP + PAD_DOWN + PAD_LEFT + PAD_RIGHT)
+  BEQ UPDATE_RAND ; Nothing pressed, so update random number generator seed
 
-  LDA CURSOR      ; Move cursor between START/CONTINUE
+  LDX #0
+  CMP #PAD_LEFT
+  BEQ set_cursor
+  INX
+  CMP #PAD_RIGHT
+  BEQ set_cursor
+
+  LDA CURSOR      ; Move cursor between START/OPTIONS
   EOR #1
-  STA CURSOR
+  TAX
+
+.set_cursor
+  STX CURSOR
 
   JSR WAITUNPRESS ; Wait for nothing to be pressed
   JMP ADVANCE_FRAME
