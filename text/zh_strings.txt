@@ -1,4 +1,5 @@
-# Chinese strings, processed by tools/build_zh.py
+# Chinese strings, processed by tools/build_text.py (text/en_strings.txt has
+# the same IDs in English)
 #
 # Format: BANK  ID  ROW  COL  TEXT
 #   BANK  GAME / TITLE / TEXT / OPTS (which CHR bank the string is drawn with)
@@ -7,7 +8,15 @@
 #   COL   left tile column, c to centre the string, or - (run time)
 #   TEXT  rest of the line. CJK characters are 16x16 (2x2 tiles); ASCII
 #         letters/digits use the original 8x8 font in the bottom tile row;
-#         a space is one blank 8px column, a full-width space is 16px.
+#         a space is one blank 8px column, a full-width space is 16px;
+#         < > + : are 8x8 symbols; {XX} is raw tile XX; {} is empty;
+#         @ only defines ZH_<ID>_ADDR (the exact tile at ROW, COL)
+#
+# CONST lines become assembler constants
+
+# Options screen layout: label width in tiles, gap either side of the value
+CONST OPT_LABEL_W 4
+CONST OPT_VALUE_GAP 1
 
 # In-game status bar (replaces TIME / LEFT)
 GAME   HUD_TIME     1   1    时间
@@ -19,10 +28,12 @@ TITLE  MENU_START   19  8    开始游戏
 TITLE  MENU_OPTS    19  19   选项
 TITLE  MENU_TOP     21  7    最高分
 TITLE  CURSOR       -   -    ▶
+TITLE  TOP_SCORE    22  14   @
 
 # Stage intro, bonus stage, game over
 TEXT   STAGE_PRE    14  12   第
 TEXT   STAGE_POST   14  18   关
+TEXT   STAGE_NUM    15  15   @
 TEXT   BONUS_STAGE  14  c    奖励关卡
 TEXT   GAME_OVER    14  c    游戏结束
 
@@ -57,3 +68,4 @@ OPTS   VAL_NO       -   -    无
 OPTS   VAL_INF      -   -    无限
 OPTS   ARROW_L      -   -    ◀
 OPTS   ARROW_R      -   -    ▶
+OPTS   OPT_CURSOR   -   -    ▶

@@ -1,5 +1,6 @@
 #!/bin/sh
 # Build bomberman-nes with BeebAsm and launch it in ares (macOS).
+# Arguments are passed to build.sh, e.g. run-ares.sh -l en -c config/casual.asm
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
@@ -12,7 +13,7 @@ if [ ! -x "$BEEBASM" ]; then
   make -C "$ROOT/beebasm/src" code
 fi
 
-BEEBASM="$BEEBASM" "$SRC/build.sh"
+BEEBASM="$BEEBASM" "$SRC/build.sh" "$@"
 
 echo "ROM: $SRC/bomberman.nes"
 if [ ! -d "$ARES_APP" ]; then

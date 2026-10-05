@@ -5,6 +5,7 @@ ORG &C000
 INCLUDE "nesregs.asm"
 INCLUDE "consts.asm"
 INCLUDE "vars.asm"
+INCLUDE "build_config.asm" ; Written by build.sh (language and settings)
 
 .RESET
   SEI
@@ -5217,7 +5218,7 @@ INCLUDE "input.asm"
   JSR PRINT_ZH
 
   ; Set screen pointer for next character to write
-  LDA #&21:LDX #&EF
+  LDA #hi(ZH_STAGE_NUM_ADDR):LDX #lo(ZH_STAGE_NUM_ADDR)
   JSR VRAMADDR
 
   LDA STAGE
@@ -5303,7 +5304,7 @@ INCLUDE "input.asm"
   BNE logo_bottom_loop
 
   ; Set screen pointer for next character to write
-  LDA #&22:LDX #&CE
+  LDA #hi(ZH_TOP_SCORE_ADDR):LDX #lo(ZH_TOP_SCORE_ADDR)
   JSR VRAMADDR
 
   LDX #0

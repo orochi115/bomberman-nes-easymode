@@ -2,7 +2,8 @@
 
 ![JPG](/imgstore/whc4f9a3ebbbf486.jpg)
 
-This version adds a Chinese translation and new options:
+This version adds a Chinese translation (English is a build option) and new
+options:
 
 - All in-game text is in Chinese (12px Fusion Pixel font). The BOMBERMAN
   logo and the trademark lines are unchanged.
@@ -12,7 +13,9 @@ This version adds a Chinese translation and new options:
     in a safe spot; only when all lives are gone is the stage restarted.
   - 缓动 (slow mode): game time only passes while a direction or B is held.
   - 透视 (show hidden exit / bonus) and 无敌 (invincible).
-- While paused, SELECT returns to the title screen.
+- Pause shows a message in the status bar; left / right scroll round the
+  map, SELECT (or SELECT + START during play) returns to the title screen.
+- Title menu: d-pad / SELECT choose, A / B / START confirm.
 
 "开始游戏" (start) and the demo play with the original rules.
 
@@ -20,20 +23,25 @@ This version adds a Chinese translation and new options:
 
 Needs [BeebAsm](https://github.com/stardot/beebasm) and Python 3.
 
-    ./build.sh        # builds bomberman.nes
-    ./run-ares.sh     # builds and runs it in ares (macOS)
+    ./build.sh                    # Chinese, original rules for "开始游戏"
+    ./build.sh -l en              # English
+    ./build.sh -c config/casual.asm
+    ./run-ares.sh [same options]  # builds and runs it in ares (macOS)
 
-The ROM is now CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
-The original code stays at $C000-$FFFF; new code lives in ext.asm and
-options.asm at $8000-$BFFF.
+`-c` picks the settings file used by "开始游戏" (START) and as the options
+screen defaults; `config/default.asm` is the original game.
 
-## Chinese text
+The ROM is CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
+The original code stays at $C000-$FFFF; new code lives in ext.asm,
+options.asm and pause.asm at $8000-$BFFF.
 
-Strings are in `text/zh_strings.txt`. `tools/build_zh.py` (run by build.sh)
-draws them with the font in `fonts/`, writes the CHR banks to
-`bomber_zh.chr` and the tile data to `zh_text.asm`. Run
-`python3 tools/build_zh.py --preview` to also write PNG previews of the CHR
+## Text
+
+Strings are in `text/zh_strings.txt` and `text/en_strings.txt` (same IDs).
+`tools/build_text.py` (run by build.sh) draws them, writes the CHR banks to
+`bomber_text.chr` and the tile data to `text_data.asm`. Run
+`python3 tools/build_text.py --preview` to also write PNG previews of the CHR
 banks to `text/`.
 
-The font is [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)
+The Chinese font is [Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)
 by TakWolf, licensed under the SIL Open Font License 1.1 (see `fonts/`).

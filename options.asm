@@ -2,11 +2,11 @@
 ; Options screen (replaces the password entry screen)
 ;
 ; 14 items in two columns of 7. Each item is drawn as two rows of 14 tiles:
-;   column 0     cursor
-;   columns 1-4  label (two CJK characters)
-;   column 6     left arrow (selected item only)
-;   columns 8-11 value (2 to 4 tiles wide)
-;   after value  right arrow, one blank column after the value (selected only)
+;   column 0         cursor
+;   OPT_LABEL_W      label (from text_data.asm: 4 for Chinese, 6 for English)
+;   then a blank, the left arrow, OPT_VALUE_GAP blanks, the value (2 to 4
+;   tiles), OPT_VALUE_GAP blanks and the right arrow (arrows and cursor only
+;   on the selected item)
 ; Items follow the order of the OPT_* variables (OPT_STAGE .. OPT_INVINC).
 ; ===========================================================================
 
@@ -17,8 +17,8 @@ OPT_BOTTOM = 3 + OPT_ITEM_W ; Offset of the bottom row entry in VBUF
 ; VBUF offsets of the parts of an item (top row)
 OPT_POS_CURSOR = 3
 OPT_POS_LABEL = 4
-OPT_POS_LARROW = 9
-OPT_POS_VALUE = 11
+OPT_POS_LARROW = OPT_POS_LABEL + OPT_LABEL_W + 1
+OPT_POS_VALUE = OPT_POS_LARROW + 1 + OPT_VALUE_GAP
 
 OPT_REPEAT_DELAY = 20 ; Frames before a held direction repeats
 OPT_REPEAT_RATE = 4   ; Frames between repeats
@@ -277,13 +277,15 @@ ENDMACRO
   CMP OPT_CURSOR
   BNE done
 
-  LDA #lo(ZH_ARROW_R):STA ZH_PTR
-  LDA #hi(ZH_ARROW_R):STA ZH_PTR+1
+  LDA #lo(ZH_OPT_CURSOR):STA ZH_PTR
+  LDA #hi(ZH_OPT_CURSOR):STA ZH_PTR+1
   LDX #OPT_POS_CURSOR
   JSR copy_record
 
+  LDA #lo(ZH_ARROW_R):STA ZH_PTR
+  LDA #hi(ZH_ARROW_R):STA ZH_PTR+1
   LDA OPT_W
-  CLC:ADC #OPT_POS_VALUE+1
+  CLC:ADC #OPT_POS_VALUE+OPT_VALUE_GAP
   TAX
   JSR copy_record
 

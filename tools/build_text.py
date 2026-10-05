@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Build the CNROM CHR banks (bomber_zh.chr) and the Chinese text data
-(zh_text.asm) from text/zh_strings.txt and the Fusion Pixel 12px font
-(OFL, based on Ark Pixel; see fonts/).
+"""Build the CNROM CHR banks (bomber_text.chr) and the text data
+(text_data.asm) from text/<lang>_strings.txt. Chinese uses the Fusion Pixel
+12px font (OFL, based on Ark Pixel; see fonts/), English the original 8x8 font.
 
 CHR banks (8KB each, sprite table always copied unchanged):
   0 GAME   in-game graphics
@@ -12,9 +12,16 @@ CHR banks (8KB each, sprite table always copied unchanged):
 Each CJK character is drawn into a 16x16 cell (2x2 tiles) using the same
 colours as the original font: 3 = body, 1 = shadow, 2 = background.
 Strings are emitted as two rows of tile ids so the 6502 side only has to copy
-bytes to the nametable.
+bytes to the nametable. Records are labelled ZH_<ID> in both languages.
 
-Usage: build_zh.py [--preview]   (--preview also writes text/preview_*.png)
+Text syntax (see the strings files): CJK characters are 2x2 tiles; ASCII
+letters / digits use the original font in the bottom row; '<', '>', '+' and
+':' are extra 8x8 symbols; {XX} is the raw tile XX; {} is an empty string.
+A text of '@' only defines the address constant ZH_<ID>_ADDR (the exact tile
+at ROW, COL). "CONST NAME VALUE" lines are passed on as assembler constants.
+
+Usage: build_text.py [--lang zh|en] [--preview]
+  (--preview also writes text/preview_*.png)
 """
 import os
 import re
@@ -24,9 +31,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.dirname(HERE)
 
 FONT = os.path.join(SRC, 'fonts', 'fusion-pixel-12px-monospaced-zh_hans.bdf')
-STRINGS = os.path.join(SRC, 'text', 'zh_strings.txt')
-OUT_CHR = os.path.join(SRC, 'bomber_zh.chr')
-OUT_ASM = os.path.join(SRC, 'zh_text.asm')
+OUT_CHR = os.path.join(SRC, 'bomber_text.chr')
+OUT_ASM = os.path.join(SRC, 'text_data.asm')
+LANGS = ('zh', 'en')
 
 BANKS = ['GAME', 'TITLE', 'TEXT', 'OPTS']
 BG = 0x1000  # Background pattern table offset within a bank
@@ -123,6 +130,24 @@ def arrow(right):
 SPECIAL = {'▶': lambda: arrow(True), '◀': lambda: arrow(False)}
 
 
+def small(rows):
+    """8x8 symbol from a picture, X = body."""
+    return [[1 if c == 'X' else 0 for c in r] for r in rows]
+
+
+# 8x8 symbols missing from the original font, drawn in the bottom tile row
+SMALL = {
+    '<': small(['....X...', '...XX...', '..XXX...', '.XXXX...',
+                '..XXX...', '...XX...', '....X...', '........']),
+    '>': small(['..X.....', '..XX....', '..XXX...', '..XXXX..',
+                '..XXX...', '..XX....', '..X.....', '........']),
+    '+': small(['........', '...XX...', '...XX...', '.XXXXXX.',
+                '.XXXXXX.', '...XX...', '...XX...', '........']),
+    ':': small(['........', '...XX...', '...XX...', '........',
+                '...XX...', '...XX...', '........', '........']),
+}
+
+
 def shade(body, w, h):
     """Colour a body bitmap: 3 body, 1 shadow (right/down), 2 background."""
     px = [[2] * w for _ in range(h)]
@@ -141,6 +166,8 @@ def shade(body, w, h):
 
 def cell_for(ch, font):
     """Return (columns, pixel rows) for a character cell 16 px high."""
+    if ch in SMALL:
+        return 1, [[2] * 8 for _ in range(8)] + shade(SMALL[ch], 8, 8)
     if ch in SPECIAL:
         return 1, shade(SPECIAL[ch](), 8, 16)
     body = [[0] * 16 for _ in range(16)]
@@ -173,35 +200,64 @@ def is_wide(ch):
     return ch in SPECIAL or ord(ch) > 0x7F and ch != '　'
 
 
-def parse_strings():
+def tokens(text):
+    """Split a string into characters and {XX} raw tiles ({} is nothing)."""
     out = []
-    with open(STRINGS, encoding='utf-8') as f:
+    for m in re.finditer(r'\{([0-9A-Fa-f]{2})?\}|.', text):
+        if m.group(0).startswith('{'):
+            if m.group(1):
+                out.append(int(m.group(1), 16))
+        else:
+            out.append(m.group(0))
+    return out
+
+
+def parse_strings(path):
+    out, consts = [], []
+    with open(path, encoding='utf-8') as f:
         for n, line in enumerate(f, 1):
             if not line.strip() or line.lstrip().startswith('#'):
                 continue
+            if line.startswith('CONST'):
+                _, name, value = line.split()
+                consts.append((name, value))
+                continue
             m = re.match(r'(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s*$', line)
             if not m:
-                sys.exit('%s:%d: bad line' % (STRINGS, n))
+                sys.exit('%s:%d: bad line' % (path, n))
             bank, sid, row, col, text = m.groups()
             if bank not in BANKS:
-                sys.exit('%s:%d: unknown bank %s' % (STRINGS, n, bank))
+                sys.exit('%s:%d: unknown bank %s' % (path, n, bank))
             out.append((bank, sid, row, col, text))
-    return out
+    return out, consts
 
 
 def main():
     preview = '--preview' in sys.argv
+    lang = 'zh'
+    if '--lang' in sys.argv:
+        lang = sys.argv[sys.argv.index('--lang') + 1]
+    if lang not in LANGS:
+        sys.exit('Unknown language %s (expected one of %s)' % (lang, ', '.join(LANGS)))
+    path = os.path.join(SRC, 'text', '%s_strings.txt' % lang)
 
-    strings = parse_strings()
-    wanted = {c for s in strings for c in s[4] if is_wide(c) and c not in SPECIAL}
-    font = load_bdf(FONT, wanted)
+    strings, consts = parse_strings(path)
+    wanted = {c for s in strings for c in tokens(s[4])
+              if isinstance(c, str) and is_wide(c) and c not in SPECIAL}
+    font = load_bdf(FONT, wanted) if wanted else {}
 
     orig = open(os.path.join(SRC, 'bomber.chr'), 'rb').read()
     assert len(orig) == 8192
     banks = {b: bytearray(orig) for b in BANKS}
-    # Letters and digits used by a bank's strings must keep their tiles
-    used_ascii = {b: {ord(c) for s in strings if s[0] == b for c in s[4]
-                      if c.isdigit() or 'A' <= c <= 'Z'} for b in BANKS}
+    # Letters, digits and raw tiles used by a bank's strings keep their tiles
+    def original_tile(c):
+        if isinstance(c, int):
+            return c
+        if c.isdigit() or 'A' <= c <= 'Z':
+            return ord(c)
+        return None
+    used_ascii = {b: {original_tile(c) for s in strings if s[0] == b
+                      for c in tokens(s[4])} - {None} for b in BANKS}
     free = {b: [t for t in free_tiles(b) if t not in used_ascii[b]] for b in BANKS}
     alloc = {b: {} for b in BANKS}  # char -> (top tiles, bottom tiles)
 
@@ -209,11 +265,15 @@ def main():
         if ch in alloc[bank]:
             return alloc[bank][ch]
         cols, px = cell_for(ch, font)
-        if len(free[bank]) < cols * 2:
+        rows = ((8, 'bot'),) if ch in SMALL else ((0, 'top'), (8, 'bot'))
+        if len(free[bank]) < cols * len(rows):
             sys.exit('Out of tiles in bank %s at %r' % (bank, ch))
         top, bot = [], []
+        if ch in SMALL:
+            top.append(HUD_BLANK if bank == 'GAME' else BLANK)
         for c in range(cols):
-            for row, lst in ((0, top), (8, bot)):
+            for row, name in rows:
+                lst = top if name == 'top' else bot
                 t = free[bank].pop(0)
                 off = BG + t * 16
                 banks[bank][off:off + 16] = encode_tile(px, c * 8, row)
@@ -221,16 +281,27 @@ def main():
         alloc[bank][ch] = (top, bot)
         return top, bot
 
-    asm = ['; Generated by tools/build_zh.py from text/zh_strings.txt - do not edit',
+    asm = ['; Generated by tools/build_text.py from text/%s_strings.txt - do not edit' % lang,
            ';',
            '; Record: PPU address hi, lo (0,0 = positioned at run time),',
-           ';         width in tiles, top row tiles, bottom row tiles', '']
+           ';         width in tiles, top row tiles, bottom row tiles', '',
+           'LANG_ZH = %d' % (lang == 'zh'), 'LANG_EN = %d' % (lang == 'en')]
+    asm += ['%s = %s' % c for c in consts]
+    asm.append('')
     for bank, sid, row, col, text in strings:
+        if text == '@':
+            # Position only
+            asm.append('ZH_%s_ADDR = &%04X' % (sid, 0x2000 + int(row) * 32 + int(col)))
+            asm.append('')
+            continue
         top, bot = [], []
         # The status bar background is the filled ':' tile, not the blank one
         blank = HUD_BLANK if bank == 'GAME' else BLANK
-        for ch in text:
-            if is_wide(ch):
+        for ch in tokens(text):
+            if isinstance(ch, int):
+                top.append(blank)
+                bot.append(ch)
+            elif is_wide(ch) or ch in SMALL:
                 t, b = tiles_for(bank, ch)
                 top += t
                 bot += b
@@ -253,10 +324,12 @@ def main():
             if c + width > 32:
                 sys.exit('%s is too wide (%d tiles at column %d)' % (sid, width, c))
             addr = 0x2000 + int(row) * 32 + c
+            asm.append('ZH_%s_ADDR = &%04X' % (sid, addr))
         asm.append('.ZH_%s ; %s (bank %s)' % (sid, text, bank))
         asm.append('  EQUB &%02X, &%02X, %d' % (addr >> 8, addr & 0xFF, width))
-        asm.append('  EQUB ' + ','.join('&%02X' % t for t in top))
-        asm.append('  EQUB ' + ','.join('&%02X' % t for t in bot))
+        if width:
+            asm.append('  EQUB ' + ','.join('&%02X' % t for t in top))
+            asm.append('  EQUB ' + ','.join('&%02X' % t for t in bot))
         asm.append('')
 
     with open(OUT_ASM, 'w', encoding='utf-8') as f:
@@ -266,7 +339,7 @@ def main():
             f.write(banks[b])
 
     for b in BANKS:
-        print('bank %-5s %3d chars, %3d tiles free' % (b, len(alloc[b]), len(free[b])))
+        print('%s bank %-5s %3d chars, %3d tiles free' % (lang, b, len(alloc[b]), len(free[b])))
 
     if preview:
         write_previews(banks)
