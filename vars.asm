@@ -138,18 +138,40 @@ LAST_INPUT          = &7B ; Last input bitmask from gamepad
 INVULNERABLE        = &7D ; Invulnerable to monsters for this stage (Boolean)
 BONUS_ENEMY_TYPE    = &7E
 
-; Password is stored here (20 bytes) .. $92
-PW_BUFF             = &7F
+; Options screen settings ($7F..$8C), kept until reset
+OPT_STAGE           = &7F ; 1..50
+OPT_LIVES           = &80 ; 1..9
+OPT_POWER           = &81 ; 1..5 (bomb range in squares)
+OPT_BOMBS           = &82 ; 1..10
+OPT_TIME            = &83 ; Index into OPT_TIME_TAB (0..3, 3 = unlimited)
+OPT_REVIVE          = &84 ; Boolean, respawn in place on death
+OPT_SLOW            = &85 ; Boolean, time only passes while moving / pressing B
+OPT_SPEED           = &86 ; Booleans for starting power-ups ..
+OPT_REMOTE          = &87
+OPT_NOCLIP          = &88
+OPT_BOMBWALK        = &89
+OPT_FIRESUIT        = &8A
+OPT_DEBUG           = &8B ; Boolean, show hidden exit / bonus (DEBUG)
+OPT_INVINC          = &8C ; Boolean, can't be killed
+NUM_OPTS            = 14
+
+; Rules for the game in progress (all 0 for "START" and the demo)
+GAME_REVIVE         = &8D ; Boolean
+GAME_SLOW           = &8E ; Boolean
+GAME_INVINC         = &8F ; Boolean
+GAME_TIME           = &90 ; Seconds per level, 0 = unlimited
+
+GAME_TICK           = &91 ; Game logic clock (replaces FRAME_CNT in game logic)
+TICK_NOW            = &92 ; Boolean, does game time advance this frame
 
 ; Time in seconds left to play
 TIMELEFT            = &93
 
 DEBUG               = &94 ; Shows location of bonus and exit tiles
-PW_CXSUM4           = &95 ; Checksum for whole password
+OPT_CURSOR          = &95 ; Options screen cursor (0..NUM_OPTS-1)
 MTAB_PTR            = &97 ; Pointer to enemy table
-PW_CXSUM1           = &99 ; Checksum for characters 1..4 of password
-PW_CXSUM2           = &9A ; Checksum for characters 6..9 of password
-PW_CXSUM3           = &9B ; Checksum for characters 11..14 of password
+ZH_PTR              = &99 ; Pointer to Chinese string record (2 bytes)
+ZH_TEMP             = &9B
 
 ; Extra bonus item criteria
 ENEMIES_LEFT        = &9C
@@ -197,13 +219,9 @@ APU_SWEEP           = &D9 ; Hard coded to 08 for both of the pulse channels to d
 
 SPR_TAB_TOGGLE      = &DB
 
-; Used for BONUS_POWER calculations with resume codes
-BOMB_PWR            = &DC
-
-; Used for low byte of STAGE in resume codes
-STAGE_LO            = &DD
-; Used for high byte of STAGE in resume codes
-STAGE_HI            = &DE
+; PPU address for PRINT_ZH_AT (2 bytes, hi then lo)
+ZH_ADDR             = &DC
+ZH_TEMP2            = &DE
 
 APU_SOUND           = &DF
 APU_PATTERN         = &E0
@@ -215,7 +233,16 @@ APU_SDELAY          = &E4
 ; ---------------------------------------------------------------------------
 ; Lower memory ($0100-$07FF).
 ; ---------------------------------------------------------------------------
-password_buffer     = &0180
+; Bottom of the stack page (the stack never gets this deep)
+VBUF                = &0180 ; VRAM update buffer written by the NMI (48 bytes)
+VBUF_READY          = &01B0 ; Boolean, VBUF waiting to be written
+OPT_ITEM            = &01B1 ; Options screen item being drawn
+OPT_PAD             = &01B2 ; Options screen gamepad state ..
+OPT_NEW             = &01B3 ; .. newly pressed buttons
+OPT_PREV            = &01B4 ; .. previous frame
+OPT_REPEAT          = &01B5 ; .. auto repeat timer
+OPT_W               = &01B6 ; Width of the value being drawn
+
 stage_buffer        = &0200
 
 ; Bomb vars (up to 10 bombs)
@@ -248,6 +275,17 @@ byte_5DA            = &05DA
 byte_5E4            = &05E4
 
 ; ?? 18 bytes unaccounted for
+
+; Free space after the enemy tables ($05EE-$05FF)
+SNAP_SCORE          = &05EE ; Score when the stage was entered (7 bytes)
+SNAP_POWER          = &05F5 ; Power-ups when the stage was entered ..
+SNAP_BOMBS          = &05F6
+SNAP_SPEED          = &05F7
+SNAP_NOCLIP         = &05F8
+SNAP_REMOTE         = &05F9
+SNAP_BOMBWALK       = &05FA
+SNAP_FIRESUIT       = &05FB
+COSMETIC_CNT        = &05FC ; Animation counter for frozen frames (slow mode)
 
 TILE_TAB            = &0600
 

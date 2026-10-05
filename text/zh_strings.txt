@@ -1,0 +1,58 @@
+# Chinese strings, processed by tools/build_zh.py
+#
+# Format: BANK  ID  ROW  COL  TEXT
+#   BANK  GAME / TITLE / TEXT / OPTS (which CHR bank the string is drawn with)
+#   ROW   top tile row of the string (it is two tiles high), or - for strings
+#         positioned at run time
+#   COL   left tile column, c to centre the string, or - (run time)
+#   TEXT  rest of the line. CJK characters are 16x16 (2x2 tiles); ASCII
+#         letters/digits use the original 8x8 font in the bottom tile row;
+#         a space is one blank 8px column, a full-width space is 16px.
+
+# In-game status bar (replaces TIME / LEFT)
+GAME   HUD_TIME     1   1    时间
+GAME   HUD_LEFT     1   24   剩余
+
+# Title menu
+TITLE  MENU_START   19  8    开始游戏
+TITLE  MENU_OPTS    19  19   选项
+TITLE  MENU_TOP     21  7    最高分
+TITLE  CURSOR       -   -    ▶
+
+# Stage intro, bonus stage, game over
+TEXT   STAGE_PRE    14  12   第
+TEXT   STAGE_POST   14  18   关
+TEXT   BONUS_STAGE  14  c    奖励关卡
+TEXT   GAME_OVER    14  c    游戏结束
+
+# Ending
+TEXT   END_1        3   c    恭喜你！
+TEXT   END_2        6   c    你成功地帮助炸弹人
+TEXT   END_3        8   c    变成了真正的人类。
+TEXT   END_4        11  c    也许你能在另一款
+TEXT   END_5        13  c    哈德森游戏里
+TEXT   END_6        15  c    再次认出他。
+TEXT   END_7        19  c    再见！
+
+# Options screen
+OPTS   OPT_TITLE    2   c    选项
+OPTS   OPT_STAGE    5   3    关卡
+OPTS   OPT_LIVES    8   3    命数
+OPTS   OPT_POWER    11  3    火力
+OPTS   OPT_BOMBS    14  3    炸弹
+OPTS   OPT_TIME     17  3    时间
+OPTS   OPT_REVIVE   20  3    复活
+OPTS   OPT_SLOW     23  3    缓动
+OPTS   OPT_SPEED    5   18   加速
+OPTS   OPT_REMOTE   8   18   遥控
+OPTS   OPT_NOCLIP   11  18   穿墙
+OPTS   OPT_BOMBWALK 14  18   穿弹
+OPTS   OPT_FIRESUIT 17  18   防火
+OPTS   OPT_DEBUG    20  18   透视
+OPTS   OPT_INVINC   23  18   无敌
+OPTS   OPT_HINT     26  c    START 开始
+OPTS   VAL_YES      -   -    有
+OPTS   VAL_NO       -   -    无
+OPTS   VAL_INF      -   -    无限
+OPTS   ARROW_L      -   -    ◀
+OPTS   ARROW_R      -   -    ▶

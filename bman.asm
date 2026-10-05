@@ -21,6 +21,10 @@ INCLUDE "vars.asm"
   LDA PPU_STATUS
   BPL WAIT_VBLANK1
 
+  ; CHR bank is undefined at power-on. This takes 21 cycles, a multiple of
+  ; the 7 cycle loop below, so the timing after reset matches the original.
+  LDA #CHR_BANK_GAME:JSR SET_CHR_BANK
+
 .WAIT_VBLANK2
   LDA PPU_STATUS
   BPL WAIT_VBLANK2
@@ -109,30 +113,12 @@ INCLUDE "vars.asm"
   BNE DRAW_TILES
 
 .DRAW_MENU_ARROW
+  JSR NMI_VBUF ; Pending VRAM updates (options screen)
+
   LDA INMENU
   BEQ DRAW_ARROW_SKIP
 
-  LDA #&22:LDX #&68
-  JSR VRAMADDR
-
-  LDY #&B0
-  LDA CURSOR
-  BNE DRAW_ARROW_START
-  LDY #&40
-
-.DRAW_ARROW_START
-  STY PPU_DATA
-
-  LDA #&22:LDX #&70
-  JSR VRAMADDR
-
-  LDY #&B0
-  LDA CURSOR
-  BEQ DRAW_ARROW_CONT
-  LDY #&40
-
-.DRAW_ARROW_CONT
-  STY PPU_DATA
+  JSR DRAW_MENU_CURSOR
   JMP UPDATE_FPS
 ; ---------------------------------------------------------------------------
 
@@ -168,9 +154,24 @@ INCLUDE "vars.asm"
   BNE DRAW_SCORE_NUM
 
 .DRAW_TIMER
+  ; Lives left (changes without a redraw in revive mode)
+  LDA #&20:LDX #&5C ; Y=2, X=28
+  JSR VRAMADDR
+  LDA LIFELEFT
+  JSR PUTNUMBER
+
   LDA #&20:LDX #&46 ; Y=2, X=6
   JSR VRAMADDR
 
+  ; Unlimited time shows as 999
+  LDA GAME_TIME
+  BNE time_limited
+  LDA INVULNERABLE ; Only set on bonus stages, which always have a time limit
+  BNE time_limited
+  JSR DRAW_TIME_UNLIMITED
+  JMP UPDATE_FPS
+
+.time_limited
   ; Check for time overflow
   LDA TIMELEFT
   CMP #255
@@ -185,6 +186,8 @@ INCLUDE "vars.asm"
   LDA PPU_STATUS
   JSR PPU_RESTORE
   INC FRAME_CNT
+  LDA GAME_SLOW   ; In slow mode this runs on game time (UPDATE_TICK)
+  BNE SKIP_FPS
   LDA IS_SECOND_PASSED
   BEQ TICK_FPS
 
@@ -198,6 +201,8 @@ INCLUDE "vars.asm"
 .TICK_FPS
   STA FPS ; ** This could be placed prior to the label **
 
+.SKIP_FPS
+
   JSR PAD_READ ; Read gamepad inputs
   JSR APU_PLAY_MELODY ; Play melody
   JSR APU_PLAY_SOUND  ; Play sound
@@ -210,7 +215,7 @@ INCLUDE "vars.asm"
 
   LDA #&E:STA APU_DMC_FREQ_REG ; Disable IRQ/loop, set frequncy to 14 (=72 ~ 24858 Hz)
   LDA #DISABLE:STA BOOM_SOUND ; Stop explosion sound effect from playing
-  LDA #lo((BOOMPCM-ROMSTART) / 64):STA APU_DMC_START_REG ; PCM sample address
+  LDA #lo((BOOMPCM-&C000) / 64):STA APU_DMC_START_REG ; PCM sample address
   LDA #&FF:STA APU_DMC_LEN_REG ; PCM sample length (4081 bytes)
   LDA #&F:STA APU_MASTERCTRL_REG ; Disable DMC
   LDA #&1F:STA APU_MASTERCTRL_REG ; Enable DMC
@@ -554,6 +559,8 @@ INCLUDE "input.asm"
   BNE CLEAR_ZP
   LDA #&93:STA SOFT_RESET_FLAG
 
+  JSR OPTS_INIT ; Default settings for the options screen
+
 .RESET_GAME
   JSR PPU_RESET
   LDA #0:STA SPR_TAB_TOGGLE
@@ -631,8 +638,9 @@ INCLUDE "input.asm"
   LDA CURSOR
   BEQ start_gameplay
 
-  ; Cursor pointing at "CONTINUE" so go to password entry screen
-  JSR READ_PASSWORD
+  ; Cursor pointing at "OPTIONS" so go to the options screen
+  ; (returns when START is pressed, B returns to the title)
+  JSR OPTIONS_SCREEN
 
 .start_gameplay
   ; Record that we are no longer showing the menu
@@ -644,13 +652,19 @@ INCLUDE "input.asm"
   ; Initialise number of lives
   LDA #LIVESATSTART-1:STA LIFELEFT
 
+  ; Original rules unless started from the options screen
+  JSR CLEAR_GAME_RULES
+
   ; If in demo playback don't check where cursor is
   LDA DEMOPLAY
   BNE skip_cursor
 
-  ; Not in demo, so check if game started from a CONTINUE password
+  ; Not in demo, so check if game started from the options screen
   LDA CURSOR
-  BNE initial_setup_done
+  BEQ skip_cursor
+
+  JSR OPTS_APPLY ; Set stage, lives, power-ups and rules from the options
+  JMP START_STAGE
 
 .skip_cursor
   LDA #MAP_FIRST_LEVEL:STA STAGE ; Set current stage to default starting stage
@@ -730,6 +744,7 @@ INCLUDE "input.asm"
   STA KEY_TIMER ; Something pressed on gamepad timer
   STA EXIT_BOMBED_COUNT ; Number of times exit has been bombed
 
+  JSR STAGE_ENTER  ; Remember score and power-ups (for restarting in revive mode)
   JSR STAGE_SCREEN ; Show current level number screen, e.g. "STAGE  1"
 
   ; Play melody 2 to end
@@ -746,19 +761,33 @@ INCLUDE "input.asm"
   JSR PICTURE_ON      ; Turn on screen and display
 
   ; Set level timer
-  LDA #SECONDSPERLEVEL:STA TIMELEFT
+  JSR GET_LEVEL_TIME:STA TIMELEFT
 
   ; Main game loop
 .STAGE_LOOP
 {
   JSR PAUSED         ; Check for START being pressed, if so pause
+  JSR UPDATE_TICK    ; Decide if game time advances this frame (slow mode)
   JSR SPRD           ; Hide sprites
   JSR PROCESS_BUTTONS       ; Process button presses
+
+  LDA TICK_NOW
+  BEQ frozen
+
   JSR BOMB_TICK      ; Bomb timer operations and explosion init
   JSR DRAW_BOMBERMAN ; Draw bomberman
   JSR THINK          ; Enemy movements
   JSR BOMB_ANIMATE   ; Animate on-screen bombs
   JSR STAGE_TIMER    ; Tick the stage timer
+  JMP ticked
+
+.frozen
+  ; Slow mode, game time is not advancing this frame
+  JSR DRAW_BOMBERMAN   ; Draw bomberman
+  JSR DRAW_ENEMIES     ; Draw enemies without moving them
+  JSR BOMB_ANIMATE_IDLE ; Keep bombs flashing
+
+.ticked
   JSR CHECK_BONUSES  ; Check bonus criteria
 
   ; If we've been killed, loose a life
@@ -769,8 +798,11 @@ INCLUDE "input.asm"
   LDA NO_ENEMIES_LEFT
   BNE LEVEL_DONE
 
+  ; Explosions don't progress while game time is frozen
+  LDA TICK_NOW:BEQ STAGE_LOOP
+
   ; Limit next function calls to 1 frame out of 4 to slow down explosions
-  LDA FRAME_CNT:AND #3:BNE STAGE_LOOP
+  LDA GAME_TICK:AND #3:BNE STAGE_LOOP
 
   JSR DRAW_EXPLOSIONS ; Draw explosions for bombs which are exploding
   JSR EXPLOSION_HIT_DETECTION ; Do collision detection with explosion flames
@@ -785,6 +817,13 @@ INCLUDE "input.asm"
   ; If in demo mode, end the demo
   LDA DEMOPLAY
   BNE END_DEMO
+
+  ; Revive mode keeps the stage as it is
+  LDA GAME_REVIVE
+  BEQ strip_bonuses
+  JMP REVIVE
+
+.strip_bonuses
 
   ; Strip bomberman of bonus items
   LDA #NO
@@ -947,7 +986,12 @@ INCLUDE "input.asm"
   LDA TIMELEFT
   BEQ BONUS_STAGE_END ; Check for running out of time
 
+  JSR UPDATE_TICK         ; Decide if game time advances this frame (slow mode)
   JSR SPRD                ; Hide sprites
+
+  LDA TICK_NOW
+  BEQ bonus_frozen
+
   JSR RESPAWN_BONUS_ENEMY ; Respawn if < 10 enemies
   JSR PROCESS_BUTTONS     ; Process button presses
   JSR BOMB_TICK           ; Bomb timer
@@ -957,10 +1001,19 @@ INCLUDE "input.asm"
   JSR BONUS_STAGE_TIMER   ; Tick level time remaining
 
   ; Limit following functions to every other frame
-  LDA FRAME_CNT:AND #1:BNE BONUS_STAGE_LOOP
+  LDA GAME_TICK:AND #1:BNE BONUS_STAGE_LOOP
 
   JSR DRAW_EXPLOSIONS ; Draw explosions for bombs which are exploding
   JSR EXPLOSION_HIT_DETECTION ; Do collision detection with explosion flames
+
+  JMP BONUS_STAGE_LOOP
+
+.bonus_frozen
+  ; Slow mode, game time is not advancing this frame
+  JSR PROCESS_BUTTONS   ; Process button presses (bombs can still be placed)
+  JSR DRAW_BOMBERMAN    ; Draw bomberman
+  JSR DRAW_ENEMIES      ; Draw enemies without moving them
+  JSR BOMB_ANIMATE_IDLE ; Keep bombs flashing
 
   JMP BONUS_STAGE_LOOP
 }
@@ -1136,6 +1189,11 @@ INCLUDE "input.asm"
   JSR WAITUNPRESS ; Wait for button to be released
 
 .WAIT_START
+  ; SELECT while paused quits to the title screen
+  LDA JOYPAD1
+  AND #PAD_SELECT
+  BNE QUIT_TO_MENU
+
   ; Wait for START to be pressed to resume
   LDA JOYPAD1
   AND #PAD_START
@@ -1156,13 +1214,21 @@ INCLUDE "input.asm"
 .NOT_PAUSED
   RTS
 
+.QUIT_TO_MENU
+  LDA #DISABLE:STA APU_MUSIC ; Stop melody playing
+  JSR WAITUNPRESS
+  JMP GAME_MENU
+
 
 ; =============== S U B R O U T I N E =======================================
 ; Change the time by 1 second (common level)
 .STAGE_TIMER
 {
   ; Limit this function to roughly once per second (64 frames)
-  LDA FRAME_CNT:AND #&3F:BNE STAGE_TIMER_END
+  LDA GAME_TICK:AND #&3F:BNE STAGE_TIMER_END
+
+  ; Unlimited time option
+  LDA GAME_TIME:BEQ STAGE_TIMER_END
 
   ; Check for underflow
   LDA TIMELEFT
@@ -1192,7 +1258,7 @@ INCLUDE "input.asm"
 .BONUS_STAGE_TIMER
 {
   ; Limit this function to roughly once per second (64 frames)
-  LDA FRAME_CNT:AND #&3F:BNE STAGE_TIMER_END
+  LDA GAME_TICK:AND #&3F:BNE STAGE_TIMER_END
 
   ; End stage if time run out
   LDA TIMELEFT:BEQ STAGE_TIMER_END
@@ -1294,6 +1360,9 @@ INCLUDE "input.asm"
 
   LDA BONUS_FIRESUIT
   BNE NO_FIRE_DAMAGE ; Firesuit stops us getting hurt by flames
+
+  LDA GAME_INVINC
+  BNE NO_FIRE_DAMAGE ; Invincible option
 
   LDA INVULNERABLE_TIMER
   BNE NO_FIRE_DAMAGE ; Whilst invulnerable, fire doesn't hurt
@@ -2026,6 +2095,7 @@ INCLUDE "input.asm"
 .DRAW_LEVEL_TILES
 {
   JSR PPUD
+  LDA #CHR_BANK_GAME:JSR SET_CHR_BANK
 
   LDA #0:STA CACHE_Y ; Set Y position to 0
 
@@ -2251,8 +2321,12 @@ INCLUDE "input.asm"
   LDA INVULNERABLE_TIMER
   BEQ skip_invulnerable_timeout
 
+  ; Doesn't run down while game time is frozen (slow mode)
+  LDA TICK_NOW
+  BEQ skip_invulnerable_timeout
+
   ; Limit check to once every 8 frames
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #%00000111 ; Mask off top 5 bits
   BNE skip_invulnerable_timeout
 
@@ -2348,7 +2422,9 @@ INCLUDE "input.asm"
 {
   LDA BONUS_SPEED
   BNE FAST_MOVE
-  LDA FRAME_CNT
+  LDA TICK_NOW    ; Always read the pad when game time is frozen (slow mode),
+  BEQ FAST_MOVE   ; so a bomb can be placed
+  LDA GAME_TICK
   AND #3      ; Without fast move, slow to a quarter of the speed
   BEQ sub_done
 
@@ -3110,8 +3186,10 @@ INCLUDE "input.asm"
   BEQ THINK_END
 
   CMP #11
-  BEQ loc_D08C
+  BNE not_score
+  JMP loc_D08C
 
+.not_score
   LDA byte_48
 
 .loc_D010
@@ -3170,6 +3248,10 @@ INCLUDE "input.asm"
 
   ; Check for invulnerability
   LDA INVULNERABLE_TIMER
+  BNE done
+
+  ; Invincible option
+  LDA GAME_INVINC
   BNE done
 
   ; Compare monster X with our X
@@ -3530,7 +3612,7 @@ INCLUDE "input.asm"
   JSR ENEMY_ADVANCE_FRAME
   JSR sub_D37E
 
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #3
   BNE done_think_4
 
@@ -3551,7 +3633,7 @@ INCLUDE "input.asm"
   JSR ENEMY_ADVANCE_FRAME
   JSR sub_D37E
 
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #3
   BEQ done_think_2
 
@@ -3580,7 +3662,7 @@ INCLUDE "input.asm"
   JSR ENEMY_ADVANCE_FRAME
   JSR sub_D37E
 
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #3
   BEQ done_think_1
 
@@ -3636,7 +3718,7 @@ INCLUDE "input.asm"
   JSR ENEMY_ADVANCE_FRAME
   JSR sub_D37E
 
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #1
   BEQ THINK_SKIP
 
@@ -4280,7 +4362,7 @@ INCLUDE "input.asm"
 {
   ; Limit to once every 8 frames (7.5/sec @ 60Hz)
   PHA
-  LDA FRAME_CNT
+  LDA GAME_TICK
   AND #%00000111 ; Mask off top 5 bits
   BNE done
   PLA
@@ -4824,288 +4906,6 @@ INCLUDE "input.asm"
   EQUB &68,&69,&6A,&6B ; 49 Brick wall
 
 ; =============== S U B R O U T I N E =======================================
-; Password entry screen
-.READ_PASSWORD
-{
-  JSR PPUD
-  JSR VBLD
-  JSR SETSTAGEPAL
-
-  LDA #0
-  STA STAGE_STARTED
-  STA INMENU
-  STA APU_MUSIC
-
-  ; Print "ENTER SECRET CODE" for password prompt
-  LDY #(PASSWORD_PROMPT-STRING_TABLE)
-  LDA #&20:LDX #&E7 ; Position cursor for write
-  JSR PRINT_ASCIIZ
-
-  JSR PPUE
-
-  LDA #6:STA CACHE_X   ; X coordinate for password input
-  LDA #':':STA CACHE_Y ; Set current char to "blank"
-
-  LDY #0 ; Set current password length
-
-.pw_await_keypress
-  JSR WAITVBL
-
-  ; Set screen position where next character will be written
-  LDA #&22:LDX CACHE_X
-  JSR VRAMADDR
-
-  ; Write current character
-  LDA CACHE_Y:STA PPU_DATA
-
-  JSR PPU_RESTORE
-
-  LDX #PW_CURSOR_FLASH_SPEED ; Cursor flashing speed in frames (off)
-
-.cursor_off_loop
-  JSR WAITVBL
-
-  ; Check for A button or direction buttons being pressed
-  LDA JOYPAD1
-  AND #(PAD_A + PAD_UP + PAD_DOWN + PAD_LEFT + PAD_RIGHT)
-  BNE pw_keypress
-
-  DEX
-  BNE cursor_off_loop
-
-  JSR WAITVBL
-
-  ; Set screen position where next character will be written
-  LDA #&22:LDX CACHE_X
-  JSR VRAMADDR
-
-  LDA #SOLIDWHITE:STA PPU_DATA
-
-  JSR PPU_RESTORE
-
-  LDX #PW_CURSOR_FLASH_SPEED ; Cursor flashing speed in frames (on)
-
-.cursor_on_loop
-  JSR WAITVBL
-
-  ; Check for something being pressed on JOYPAD 1
-  LDA JOYPAD1
-  AND #(PAD_A + PAD_UP + PAD_DOWN + PAD_LEFT + PAD_RIGHT)
-  BNE pw_keypress ; Branch if A/Up/Down/Left/Right is pressed
-
-  DEX
-  BNE cursor_on_loop
-
-  JMP pw_await_keypress
-
-; ---------------------------------------------------------------------------
-; Keypress on password screen handler
-
-.pw_keypress
-  BMI pw_handle_a_button ; Branch if A button pressed (select character)
-
-  PHA
-  LDA #&12:STA APU_SQUARE1_REG+3 ; Make a sound (low tone)
-  PLA
-
-  CMP #PAD_RIGHT
-  BEQ pw_handle_right_button ; Branch if Right button pressed (next char)
-
-  ; Handle Up/Down/Left key presses (previous char)
-
-  LDA CACHE_Y
-  CMP #':'
-  BNE pw_char_not_blank ; Branch if current char is not "blank"
-
-  ; Nothing entered yet for this char, so wrap round
-  LDA #PW_LAST_CHAR+1:STA CACHE_Y ; Set current char to one more than the last valid char
-
-.pw_char_not_blank
-  LDA CACHE_Y
-  CMP #PW_FIRST_CHAR
-  BEQ pw_wrap_to_end ; Branch if current char is "A" to wrap
-
-  DEC CACHE_Y ; Set current char to one less alphabetically
-  JMP pw_no_wrap_left
-; ---------------------------------------------------------------------------
-
-.pw_wrap_to_end
-  LDA #PW_LAST_CHAR:STA CACHE_Y ; Set current char to "P" (wrap around)
-
-.pw_no_wrap_left
-  JSR WAITUNPRESS ; Wait for button release
-  JMP pw_await_keypress ; Jump back to read next character
-
-; ---------------------------------------------------------------------------
-; Handler for Right button press on password screen (next char)
-.pw_handle_right_button
-  LDA CACHE_Y
-  CMP #':' ; Branch if current char is not "blank"
-  BNE pw_char_not_blank2
-
-  ; Nothing entered yet for this char, so wrap round
-  LDA #PW_FIRST_CHAR-1:STA CACHE_Y ; Set current char to one before "A"
-
-.pw_char_not_blank2
-  LDA CACHE_Y
-  CMP #PW_LAST_CHAR
-  BEQ pw_wrap_to_start ; Branch if current char is "P" (last available char)
-
-  INC CACHE_Y ; Set current char to one more alphabetically
-  JMP pw_no_wrap_right
-; ---------------------------------------------------------------------------
-
-.pw_wrap_to_start
-  LDA #PW_FIRST_CHAR:STA CACHE_Y ; Set current char to "A" (wrap around)
-
-.pw_no_wrap_right
-  JSR WAITUNPRESS ; Wait for button release
-
-.pw_read_next
-  JMP pw_await_keypress ; Jump back to read next character
-
-; ---------------------------------------------------------------------------
-; Handler for A button press on password screen
-.pw_handle_a_button
-  LDA #&11:STA APU_SQUARE1_REG+3 ; Make a sound (high tone)
-
-  LDA CACHE_Y
-  CMP #':'
-  BEQ pw_read_next ; Branch if current char is "blank"
-
-  AND #&F
-  TAX             ; X = current char & 0x0F
-  LDA PW_DECODE_TABLE,X ; Use lookup for current char
-  STA PW_BUFF,Y    ; Store this in 0x7F to 0x92
-  JSR WAITVBL
-
-  ; Set screen position for next character to be written
-  LDA #&22:LDX CACHE_X
-  JSR VRAMADDR
-
-  ; Draw current char to screen
-  LDA CACHE_Y:STA PPU_DATA
-
-  JSR PPU_RESTORE
-
-  ; Reset current char to "blank"
-  LDA #':':STA CACHE_Y
-
-  ; Advance X position
-  INC CACHE_X
-
-  ; Increase length of password counter
-  INY
-
-  CPY #PW_MAX_CHARS
-  BEQ validate_password ; Branch if we have 20 characters
-
-  JSR WAITUNPRESS ; Wait for button release
-  JMP pw_await_keypress ; Jump back to read next character
-
-; ---------------------------------------------------------------------------
-; Handler for 20 chars of password being entered
-
-.validate_password
-  LDX #0:STX SEED ; Clear PRNG seed[0], as this is used during decode
-
-.pw_decode_loop
-  LDA PW_BUFF,X ; Load password[X]
-
-  PHA
-  CLC:ADC #7
-  CLC:ADC SEED
-  AND #&F       ; Clear upper nibble
-  STA PW_BUFF,X ; Save decoded char back to password[X]
-  PLA
-
-  STA SEED
-  INX
-  CPX #PW_MAX_CHARS
-  BNE pw_decode_loop ; Loop for 20 characters
-
-  LDX #0
-
-.pw_cxsums_validation_loop
-  LDY #4
-  LDA #0
-
-.pw_cxsum_calc_loop
-  CLC:ADC PW_BUFF,X
-  INX
-  DEY
-  BNE pw_cxsum_calc_loop ; Loop until Y=0 (4 times)
-
-  AND #&F
-  CMP PW_BUFF,X
-  BNE start_over ; Branch if password[X] != A
-
-  INX
-  CPX #&F
-  BNE pw_cxsums_validation_loop ; Branch if X != $F
-
-  ; Validate final checksum
-
-  LDA PW_BUFF+4 ; Load password[4] (checksum 1)
-  ASL A
-  STA CACHE_X
-
-  LDA PW_BUFF+9 ; Load password[9] (checksum 2)
-  ASL A
-  CLC:ADC CACHE_X
-  STA CACHE_X
-
-  LDA PW_BUFF+14 ; Load password[14] (checksum 3)
-  ASL A
-  CLC:ADC CACHE_X
-
-  LDX #4
-
-.pw_final_cxsum_calc_loop
-  CLC:ADC PW_BUFF+14,X
-  DEX
-  BNE pw_final_cxsum_calc_loop
-
-  ; Compare generated final checksum with last char of password
-  AND #&F
-  CMP PW_BUFF+(PW_MAX_CHARS-1)
-  BEQ valid_password ; Branch if password[19] (checksum 4) = A
-
-.start_over
-  JMP READ_PASSWORD ; Read password all over again (as this one is not valid)
-
-; ---------------------------------------------------------------------------
-; Valid password has been entered
-
-.valid_password
-  LDX #0
-  LDY #0
-
-.extract_password_data_loop
-  JSR _get_pass_data_var_addr
-  LDA PW_BUFF,Y
-  STY TEMP_Y
-
-  ; Clear password data address offset
-  LDY #0:STA (STAGE_MAP),Y
-
-  LDY TEMP_Y
-  INY
-  CPY #PW_MAX_CHARS
-  BNE extract_password_data_loop
-
-  ; Determine bomb radius (move lower nibble to upper one)
-  LDA BOMB_PWR:ASL A:ASL A:ASL A:ASL A
-  STA BONUS_POWER
-
-  ; Determine stage number (Combine hi and lo nibble BCD values)
-  LDA STAGE_HI:ASL A:ASL A:ASL A:ASL A:ORA STAGE_LO
-  STA STAGE
-
-  RTS
-}
-
-; =============== S U B R O U T I N E =======================================
 .DRAW_GAME_COMPLETED
 {
   JSR PPUD
@@ -5116,15 +4916,23 @@ INCLUDE "input.asm"
   LDA #6
   JSR SETSPR3PAL
 
+  LDA #CHR_BANK_TEXT:JSR SET_CHR_BANK
+
   ; Print the 7 game completed lines of text
-  LDY #0
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
-  JSR PRINT_XY_ASCIIZ
+  LDX #0
+
+.text_loop
+  STX TEMP_X
+  LDA END_TEXT_TAB,X
+  PHA
+  LDA END_TEXT_TAB+1,X
+  TAX
+  PLA
+  JSR PRINT_ZH
+  LDX TEMP_X
+  INX:INX
+  CPX #END_TEXT_TAB_END-END_TEXT_TAB
+  BNE text_loop
 
   ; Draw a row of 16 bricks
   LDA #&A:STA CACHE_Y ; Y position
@@ -5145,58 +4953,10 @@ INCLUDE "input.asm"
 }
 
 ; ---------------------------------------------------------------------------
-; Print ASCIIZ string with A:X screen location prefix
-.PRINT_XY_ASCIIZ
-{
-  ; Get the screen location first
-  LDA STRING_TABLE,Y:INY
-  LDX STRING_TABLE,Y:INY
-
-; =============== S U B R O U T I N E =======================================
-.^PRINT_ASCIIZ
-  JSR VRAMADDR
-
-.loop
-  LDA STRING_TABLE,Y
-  INY
-  CMP #0 ; Check for null terminator
-  BEQ done
-
-  STA PPU_DATA ; Write character to screen
-  JMP loop
-
-; ---------------------------------------------------------------------------
-
-.done
-  RTS
-}
-
-; ---------------------------------------------------------------------------
-
-.STRING_TABLE
-  EQUB &20, &88
-  EQUS "CONGRATULATIONS", 0
-
-  EQUB &20, &E4
-  EQUS "YOU:HAVE:SUCCEEDED:IN", 0
-
-  EQUB &21, &22
-  EQUS "HELPING:BOMBERMAN:TO:BECOME", 0
-
-  EQUB &21, &62
-  EQUS "A:HUMAN:BEING", 0
-
-  EQUB &21, &A4
-  EQUS "MAYBE:YOU:CAN:RECOGNIZE:HIM", 0
-
-  EQUB &21, &E2
-  EQUS "IN:ANOTHER:HUDSON:SOFT:GAME", 0
-
-  EQUB &22, &4B
-  EQUS "GOOD:BYE", 0
-
-.PASSWORD_PROMPT
-  EQUS "ENTER:SECRET:CODE", 0
+; Game completed text (see zh_text.asm)
+.END_TEXT_TAB
+  EQUW ZH_END_1, ZH_END_2, ZH_END_3, ZH_END_4, ZH_END_5, ZH_END_6, ZH_END_7
+.END_TEXT_TAB_END
 
 ; =============== S U B R O U T I N E =======================================
 ; Set sprite 3 palette to entry given in A
@@ -5248,29 +5008,14 @@ INCLUDE "input.asm"
 
   ; Change palette
   JSR SETSTAGEPAL
+  LDA #CHR_BANK_TEXT:JSR SET_CHR_BANK
 
-  ; Set screen pointer for next character to write
-  LDA #&21:LDX #&EA
-  JSR VRAMADDR
-
-  ; Print "GAME OVER"
-  LDX #8
-
-.loop
-  LDA aRevoEmag,X ; "REVO:EMAG" ("GAME OVER" backwards)
-  STA PPU_DATA
-  DEX
-  BPL loop
-
-  ; Generate and print password
-  JSR GENERATE_PASSWORD
+  ; Print "游戏结束" (game over)
+  LDA #lo(ZH_GAME_OVER):LDX #hi(ZH_GAME_OVER)
+  JSR PRINT_ZH
 
   JSR VBLE
   JMP PPUE
-
-; ---------------------------------------------------------------------------
-.aRevoEmag
-  EQUS "REVO:EMAG"
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5395,21 +5140,9 @@ INCLUDE "input.asm"
   DEX
   BNE space_loop
 
-  ; Draw "time" text (time value is drawn elsewhere)
-  ; Set screen pointer for next character to write
-  LDA #&20:LDX #&41
-  JSR VRAMADDR
-
-  LDX #3
-
-.time_loop
-  LDA aEmit,X     ; "EMIT" ("TIME" backwards)
-  STA PPU_DATA
-  DEX
-  BPL time_loop
-
-  LDA #':'       ;  These 2 lines are not needed
-  STA PPU_DATA   ;
+  ; Draw "时间" (time) text (time value is drawn elsewhere)
+  LDA #lo(ZH_HUD_TIME):LDX #hi(ZH_HUD_TIME)
+  JSR PRINT_ZH
 
   ; Draw trailing zeroes of score (as it's always a multiple of 100)
   ; Set screen pointer for next character to write
@@ -5421,28 +5154,16 @@ INCLUDE "input.asm"
   STA PPU_DATA
   STA PPU_DATA
 
-  ; Draw "left" text
-  ; Set screen pointer for next character to write
-  LDA #&20:LDX #&58
-  JSR VRAMADDR
-
-  LDX #3
-
-.left_loop
-  LDA aTfel,X     ; "TFEL" ("LEFT" backwards)
-  STA PPU_DATA
-  DEX
-  BPL left_loop
+  ; Draw "剩余" (left) text
+  LDA #lo(ZH_HUD_LEFT):LDX #hi(ZH_HUD_LEFT)
+  JSR PRINT_ZH
 
   ; Draw the number of extra lives remaining (with leading spaces)
+  LDA #&20:LDX #&5C
+  JSR VRAMADDR
+
   LDA LIFELEFT
   JMP PUTNUMBER   ; Print 2-digit number in A
-
-; ---------------------------------------------------------------------------
-.aEmit
-  EQUS "EMIT"
-.aTfel
-  EQUS "TFEL"
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5452,21 +5173,16 @@ INCLUDE "input.asm"
   JSR VBLD
   LDA #0:STA H_SCROLL
   JSR SETSTAGEPAL
+  LDA #CHR_BANK_TEXT:JSR SET_CHR_BANK
+
+  ; "第 NN 关"
+  LDA #lo(ZH_STAGE_PRE):LDX #hi(ZH_STAGE_PRE)
+  JSR PRINT_ZH
+  LDA #lo(ZH_STAGE_POST):LDX #hi(ZH_STAGE_POST)
+  JSR PRINT_ZH
 
   ; Set screen pointer for next character to write
-  LDA #&21:LDX #&EA
-  JSR VRAMADDR
-
-  LDX #4
-
-.PUT_STAGE_STR
-  LDA aEgats,X    ; "EGATS" ("STAGE" backwards)
-  STA PPU_DATA
-  DEX
-  BPL PUT_STAGE_STR
-
-  ; Set screen pointer for next character to write
-  LDA #&21:LDX #&F0
+  LDA #&21:LDX #&EF
   JSR VRAMADDR
 
   LDA STAGE
@@ -5474,10 +5190,6 @@ INCLUDE "input.asm"
 
   JSR VBLE
   JMP PPUE
-
-; ---------------------------------------------------------------------------
-.aEgats
-  EQUS "EGATS"
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5488,25 +5200,14 @@ INCLUDE "input.asm"
   LDA #0
   STA H_SCROLL
   JSR SETSTAGEPAL
+  LDA #CHR_BANK_TEXT:JSR SET_CHR_BANK
 
-  ; Set screen pointer for next character to write
-  LDA #&21:LDX #&EA
-  JSR VRAMADDR
-
-  LDX #&A
-
-.PUT_BONUS_MSG
-  LDA aEgatsSunob,X   ; "EGATS:SUNOB" ("BONUS STAGE" backwards)
-  STA PPU_DATA
-  DEX
-  BPL PUT_BONUS_MSG
+  ; "奖励关卡"
+  LDA #lo(ZH_BONUS_STAGE):LDX #hi(ZH_BONUS_STAGE)
+  JSR PRINT_ZH
 
   JSR VBLE
   JMP PPUE
-
-; ---------------------------------------------------------------------------
-.aEgatsSunob
-  EQUS "EGATS:SUNOB"
 }
 
 ; =============== S U B R O U T I N E =======================================
@@ -5531,7 +5232,16 @@ INCLUDE "input.asm"
   BNE pal_loop
 
   JSR VRAMADDRZ
+  LDA #CHR_BANK_TITLE:JSR SET_CHR_BANK
   JSR DRAWMENUTEXT    ; Write text in menus (author's rights, license)
+
+  ; "开始游戏" (start), "选项" (options) and "最高分" (top score)
+  LDA #lo(ZH_MENU_START):LDX #hi(ZH_MENU_START)
+  JSR PRINT_ZH
+  LDA #lo(ZH_MENU_OPTS):LDX #hi(ZH_MENU_OPTS)
+  JSR PRINT_ZH
+  LDA #lo(ZH_MENU_TOP):LDX #hi(ZH_MENU_TOP)
+  JSR PRINT_ZH
 
   ; Set screen pointer for next character to write
   LDA #&20:LDX #0
@@ -5558,7 +5268,7 @@ INCLUDE "input.asm"
   BNE logo_bottom_loop
 
   ; Set screen pointer for next character to write
-  LDA #&22:LDX #&AE
+  LDA #&22:LDX #&CE
   JSR VRAMADDR
 
   LDX #0
@@ -5734,24 +5444,6 @@ INCLUDE "input.asm"
   EQUB  &F,  6,&26,&37  ; S3 / M2   RED   CORAL GREY
   EQUB  &F, &F, &F, &F  ;    / M3   BLACK BLACK BLACK
 
-.PW_DECODE_TABLE
-  EQUB  5 ; P
-  EQUB  0 ; A
-  EQUB  9 ; B
-  EQUB  4 ; C
-  EQUB &D ; D
-  EQUB  7 ; E
-  EQUB  2 ; F
-  EQUB  6 ; G
-  EQUB &A ; H
-  EQUB &F ; I
-  EQUB &C ; J
-  EQUB  3 ; K
-  EQUB  8 ; L
-  EQUB &B ; M
-  EQUB &E ; N
-  EQUB  1 ; O
-
 .MAINMENU_HI
   EQUB &B0,&B0,&DF,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C1,&C2,&C0,&B6,&E9,&B8
   EQUB &C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&E9,&F8,&B0
@@ -5811,7 +5503,7 @@ INCLUDE "input.asm"
 {
   LDY #0
 
-  LDX #5 ; Number of strings to draw
+  LDX #3 ; Number of strings to draw
 
 .NEXTSTRING
   JSR NEXTCHAR:STA PPU_ADDRESS
@@ -5846,23 +5538,15 @@ INCLUDE "input.asm"
 
 ; ---------------------------------------------------------------------------
 .MENUTEXT
-  EQUB &22, &69
-  EQUS "START",&B0,&B0,&B0,"CONTINUE"
-  EQUB END_OF_STRING
-
-  EQUB &22, &AA
-  EQUS "TOP"
-  EQUB END_OF_STRING
-
-  EQUB &22, &E3
+  EQUB &23, &03
   EQUS "TM",&B0,"AND",&B0,COPYRIGHT,&B0,"1987",&B0,"HUDSON",&B0,"SOFT"
   EQUB END_OF_STRING
 
-  EQUB &23, &2A
+  EQUB &23, &4A
   EQUS "LICENSED",&B0,"BY"
   EQUB END_OF_STRING
 
-  EQUB &23, &64
+  EQUB &23, &84
   EQUS "NINTENDO",&B0,"OF",&B0,"AMERICA",&B0,"INC",FULLSTOP
   EQUB END_OF_STRING
 
@@ -5883,135 +5567,6 @@ INCLUDE "input.asm"
   EQUB hi(stage_buffer+(MAP_WIDTH*4)),hi(stage_buffer+(MAP_WIDTH*5)),hi(stage_buffer+(MAP_WIDTH*6)),hi(stage_buffer+(MAP_WIDTH*7))
   EQUB hi(stage_buffer+(MAP_WIDTH*8)),hi(stage_buffer+(MAP_WIDTH*9)),hi(stage_buffer+(MAP_WIDTH*10)),hi(stage_buffer+(MAP_WIDTH*11))
   EQUB hi(stage_buffer+(MAP_WIDTH*12))
-
-; =============== S U B R O U T I N E =======================================
-; Generate a 20 character resume password
-.GENERATE_PASSWORD
-{
-  ; Shift high nibble to low nibble for bomb radius
-  LDA BONUS_POWER
-  LSR A:LSR A:LSR A:LSR A
-  STA BOMB_PWR
-
-  ; Split stage number into high and low nibbles
-  LDA STAGE
-  AND #&F
-  STA STAGE_LO
-
-  LDA STAGE
-  LSR A:LSR A:LSR A:LSR A
-  STA STAGE_HI
-
-  ; Calculate first 3 checksums
-  LDY #0
-  LDX #0
-  LDA #3
-  STA CACHE_X
-
-.loop
-  JSR calc_cxsum
-  JSR _get_pass_data_var_addr
-
-  LDA TEMP_X:STA (STAGE_MAP),Y
-
-  DEC CACHE_X
-  BNE loop
-
-  JSR calc_cxsum
-
-  ; Add checksum 1*2
-  LDA PW_CXSUM1
-  ASL A
-  CLC:ADC TEMP_X
-  STA TEMP_X
-
-  ; Add checksum 2*2
-  LDA PW_CXSUM2
-  ASL A
-  CLC:ADC TEMP_X
-  STA TEMP_X
-
-  ; Add checksum 3*2
-  LDA PW_CXSUM3
-  ASL A
-  CLC:ADC TEMP_X
-  STA PW_CXSUM4 ; Save checksum result as checksum 4
-
-  LDY #0:STY SEED
-  LDX #0
-
-.encode_loop
-  JSR _get_pass_data_var_addr
-  LDA (STAGE_MAP),Y
-  AND #&F
-  SEC:SBC SEED
-  SEC:SBC #7
-  AND #&F
-  STA password_buffer,X
-  STA SEED
-  CPX #PW_MAX_CHARS*2
-  BNE encode_loop
-
-  ; Set screen position to write next character to
-  LDA #&23:LDX #6
-  JSR VRAMADDR
-
-  LDX #2 ; Skip first char
-
-.pw_print_loop
-  LDA password_buffer,X:TAY
-  LDA PW_TRANSLATE_TABLE,Y ; "AOFKCPGELBHMJDNI"
-  STA PPU_DATA
-
-  INX:INX
-  CPX #(PW_MAX_CHARS+1)*2
-  BNE pw_print_loop
-
-  RTS
-}
-
-; =============== S U B R O U T I N E =======================================
-; Calculate a checksum from 4 data bytes
-.calc_cxsum
-{
-  LDA #4:STA CACHE_Y
-  LDA #0:STA TEMP_X
-
-.loop
-  JSR _get_pass_data_var_addr
-
-  LDA (STAGE_MAP),Y
-  CLC:ADC TEMP_X
-  STA TEMP_X
-
-  DEC CACHE_Y
-  BNE loop
-
-  RTS
-}
-
-; =============== S U B R O U T I N E =======================================
-; Point to the Xth password data variable (using STAGE_MAP)
-._get_pass_data_var_addr
-{
-  LDA _pass_data_vars,X:STA STAGE_MAP
-  INX
-
-  LDA _pass_data_vars,X:STA STAGE_MAP+1
-  INX
-
-  RTS
-
-  ; ---------------------------------------------------------------------------
-  ; Memory locations for each variable encoded into the password
-._pass_data_vars
-  EQUW   SCORE+6,  BONUS_REMOTE,  STAGE_LO,  SCORE,  PW_CXSUM1,  SCORE+5,  BOMB_PWR,  SCORE+3,  BONUS_FIRESUIT,  PW_CXSUM2
-  EQUW   BONUS_BOMBS,  SCORE+2,  BONUS_SPEED,  SCORE+1,  PW_CXSUM3,  SCORE+4,  DEBUG,  STAGE_HI,  BONUS_NOCLIP,  PW_CXSUM4
-}
-
-; Password translate table
-.PW_TRANSLATE_TABLE
-  EQUS "AOFKCPGELBHMJDNI"
 
 INCLUDE "bonuses.asm"
 INCLUDE "sound.asm"
@@ -6066,4 +5621,16 @@ INCBIN "boom.bin"
 
 .ROMEND
 
-SAVE "bomberman", ROMSTART, ROMEND
+; ---------------------------------------------------------------------------
+; Extra 16KB of PRG-ROM at $8000-$BFFF (added for the Chinese translation
+; and new features). The original code above stays at $C000-$FFFF.
+ORG &8000
+.PRGSTART
+INCLUDE "ext.asm"
+
+.EXTEND
+  FOR n, 1, &C000-EXTEND
+    EQUB &FF
+  NEXT
+
+SAVE "bomberman", PRGSTART, ROMEND

@@ -105,12 +105,6 @@ GAZE_UP = 2
 GAZE_LEFT = 3
 GAZE_DOWN = 4
 
-; Password related
-PW_FIRST_CHAR = 'A'
-PW_LAST_CHAR = 'P'
-PW_MAX_CHARS = 20
-PW_CURSOR_FLASH_SPEED = 10
-
 ; Misc
 END_OF_STRING = &FF
 
@@ -127,9 +121,15 @@ SCORE_40 = &FE
 SCORE_80 = &FF
 
 ; Tiles
+BLANK_TILE = &B0
 SOLIDWHITE = &3B
 COPYRIGHT = &FE
 FULLSTOP = &FD
 
 ; Sound and music related
 NUM_TUNES = 10
+; CNROM CHR banks (see ext.asm / tools/build_zh.py)
+CHR_BANK_GAME = 0  ; In-game graphics
+CHR_BANK_TITLE = 1 ; Title menu
+CHR_BANK_TEXT = 2  ; Stage intro, game over, ending
+CHR_BANK_OPTS = 3  ; Options screen
