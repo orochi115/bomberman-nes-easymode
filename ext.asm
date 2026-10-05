@@ -601,6 +601,9 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 ; Draw the enemies without moving them (slow mode, frozen frames)
 .DRAW_ENEMIES
 {
+  ; Count the enemies like THINK does, otherwise CHECK_BONUSES sees 0 left
+  ; at the start of a stage and plays the "all enemies defeated" sound
+  LDA #0:STA ENEMIES_LEFT
   LDA #&C0:STA byte_6B
 
   LDX #MAX_ENEMY-1
@@ -609,6 +612,11 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
   LDA ENEMY_TYPE,X
   BEQ next
 
+  CMP #9
+  BCS counted ; Dying monster or score
+  INC ENEMIES_LEFT
+
+.counted
   ; Not visible until its AI timer has run out
   LDA ENEMY_AI_TIMER,X
   BNE next
