@@ -1,0 +1,7 @@
+5:A801	tile ids BE BF inside TITLE_MAP_ROWS, not a pointer
+5:A606	nametable tile bytes inside TITLE_MAP_ROWS
+5:A7BF	unreachable bytes after MODE_TO_AREA, not a live pointer
+5:AEAD	interleaved sprite X/Y in INTRO_SPR_XY, not a pointer
+5:B2DE	indexed word table of metasprite pointers; declaring it makes merge read the JP byte at the US address and fault
+5:AECC	frame-list word inside the area-5 intro metasprite list; a word run at D5_AEC6 faults merge on the JP image
+5:B2E4	rest of the versus-result metasprite word table; declaring the run faults merge on the JP image

@@ -1,0 +1,142 @@
+5:8000	>	Story mode only. If W_04E5 changed and is not negative, store it in W_04CB and queue that digit at nametable column 1Bh row 02h.\nSkips when Z_49 is not 0. Called every frame from STAGE_LOOP.
+5:802F	>	Upload four CHR tiles to PPU 1800h.\nOffset is LEVEL_CHR_OFF indexed by W_04E3, times 16, from LEVEL_OBJ_TILES. Calls CHOOSE_LEVEL_CHR first.
+5:8062	>	Pick W_04E3 for this area and stage from LEVEL_CHR_PICK.\nIn: Z_4B, Z_4C, W_04E4, Z_AD, Z_AE, Z_AF. Out: W_04E3. Uses NEXT_RNG.
+5:80CB	>	48 stages, 3 bytes each: tile id, alternate id, RNG threshold.\nIndex is (area*8+stage)*3. CHOOSE_LEVEL_CHR reads the threshold two bytes later. Ids 02, 06 and 07 are replaced when Z_AF, Z_AD or Z_AE is set.
+5:815B	>	13 bytes. W_04E3 selects an entry; the value times 16 is the CHR offset used by UPLOAD_LEVEL_CHR.
+5:8168	>	Per-frame actor update. Called from UPDATE_PLAYERS.\nRuns SERVICE_DEMO_PAD. If Z_B7 is set, advances it and draws slot 0 unless Z_4E is 0 and Z_B7 has reached 20h.\nOtherwise walks the three Z_69 slots, then SHARE_ACTOR_A6, CHECK_ACTORS_LEFT and FOLLOW_ACTOR_SCROLL.
+5:81BC	>	Copy the pad for actor X into W_04C2 and W_04C1.\nDemo playback returns immediately. Story mode uses JOY_HELD and JOY_NEW. Other modes use JOYPAD1,X. If Z_A6 is negative and its low bits are 2, bit 7 of W_04C1 is set.
+5:81F2	>	Copy actor slot Z_68 from Z_69 through Z_99 into the work bytes Z_9C through Z_AC.
+5:8239	>	Write work bytes Z_9C through Z_AC back to actor slot Z_68.
+5:8280	>	Set bit 6 of Z_9C and store 8 in W_04E9. DRAW_ACTOR uses that bit with FLASH_DRAW_MASK.
+5:8291	>	Clear bit 6 of Z_9C.
+5:8298	>	16 bytes. DRAW_ACTOR indexes with (FRAME_CNT and 7) or W_04E9. A 0 skips the sprite while Z_9C bit 6 is set.
+5:82A8	>	If Z_A5 and Z_B0 are both 0, scan 3Ch slots at X_60E2.\nA slot whose X_611E and X_615A match Z_9D and Z_9E jumps to L7_CEA4.
+5:82CA	>	If Z_53 and W_051B are 0: story mode sets Z_53 when slot 0 is empty.\nOther modes count live Z_69 slots and, if fewer than 2 remain, increment W_051B and X_6000.
+5:82F4	>	One actor step. Z_A5 counts a death animation from DEATH_FRAME_TIME and then clears the slot.\nA negative Z_B5 takes KNOCK_STEP. Otherwise updates the cell, moves, checks the cell, animates, and handles buttons.
+5:8337	>	10 bytes. Death-frame index added to 0Ch by DRAW_ACTOR while Z_A5 is set. MOVE_ACTOR clears the actor when the index reaches 0Ah.
+5:8341	>	10 bytes. Frame time reloaded into Z_A4 for each death frame.
+5:834B	>	Cell from pixels. Z_9D is Z_9F with the high bit from Z_A0, divided by 16. Z_9E is Z_A1 divided by 16.
+5:835F	>	If a direction is held in W_04C2, advance Z_A4 mod 8 and Z_A3 mod 4. Otherwise zero both.
+5:8380	>	Add one speed pair from ACTOR_SPEED_LO to Z_AB and Z_AC.\nSpeed index is Z_B3, or Z_A6 low bits plus 5 when Z_A6 is negative and those bits are under 2.\nZ_AC is how many single steps to take. Right, left, up, down in W_04C2, in that order.
+5:83DE	>	One pixel east. Facing Z_A2 becomes 1. Blocked when the low nibble of Z_9F is at least 8 and CELL_BLOCKS_MOVE says the cell ahead is solid.
+5:841E	>	One pixel west. Facing Z_A2 becomes 3. Same solid test as STEP_ACTOR_EAST, using the west cell.
+5:8462	>	One pixel north. Facing Z_A2 becomes 2. Tests the cell above when the low nibble of Z_A1 is below 9.
+5:849E	>	One pixel south. Facing Z_A2 becomes 0. Tests the cell below when the low nibble of Z_A1 is at least 8.
+5:84BE	>	Point Z_28 and Z_29 at the cell one tile east of the actor, then PEEK_CELL_28. Out: A is the map byte.
+5:84DD	>	Cell one tile west of the actor. Out: A from PEEK_CELL_28.
+5:84FC	>	Cell one tile north of the actor. Out: A from PEEK_CELL_28.
+5:8515	>	Cell one tile south of the actor. Out: A from PEEK_CELL_28.
+5:852E	>	Read the live map at column Z_28, row Z_29. Out: A. Uses MAP_ROW_PTR.
+5:8538	>	Seven little-endian speed pairs, low byte here and high byte at ACTOR_SPEED_HI: 0100 0140 0180 01C0 0200 0300 0080.\nAPPLY_ACTOR_SPEED indexes with the speed times 2. Added into Z_AB and Z_AC.
+5:8546	>	For a vertical step, set Z_28 from Z_9D plus BIAS_DELTA. The delta index comes from SUBPIX_BIAS when the low 5 bits of Z_9F are below 10h, else 0. Z_29 is Z_9E.
+5:8562	>	For a horizontal step, set Z_29 from Z_9E plus BIAS_DELTA. Same sub-pixel rule on Z_A1. Z_28 is Z_9D.
+5:857E	>	If the actor X sub-pixel is not centered, step west or east with the held direction and return carry clear. Centered returns carry set.
+5:85A6	>	If the actor Y sub-pixel is not centered, step north or south and return carry clear. Centered returns carry set.
+5:85CC	>	32 bytes, one per sub-pixel 0-1Fh. Value is an index into BIAS_DELTA. 0 means centered.
+5:85EC	>	Three signed cell deltas: 0, +1, -1. Indexed by SUBPIX_BIAS.
+5:85EF	>	Knockback step. Decrements Z_B6 and clears Z_B5 at 0.\nOtherwise refreshes the cell, forces Z_AC to 4, clears the pad, and steps on the low 2 bits of Z_B5. Facing is then flipped with EOR 2.
+5:8603	>	Called from KNOCK_STEP. Sets Z_AC to 4, clears W_04C2 and W_04C1, and jumps to the step for Z_B5 bits 0-1: up, left, down, right.
+5:8630	>	If Z_A6 is negative, count down Z_A7 every frame and Z_A8 every 3Ch frames.\nAt zero, clear Z_A6 and call QUEUE_A6_CLEAR.
+5:8648	>	Reached from ITEM_HANDLERS. NEXT_RNG picks 0-3, stores that value ORed with 80h in Z_A6, a duration from A6_TIME_TAB in Z_A8, and 3Ch in Z_A7. Then QUEUE_A6_ATTR.
+5:865E	>	Four durations for ROLL_ACTOR_A6: 1Eh, 14h, 1Eh, 0Fh. Stored in Z_A8.
+5:8662	>	Only when Z_49 is 2. If two live actors share a cell and exactly one has a nonzero Z_87, copy Z_87, Z_8A and Z_8D to the other, call QUEUE_A6_ATTR, and play sound 5.
+5:8722	>	Six bytes, three XY pairs for actors 0-2: (02,02), (09,02), (10,02). Passed to XY_TO_ATTR. The next four bytes are FF FF 00 00 and are not read as pairs.
+5:872C	>	Count down W_04E6 via W_04E7 and W_04E8, or else Z_B0 via Z_B1 and Z_B2.\nEach tick is 3Ch frames. Below 4 remaining, play sound 9. At 3, clear W_04E9. At the end, clear the flag and CLR_ACTOR_FLASH.
+5:8788	>	In: A is a map byte. Out: A is 0 if the actor may enter.\nBit 6 or a zero byte returns 0. Bit 5 returns Z_AD EOR 1. Bit 4 returns Z_AE EOR 1. Any other nonzero byte returns 0.
+5:87A6	>	Bit 7 of W_04C1 stores Z_9D and Z_9E and jumps to L7_CF96.\nBit 6 jumps to L7_CFD4 when Z_AF is set.
+5:87C7	>	Four bytes added to the walk frame for facing Z_A2: 8, 0, 4, 0.
+5:87CB	>	Four attribute bytes for facing Z_A2, stored in Z_5A by DRAW_ACTOR: 00, 40h, 00, 00.
+5:87CF	>	Draw actor Z_68 through DRAW_METASPRITE.\nFrame list is ACTOR_FR_PTR. A set bit 6 of Z_9C can skip the draw via FLASH_DRAW_MASK. Death uses DEATH_FRAME_IDX plus 0Ch. Sprite Y is Z_A1 plus 20h.
+5:8842	>	Three words, one frame list per actor slot: ACTOR0_FRAMES, ACTOR1_FRAMES, ACTOR2_FRAMES.
+5:8848	>	19 words. Walk and death metasprite pointers for actor 0. DRAW_ACTOR indexes with the frame times 2.
+5:886E	>	19 words. Same frame order as ACTOR0_FRAMES, for actor 1.
+5:88BA	>	Metasprites for DRAW_METASPRITE. First byte is the sprite count, then count groups of tile, dx, dy, attr.\nACTOR0_FRAMES and ACTOR1_FRAMES point at the separate blobs. ACTOR2_FRAMES points into the later bytes of this run.
+5:8F6E	>	Set SCROLL_Y to 0. If W_04E1 is 0, SCROLL_X is F8h and SCROLL_NT is FFh.\nOtherwise follow actor 0: Z_72 minus 80h, with the borrow from Z_75, clamped to the same F8h edge.
+5:8FC1	>	Read the actor cell. Bit 5 returns. Low bits 0 return.\nLow bits 2, with X_62DE set and the actor near the cell center, clear W_0518, increment Z_B7 and play sound 16h.\nLow bits 1 clear the cell, dispatch the item in that bomb slot, and queue tile 38h.
+5:9004	>	Clear the item cell, take the low nibble of W_04EB,X as an ITEM_HANDLERS index, clear that bomb flag, queue tile 38h, and play sound 15h in story mode.
+5:9041	>	Jump through Z_20. PICK_UP_ITEM stores one ITEM_HANDLERS entry there.
+5:9064	>	In: A is the item index. 0Bh plays sound 5. Anything else plays sound 3.
+5:9074	>	Increment Z_A9 up to 7, then MARK_PWR_STAGE.
+5:9080	>	Increment Z_AA up to 4, then MARK_PWR_STAGE.
+5:908C	>	Store 1 in Z_AF. HANDLE_ACTOR_BTN uses that flag for button B.
+5:9091	>	Increment Z_B3 up to 4. APPLY_ACTOR_SPEED uses Z_B3 as the speed index.
+5:909A	>	Store 1 in Z_B0, 18h in Z_B2 and 0 in Z_B1, then SET_ACTOR_FLASH. TICK_TIMED_POWERS counts Z_B2 down.
+5:90A9	>	Store 2 in Z_B0, 10h in Z_B2 and 0 in Z_B1, then SET_ACTOR_FLASH.
+5:90B8	>	Store 1 in Z_AD. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 5.
+5:90BD	>	Store 1 in Z_AE. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 4.
+5:90C2	>	Store 1 in Z_B4. STAGE_WON checks Z_B4 after the stage.
+5:90C7	>	Index EXTRA_SPAWN_IDX with FRAME_CNT bits 0-3 and jump to L7_D192 with that value in Y.
+5:90D3	>	16 spawn indexes for SPAWN_RAND_EXTRA. The bytes after this table are ROLL_LIFE_OR_MOB, which ITEM_HANDLERS also calls.
+5:90E3	>	NEXT_RNG low 3 bits index LIFE_ROLL_TAB.\nA positive byte is passed to L7_D192. Bit 7 with bit 0 set starts the W_04E6 timer and SET_ACTOR_FLASH. Bit 7 with bit 0 clear increments W_04E5 and plays sound 0Ah.
+5:910C	>	Eight bytes read by ROLL_LIFE_OR_MOB. Bit 7 selects the life or W_04E6 path. A positive value is a Y argument to L7_D192.
+5:9114	>	Store area*8 OR stage into W_04E4. CHOOSE_LEVEL_CHR compares against it.
+5:9121	>	Round-end timer. With Z_53 clear, a positive W_051B waits 30h frames, then either marks a winner or starts Z_53.\nWhile Z_53 is below 96h and Z_49 is not 0, draw a round sprite. A negative W_051B waits 96h frames, then stores B4h in Z_53.
+5:91B1	>	Six words for UPDATE_ROUND. The first is 0000. The others point at metasprites just after ROUND_SPR_X.\nX is 0, 2, 4 or 6 from the low bits of W_051B, or 8 or 0Ah from the sign of W_055A.
+5:91BD	>	Screen X 7Dh for the round sprite. The next byte is screen Y 94h. Later bytes are the metasprites named by ROUND_OAM_PTRS.
+5:9254	>	Fill 1A0h bytes at 62F3h with FFh. Called from FILL_MAP_FF.
+5:9280	>	Fill nine bytes at W_03DB with FFh. Store 4Bh in W_03ED and 0 in W_03EE. Called from RESET_MARKS.
+5:9295	>	Password screen. Loads CHR and palettes, copies W_03DB to W_03E4, then loops on the editor until TRY_PASS_ENTRY returns carry clear.\nOn exit stores 1 in Z_4A and Z_53, stores 0 in Z_49, and fades out. Does not return to its caller until that fade.
+5:92F6	>	Upload UI_SPR_CHR to PPU 1000h and the short PASS_CHR_BYTES run to PPU 0000h.
+5:9324	>	Copy 16 background colors from D4_B119 and 16 sprite colors from PASS_SPR_PAL, then MIRROR_BG_COLOR.
+5:9348	>	16 sprite-palette bytes. Four rows, copied by LOAD_PASS_PAL at palette offset 4.
+5:9358	>	13 bytes passed to UPLOAD_CHR_RLE by LOAD_PASS_CHR. Not a pointer table.
+5:9365	>	Point Z_62, Z_64 and Z_66 at bank-4 password layout tables, point Z_20 at D4_AC9E, and jump to L7_CD89.
+5:9388	>	Copy nine bytes from W_03DB to W_03E4.
+5:9394	>	Copy nine bytes from W_03E4 to W_03DB.
+5:93A0	>	Zero W_054A, W_054B, W_054C and W_054D.
+5:93AF	>	Edit the password from W_0551, which POLL_PASS_KEYS just built.\nDirections move W_054B and W_054C. B moves W_054D along the eight digits. Bit 7 of W_0551 writes PASS_KEY_MAP into W_03E4.
+5:94A3	>	24 X offsets for the password cursor, indexed by row*8+column, then added to 48h.\nThe matching Y row bases are PASS_CUR_ROWY.
+5:94BB	>	Three Y bases for password rows 0-2. DRAW_PASS_CURSOR adds 66h.
+5:94BE	>	24 keypad values, row-major, 8 columns by 3 rows. 00h-0Fh are digit nybbles. 80h-83h are back, forward, delete and confirm.
+5:94D6	>	Draw the keypad cursor from PASS_CURSOR_SPR at the PASS_CUR_XY position.
+5:9508	>	One metasprite: count 1, tile 0, dx 0, dy 0, attr 0. Used by both password cursors.
+5:950D	>	Draw PASS_CURSOR_SPR over password digit W_054D. X is the digit times 8 plus 68h. Y is 9Eh.
+5:9531	>	Map the eight password bytes to tiles and queue them at column 0Dh, row 13h.
+5:954C	>	For each of eight bytes in W_03E4, store PASS_GLYPHS of that nybble into W_053A, or FEh when the byte is negative.
+5:9562	>	Build an eight-nybble code in W_03E4 from RNG, Z_4B, Z_4C, Z_90 and Z_93, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
+5:95E2	>	Add A into the running sum Z_1C. MAKE_STAGE_CODE calls this after each stored nybble.
+5:95E8	>	XOR W_03E4 bytes 1 through 7 with byte 0.
+5:9609	>	16 tile ids, one per password nybble. The US order and the JP order differ. MAP_PASS_TILES and the JP side of MATCH_PASS_WORD read it.
+5:9619	>	When W_054A is set, accept the eight digits.\nA short entry can set W_054E. A full entry must match a secret word or pass TEST_PASS_SUM and APPLY_PASS_STAGE. Carry clear leaves the screen. Carry set stays.
+5:9659	>	Copy eight W_03E4 bytes into W_0542. Carry is set if any source byte is negative.
+5:966C	>	XOR W_0542 bytes 1 through 7 with byte 0. Out: Z flag from the last byte. The caller treats nonzero as failure.
+5:967D	>	Add W_0543, W_0544, W_0546, W_0547, W_0548 and W_0549, keep the low nibble, and compare it with W_0545.\nOut: Z set when the sum matches.
+5:969A	>	Store the decoded nybbles into Z_4B, Z_4C, Z_90 and Z_93 when they are below 6, 8, 8 and 5. Carry set means reject.
+5:96C6	>	Compare the eight decoded tiles with the seven words at PASS_WORDS.\nOut: carry clear and Z_1C = word index on a match. Carry set and Z_1C = FFh otherwise.
+5:9703	>	Seven secret words, 8 tile bytes each. MATCH_PASS_WORD compares them with the decoded password tiles. US tile ids come from PASS_GLYPH_US.
+5:973B	>	US only. 16 tile ids used by MATCH_PASS_WORD. Index is the decoded nybble.
+5:974B	>	Apply secret word Z_1C.\n0 sets W_054F. 1 and 2 set W_03EE to 1 or 2 and W_054E. 3 sets W_0550. 4, 5 and 6 set W_03ED to 2Dh, 4Bh or 69h and set W_054E.
+5:97A5	>	Zero the eight key-repeat timers at W_0552.
+5:97B0	>	Build W_0551 from JOY_NEW and JOY_HELD. Bit 7 is A, then B, Select, Start, up, down, left, right.\nA held direction repeats every 6 frames after a 0Eh-frame delay, using W_0552.
+5:97E0	>	Start the stage clock. Frame counter W_055A is 3Ch and W_055B is 0.\nZ_4E uses digits 0 and 3. A nonzero Z_49 uses 3 and 0. Story mode reads the two digits from STAGE_TIME_TAB. Called from STAGE_SETUP.
+5:9834	>	48 stages, 2 bytes each: the first drawn digit and the second. Indexed by (area*8+stage)*2. INIT_STAGE_CLOCK stores them in W_055D and W_055C. The third digit starts at 0.
+5:9895	>	Count the stage clock down once per frame unless Z_B7, W_051B, Z_53, or a negative W_055A says to stop.\nAt zero, call KILL_PLAYERS. When only the last digit remains, 3Bh and 1Dh play sound 8. Then falls into DRAW_STAGE_CLOCK.
+5:98F5	>	Queue five tiles: 54h, 7Eh, and the three clock digits ORed with 30h.\nColumn comes from CLOCK_HUD_COL indexed by Z_49. Row is 2.
+5:9933	>	Three nametable columns for the clock, indexed by Z_49: 0Eh, 0Dh, 18h.
+5:9936	>	Zero W_055E, W_055F and W_0560. Called from NEW_AREA.
+5:9942	>	Draw the score HUD. Z_49 0 falls into DRAW_LIVES_HUD.\nZ_49 1 draws W_055E and W_055F. Any other value draws those two plus W_0560. Each value is one digit.
+5:99A0	>	Queue LIVES_TEXT and the W_04E5 digit at column 16h, row 2. Called for story mode and from the bonus stage.
+5:99CD	>	Five tiles queued before the life digit: 4Ch, 45h, 46h, 54h, 40h.
+5:99D2	>	In: A is a one-byte count, X and Y are the nametable cell. Queues four tiles starting at W_052A, with the count ORed with 30h in the fourth byte.
+5:99ED	>	Demo pad. Returns at once when W_03EF is 0.\nDEMO_PAD_PTR selects the record from W_03F0. DEMO_PAD_LOCK clear records JOYPAD1 into the record. Nonzero plays the record back into W_04C2 and W_04C1.
+5:9B92	>	Second demo-pad record. Pairs of held-pad byte and frame count. SERVICE_DEMO_PAD reads it through DEMO_PAD_PTR.
+5:9C92	>	Third demo-pad record. The fourth record begins 100h bytes later in this block.
+5:9E92	>	Bonus stage. Saves Z_90, Z_93, Z_4B and Z_4C, sets Z_4E, area 0, stage 7, Z_90 to 8 and Z_93 to 5, then runs its own frame loop until Z_B7 reaches F0h.\nRestores the saved bytes, clears Z_4E and Z_B4, and returns. SHOW_BONUS_CARD runs first.
+5:9F16	>	One bonus-stage frame: players, enemy spawn, blasts, enemies, DRAW_LIVES, the clock, and the bank routine S5_AC95. Leaves when Z_B7 reaches F0h.
+5:9F5E	>	Blank the screen, load mode CHR, draw the bonus string, wait B4h frames, and fade out.
+5:9F91	>	Point Z_20 at the bonus string that follows LOAD_BONUS_PAL and call DRAW_INLINE_STR. The US string and the JP string are at different addresses in this bank.
+5:9F9C	>	Copy one 4-byte palette row from the bytes after the bonus string, then MIRROR_BG_COLOR.
+5:9FC0	>	Set Z_49 to 1, fill the nametable with 40h, load mode graphics, and repeat INIT_MODE1_SEL plus the menu handlers at S5_A00B. Does not return.
+5:9FF3	>	Zero W_04CD and copy the three bytes at D5_A085 into W_04CE, W_04CF and W_04D0.
+5:86E4	>	Queue the two bytes at A6_ATTR_ON onto the attribute address for actor Z_68.\nXY comes from A6_ATTR_XY. Z_2E is 0.
+5:8703	>	Queue the two bytes at A6_ATTR_OFF. Same attribute address as QUEUE_A6_ATTR.
+5:8728	;	Two FFh bytes queued by QUEUE_A6_ATTR.
+5:872A	;	Two 00h bytes queued by QUEUE_A6_CLEAR.
+5:9044	>	16 words. Index is the low nibble of the bomb flag. Targets are the item handlers, and the last four entries are ITEM_RETURN.\nOne entry is ROLL_ACTOR_A6.
+5:8894	>	19 words. Same frame order as ACTOR0_FRAMES, for actor 2. Targets sit inside ACTOR_SPRITES.
+5:9A8A	>	Four words, one demo-pad record per W_03F0. The records are DEMO_REC_A, DEMO_REC_B, DEMO_REC_C, and DEMO_REC_D.\nEach record is pairs of pad byte and duration.
+5:91BF	>	8-sprite metasprite. UPDATE_ROUND selects it when the low bits of negative W_051B are 1.
+5:91E0	>	8-sprite metasprite. Selected when the low bits of negative W_051B are 2. One tile byte differs from ROUND_SPR_SLOT0 (C7 instead of C6).
+5:9201	>	8-sprite metasprite. Selected when the low bits of negative W_051B are 3. One tile byte differs (C8).
+5:9222	>	5-sprite metasprite. UPDATE_ROUND uses pointer index 4 while Z_53 is below 96h and W_055A is positive.
+5:9237	>	7-sprite metasprite. Same path as ROUND_SPR_TIME_POS, but W_055A is negative.

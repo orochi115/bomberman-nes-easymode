@@ -1,0 +1,12 @@
+5:94CD	byte 0F of PASS_KEY_MAP beside the next row 80, not an address
+5:9A9D	demo pad record bytes
+5:9C1D	demo pad record bytes
+5:9CFF	demo pad record bytes
+5:9D15	demo pad record bytes
+5:9D73	demo pad record bytes
+5:9DB3	demo pad record bytes
+5:9DC5	demo pad record bytes
+5:9E23	demo pad record bytes
+5:9E51	demo pad record bytes
+5:8846	third word of ACTOR_FR_PTR, already EQUW ACTOR2_FRAMES
+5:90E9	LDA abs,X operand inside ROLL_LIFE_OR_MOB (opcode BD at 5:90E8), not a pointer table

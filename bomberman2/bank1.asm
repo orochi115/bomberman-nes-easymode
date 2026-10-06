@@ -3,6 +3,10 @@
 ; ---------------------------------------------------------------------------
 
   ; (no free space to absorb SHIFT padding in this segment)
+
+; Common playfield BG CHR (font and map tiles), bank 1, RLE via DECODE_CHR.
+; LOAD_AREA_CHR and LOAD_MENU_CHR upload C0h tiles to PPU 0000h. That stream ends at ENDING_EXTRA_BG_CHR.
+; Ending LOAD_ENDING_CHR uploads only the first A0h tiles of this block.
 .PLAY_BG_CHR
   EQUB &00,&00,&F0,&E0,&78,&7C,&FE,&78,&A0,&B8,&7C,&FC,&F0,&07,&1F,&3F
   EQUB &7F,&70,&07,&1F,&3F,&D0,&B0,&C8,&FC,&59,&B0,&C8,&F8,&F0,&F9,&E0
@@ -164,6 +168,9 @@
   EQUB &F4,&DF,&44,&AA,&2A,&4A,&8A,&E4,&00,&C3,&F6,&FF,&36,&34,&CF,&A4
   EQUB &AA,&EA,&2A,&24,&00,&DB,&66,&FF,&6F,&FF,&66,&44,&DB,&44,&AA,&4A
   EQUB &AA,&44,&00,&E3,&44,&EE,&FF,&66,&44,&C3,&44,&AA,&44,&00
+
+; Extra ending BG CHR. LOAD_ENDING_CHR uploads 50h tiles to PPU 0A30h after A0h tiles of PLAY_BG_CHR.
+; The 50h-tile stream runs past ENEMY_AREA0_CHR.
 .ENDING_EXTRA_BG_CHR
   EQUB &03,&06,&18,&00,&2D,&01,&03,&02,&00,&00,&FF,&77,&93,&AF,&5C,&59
   EQUB &F2,&AE,&AC,&7F,&40,&10,&A0,&26,&05,&00,&43,&FD,&07,&08,&17,&77
@@ -223,7 +230,10 @@
   EQUB &7F,&3F,&1F,&07,&C0,&40,&00,&97,&FF,&FE,&FC,&F8,&E0,&00,&97,&7F
   EQUB &3F,&1F,&0F,&03,&C0,&20,&00,&97,&FE,&FC,&F8,&F0,&C0,&00,&97,&FF
   EQUB &7F,&3F,&1F,&07,&A0,&40,&00,&97,&FF,&FE,&FC,&F8,&E0,&00
-.AREA0_BG_CHR
+
+; Area-0 enemy CHR. ENEMY_CHR_PTR index 0.
+; LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs through ENEMY_AREA1_CHR into ENEMY_AREA2_CHR.
+.ENEMY_AREA0_CHR
   EQUB &EE,&30,&7F,&FC,&79,&33,&43,&6F,&30,&4B,&36,&0D,&3D,&3C,&0E,&30
   EQUB &7F,&FC,&06,&30,&4B,&01,&30,&00,&EA,&07,&1F,&3E,&7E,&7F,&6B,&06
   EQUB &1D,&3D,&3E,&3F,&D7,&FE,&01,&02,&04,&0C,&FC,&57,&FE,&FC,&F8,&F0
@@ -249,7 +259,10 @@
   EQUB &2C,&77,&57,&6F,&00,&DB,&23,&43,&23,&43,&81,&7F,&DF,&1C,&3C,&1C
   EQUB &3C,&3D,&7E,&00,&F7,&78,&61,&53,&8B,&A9,&90,&7F,&F7,&07,&1E,&2C
   EQUB &74,&56,&6F,&00,&00,&00
-.AREA1_BG_CHR
+
+; Area-1 enemy CHR. ENEMY_CHR_PTR index 1.
+; LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs past ENEMY_AREA2_CHR.
+.ENEMY_AREA1_CHR
   EQUB &DC,&01,&02,&0E,&1E,&3F,&4E,&01,&0D,&1E,&12,&DC,&01,&02,&0E,&1E
   EQUB &3F,&4D,&01,&0D,&12,&1E,&0F,&1B,&24,&48,&40,&07,&1B,&37,&3F,&7D
   EQUB &01,&32,&4C,&44,&40,&8C,&3D,&01,&33,&3B,&3F,&7F,&F2,&31,&4A,&44
@@ -265,7 +278,10 @@
   EQUB &03,&00,&00,&00,&FF,&3E,&DC,&83,&87,&43,&40,&31,&0E,&FF,&1D,&23
   EQUB &7C,&78,&3C,&3F,&0E,&00,&F7,&8E,&81,&83,&43,&21,&18,&07,&F7,&7F
   EQUB &7E,&7C,&3C,&1E,&07,&00,&00,&00,&00,&00
-.AREA2_BG_CHR
+
+; Area-2 enemy CHR. ENEMY_CHR_PTR index 2.
+; LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs past ENEMY_AREA3_CHR.
+.ENEMY_AREA2_CHR
   EQUB &3F,&18,&3C,&7F,&7E,&3C,&58,&1F,&18,&0C,&0D,&1B,&27,&7F,&18,&3C
   EQUB &7F,&7E,&3C,&58,&9F,&3F,&18,&24,&25,&1B,&27,&60,&FF,&18,&3C,&7F
   EQUB &7E,&3C,&58,&83,&84,&7F,&18,&30,&31,&1B,&27,&7C,&7B,&EE,&03,&04
@@ -286,9 +302,10 @@
   EQUB &3F,&7F,&00,&FF,&20,&27,&4F,&47,&40,&23,&1C,&00,&FE,&1F,&18,&30
   EQUB &38,&3F,&1C,&00,&00,&00
 
-; Area Z_4B=3 BG CHR, 64 tiles to PPU $0C00 (LOAD_AREA_CHR).
-; Also selected by some area-5 stages (AREA5_CHR_IDX).
-.AREA3_BG_CHR
+; Area-3 enemy CHR. ENEMY_CHR_PTR index 3.
+; LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. Also chosen by some area-5 stages (AREA5_CHR_IDX).
+; The stream runs past ENEMY_AREA4_CHR.
+.ENEMY_AREA3_CHR
   EQUB &FF,&31,&4F,&47,&C7,&E3,&79,&7C,&2F,&7F,&31,&3A,&7A,&7D,&3E,&07
   EQUB &17,&FF,&80,&C0,&EC,&FE,&FF,&BF,&1E,&0D,&7F,&80,&40,&4C,&92,&52
   EQUB &EC,&F2,&EE,&0C,&1E,&3F,&5E,&8C,&80,&6E,&0C,&12,&2D,&73,&7F,&FD
@@ -309,7 +326,10 @@
   EQUB &FF,&7F,&3F,&3C,&1F,&0F,&1F,&1B,&00,&00,&00,&FF,&7F,&5D,&48,&62
   EQUB &77,&7F,&40,&3F,&FF,&1D,&2A,&37,&1D,&2A,&37,&3F,&00,&E7,&8E,&81
   EQUB &83,&41,&44,&3B,&E7,&7F,&7E,&7C,&3E,&3B,&00,&00,&00
-.AREA4_BG_CHR
+
+; Area-4 enemy CHR. ENEMY_CHR_PTR index 4, and index 5 is the same address.
+; LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs through ENEMY_VS_CHR into MODE_BG_CHR.
+.ENEMY_AREA4_CHR
   EQUB &FF,&3F,&47,&83,&99,&7C,&7F,&FF,&BF,&7F,&3B,&7D,&66,&1B,&24,&25
   EQUB &5B,&FF,&C0,&E0,&FC,&E2,&C1,&19,&FD,&FF,&7F,&C0,&E0,&DC,&3E,&E6
   EQUB &1A,&A4,&FE,&07,&3F,&47,&83,&99,&BC,&FF,&7F,&07,&3B,&7D,&66,&5B
@@ -350,7 +370,10 @@
   EQUB &FD,&31,&5B,&27,&0C,&03,&01,&00,&00,&00,&FF,&FC,&B9,&A3,&C3,&83
   EQUB &81,&92,&6D,&FF,&3B,&46,&5C,&3C,&7C,&7E,&6D,&00,&FD,&FE,&BD,&59
   EQUB &31,&0D,&02,&01,&FD,&3D,&5A,&26,&0E,&02,&01,&00,&00,&00
-.VS_BATTLE_BG_CHR
+
+; ENEMY_CHR_PTR index 6. LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h when Z_4B is 6.
+; The stream runs past AREA0_INTRO_SPR.
+.ENEMY_VS_CHR
   EQUB &EE,&FE,&FF,&E7,&FF,&FE,&E0,&CD,&FC,&C6,&FC,&C0,&00,&82,&70,&7F
   EQUB &83,&60,&7E,&00,&FA,&3C,&7E,&EF,&E7,&FF,&E7,&ED,&38,&6C,&C6,&FE
   EQUB &C6,&00,&9C,&77,&7F,&3E,&1C,&99,&66,&3C,&18,&00,&B6,&FF,&E0,&FE
@@ -364,7 +387,10 @@
   EQUB &7F,&1C,&C1,&7E,&18,&00,&A2,&7F,&1C,&7F,&C3,&7E,&18,&7E,&00,&C2
   EQUB &E7,&FF,&E7,&ED,&C6,&EE,&FE,&D6,&C6,&00,&E3,&7E,&FF,&E7,&FF,&7E
   EQUB &C3,&7C,&C6,&7C,&00,&83,&E7,&FF,&7E,&83,&C6,&7C,&00
-.CARD_BG_CHR
+
+; BG CHR for LOAD_MODE_GFX (bonus stage, VS result, and the three pre-stage screens).
+; FFh tiles to PPU 0000h. The stream runs through the area-intro sprite blocks into AREA3_INTRO_SPR.
+.MODE_BG_CHR
   EQUB &03,&01,&07,&03,&01,&06,&03,&80,&FF,&03,&80,&7F,&F7,&0F,&1F,&3F
   EQUB &7F,&8F,&87,&46,&FF,&08,&10,&21,&41,&71,&FA,&FF,&7F,&A9,&80,&00
   EQUB &FF,&00,&86,&FF,&04,&FF,&C3,&3A,&01,&03,&04,&C3,&3B,&01,&03,&07
@@ -393,6 +419,9 @@
   EQUB &FC,&00,&CE,&03,&07,&03,&01,&00,&CE,&02,&04,&03,&01,&00,&BF,&E0
   EQUB &D0,&88,&04,&02,&81,&40,&BF,&20,&70,&F8,&FC,&FE,&FF,&7F,&FF,&30
   EQUB &38,&3C,&3E,&3C,&38,&30,&20,&FF,&10,&08,&04,&02,&04,&08,&10,&20
+
+; Area-0 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 0.
+; The stream runs past AREA1_INTRO_SPR and AREA2_INTRO_SPR.
 .AREA0_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&FF,&F9,&F8,&F0,&F9,&FD,&EF,&F6,&F5,&80,&FF
   EQUB &FF,&D5,&97,&95,&99,&CD,&D5,&75,&35,&88,&EF,&FB,&FF,&AB,&E9,&A9
@@ -449,6 +478,9 @@
   EQUB &E3,&80,&FF,&C0,&80,&FF,&E2,&FF,&80,&BF,&FF,&E1,&01,&FD,&01,&FF
   EQUB &E0,&FF,&03,&FF,&80,&6F,&80,&FC,&83,&DB,&FB,&FF,&81,&FF,&7F,&83
   EQUB &6F,&7F,&FF,&81,&FC,&F8,&61,&FF,&00,&FF,&E0,&FF,&00,&FF
+
+; Area-1 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 1.
+; The stream runs through AREA2_INTRO_SPR and AREA3_INTRO_SPR.
 .AREA1_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&80,&FF,&00,&81,&FF,&7C,&03,&03,&87,&87,&FF
   EQUB &F7,&0C,&CC,&0F,&1C,&FB,&FF,&3B,&87,&FF,&98,&55,&6E,&0F,&E7,&FF
@@ -508,6 +540,9 @@
   EQUB &8D,&DF,&FF,&E9,&FD,&FB,&FF,&FE,&FF,&C0,&FF,&00,&80,&FF,&02,&FF
   EQUB &02,&FF,&87,&FF,&FE,&F0,&80,&07,&01,&0F,&7F,&87,&FF,&1F,&03,&00
   EQUB &07,&E0,&FC,&FF
+
+; Area-2 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 2.
+; The stream runs past AREA3_INTRO_SPR.
 .AREA2_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&80,&FF,&80,&FF,&FC,&FF,&EF,&93,&7C,&C7,&00
   EQUB &BC,&FF,&EF,&83,&38,&FF,&FF,&FF,&7F,&1F,&47,&30,&0F,&E0,&FC,&9E
@@ -549,6 +584,9 @@
   EQUB &1F,&31,&FF,&00,&80,&FF,&FF,&7F,&F1,&8D,&09,&07,&8F,&70,&00,&80
   EQUB &FF,&F7,&0F,&71,&90,&01,&3F,&F3,&A0,&F3,&FF,&8F,&6F,&FF,&EF,&5F
   EQUB &9D,&FF,&9F,&0F,&07,&87,&80,&FF,&81,&FF,&AA,&80,&FF
+
+; Area-3 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 3.
+; The stream runs past AREA4_INTRO_SPR into TITLE_SPR_CHR.
 .AREA3_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&8E,&FF,&1F,&01,&00,&0E,&E0,&FE,&FF,&83,&FF
   EQUB &1F,&00,&03,&E0,&FF,&87,&FF,&FE,&C0,&00,&07,&01,&3F,&FF,&8C,&FF
@@ -606,6 +644,9 @@
   EQUB &03,&0D,&13,&2B,&27,&55,&6F,&57,&80,&FF,&FF,&7F,&6F,&4B,&27,&3B
   EQUB &1F,&0F,&03,&80,&FF,&FF,&FF,&FD,&F3,&EB,&E7,&D5,&EF,&D7,&80,&FF
   EQUB &F8,&AF,&57,&FF,&5F,&FF,&80,&FF
+
+; Area-4 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 4.
+; The stream runs through AREA5_INTRO_SPR and TITLE_SPR_US_ONLY.
 .AREA4_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&F5,&7F,&7E,&6E,&D6,&F7,&B3,&94,&FF,&EF,&CF
   EQUB &CA,&46,&C3,&C1,&61,&C2,&BF,&3F,&9F,&9E,&E3,&C1,&E1,&C1,&41,&9C
@@ -631,6 +672,9 @@
   EQUB &0F,&07,&03,&01,&00,&80,&FF,&FF,&E1,&71,&31,&3B,&BF,&FF,&7F,&1F
   EQUB &80,&FF,&9F,&E3,&C1,&A1,&C3,&FF,&FE,&9C,&9F,&BF,&DF,&FF,&9F,&E3
   EQUB &A3,&A7,&C7,&FF,&7F,&94,&9F,&DF,&FF
+
+; Area-5 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 5.
+; The stream runs through INTRO_BG_CHR and TITLE_SPR_US_ONLY.
 .AREA5_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&FF,&FF,&2F,&CC,&37,&DB,&BF,&6A,&BF,&FE,&FF
   EQUB &D0,&3F,&FF,&3F,&7F,&FF,&FF,&FF,&6F,&DB,&A5,&5B,&AD,&73,&FF,&E0
@@ -667,6 +711,9 @@
   EQUB &FF,&03,&0D,&12,&39,&23,&27,&57,&C7,&FB,&FF,&FE,&FD,&F7,&FF,&EF
   EQUB &FF,&E0,&07,&7F,&FF,&80,&FF,&F0,&F5,&F9,&FE,&FF,&E0,&FB,&FE,&FF
   EQUB &FF,&C0,&70,&48,&8C,&E4,&D4,&F2,&F3,&8C,&FF,&DF,&EF
+
+; Area-card BG CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 0000h (caller SHOW_AREA_INTRO).
+; The stream runs through TITLE_SPR_CHR into TITLE_BG_CHR.
 .INTRO_BG_CHR
   EQUB &0A,&01,&02,&0A,&01,&03,&F9,&07,&18,&60,&80,&00,&03,&F0,&07,&1F
   EQUB &7F,&FF,&8B,&02,&01,&00,&01,&8B,&03,&01,&00,&01,&B3,&07,&03,&00
@@ -710,6 +757,9 @@
   EQUB &0F,&FF,&0E,&05,&8F,&FF,&FC,&F8,&0C,&04,&E7,&C0,&61,&FF,&FE,&DD
   EQUB &68,&B0,&FF,&9E,&00,&BF,&F8,&FC,&F8,&D0,&A0,&40,&00,&F0,&88,&08
   EQUB &04,&00
+
+; Title sprite CHR. LOAD_TITLE_CHR uploads FFh tiles to PPU 1000h.
+; US continues through TITLE_SPR_US_ONLY. The FFh-tile stream stops just before TITLE_BG_CHR.
 .TITLE_SPR_CHR
   EQUB &80,&FF,&80,&FF,&F3,&FF,&C3,&81,&80,&C1,&E3,&13,&01,&02,&1C,&81
   EQUB &FF,&FC,&81,&FF,&FC,&8F,&FF,&FE,&F0,&80,&00,&8F,&FF,&FE,&F0,&80
@@ -781,7 +831,9 @@
   EQUB &23,&33,&19,&0C,&FD,&30,&38,&18,&1C,&0C,&06,&03,&DB,&FE,&FC,&F8
   EQUB &00,&01,&C0,&00,&96,&1F,&3F,&7F,&FF,&00,&8A,&FF,&FE,&FC,&00,&B7
   EQUB &02,&06,&04,&0C,&08,&09,&93,&01,&03,&07,&06,&A4
-.D1_AF05
+
+; US-only bytes inside TITLE_SPR_CHR. The JP source omits them. Not a separate upload.
+.TITLE_SPR_US_ONLY
   EQUB &3F,&7F,&FF,&A4,&C0,&80,&00,&A4,&FF,&97,&13,&24,&08,&0C,&FF,&FF
   EQUB &FC,&F0,&E0,&C0,&83,&04,&08,&FF,&FF,&FC,&F0,&E0,&C0,&80,&03,&07
   EQUB &CF,&81,&00,&F8,&1E,&7F,&FF,&C7,&81,&00,&E0,&80,&00,&FE,&FF,&7F
@@ -885,6 +937,9 @@ ELSE
   EQUB &80,&FF,&80,&FF,&80,&FF,&80,&FF,&80,&FF,&80,&FF,&80,&FF,&80,&FF
   EQUB &80,&FF
 ENDIF
+
+; Title BG CHR, including the logo tiles. LOAD_TITLE_CHR uploads FFh tiles to PPU 0000h.
+; On US the FFh-tile stream stops before the bank-end fill.
 .TITLE_BG_CHR
   EQUB &00,&00,&1E,&03,&07,&0F,&0E,&1E,&03,&07,&0E,&0D,&1F,&C0,&E0,&F0
   EQUB &78,&3C,&1F,&C0,&E0,&70,&B8,&DC,&03,&0F,&7F,&03,&0F,&7F,&F3,&0F
@@ -918,6 +973,9 @@ ENDIF
   EQUB &F4,&F6,&FA,&F5,&F0,&F7,&74,&07,&80,&C0,&00,&07,&80,&C0,&00,&F0
   EQUB &3F,&79,&60,&00,&F0,&26,&59,&60,&00,&FF,&CC,&EC,&FC,&7C,&3C,&1C
   EQUB &0C,&04,&FF,&34,&14,&84,&44,&24,&14,&0C,&04
+
+; Ending sprite CHR. LOAD_ENDING_CHR uploads FFh tiles to PPU 1000h.
+; The stream uses the rest of bank 1, then fixed-bank bytes through 7:C122 (see shift_ignore).
 .ENDING_SPR_CHR
   EQUB &00,&00,&80,&FF,&00,&80,&FF,&C0,&FF,&00,&B1,&FF,&00,&7F,&FF,&51
   EQUB &FF,&80,&FF,&B0,&FF,&01,&FF,&51,&FF,&01,&FF,&00,&80,&FF,&88,&FF

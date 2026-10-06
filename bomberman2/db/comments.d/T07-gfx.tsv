@@ -1,1 +1,30 @@
-1:9132	>	Area Z_4B=3 BG CHR, 64 tiles to PPU $0C00 (S7_CB92).\nAlso selected by some area-5 stages (D7_CC06).
+1:8000	>	Common playfield BG CHR (font and map tiles), bank 1, RLE via DECODE_CHR.\nLOAD_AREA_CHR and S5_A892 upload C0h tiles to PPU 0000h. That stream ends at ENDING_EXTRA_BG_CHR.\nEnding S5_B0DE uploads only the first A0h tiles of this block.
+1:89FE	>	Extra ending BG CHR. S5_B0DE uploads 50h tiles to PPU 0A30h after A0h tiles of PLAY_BG_CHR.\nThe 50h-tile stream runs past ENEMY_AREA0_CHR.
+1:8D9C	>	Area-0 enemy CHR. ENEMY_CHR_PTR index 0.\nLOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs through ENEMY_AREA1_CHR into ENEMY_AREA2_CHR.
+1:8F22	>	Area-1 enemy CHR. ENEMY_CHR_PTR index 1.\nLOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs past ENEMY_AREA2_CHR.
+1:900C	>	Area-2 enemy CHR. ENEMY_CHR_PTR index 2.\nLOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs past ENEMY_AREA3_CHR.
+1:9132	>	Area-3 enemy CHR. ENEMY_CHR_PTR index 3.\nLOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. Also chosen by some area-5 stages (AREA5_CHR_IDX).\nThe stream runs past ENEMY_AREA4_CHR.
+1:926F	>	Area-4 enemy CHR. ENEMY_CHR_PTR index 4, and index 5 is the same address.\nLOAD_AREA_CHR uploads 40h tiles to PPU 0C00h. The stream runs through ENEMY_VS_CHR into MODE_BG_CHR.
+1:94ED	>	ENEMY_CHR_PTR index 6. LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h when Z_4B is 6.\nThe stream runs past AREA0_INTRO_SPR.
+1:95BA	>	BG CHR for LOAD_MODE_GFX (bonus stage, VS result, and the three pre-stage screens).\nFFh tiles to PPU 0000h. The stream runs through the area-intro sprite blocks into AREA3_INTRO_SPR.
+1:977A	>	Area-0 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 0.\nThe stream runs past AREA1_INTRO_SPR and AREA2_INTRO_SPR.
+1:9AE8	>	Area-1 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 1.\nThe stream runs through AREA2_INTRO_SPR and AREA3_INTRO_SPR.
+1:9E7C	>	Area-2 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 2.\nThe stream runs past AREA3_INTRO_SPR.
+1:A0F9	>	Area-3 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 3.\nThe stream runs past AREA4_INTRO_SPR into TITLE_SPR_CHR.
+1:A471	>	Area-4 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 4.\nThe stream runs through AREA5_INTRO_SPR and TITLE_SPR_US_ONLY.
+1:A5EA	>	Area-5 intro sprite CHR. S5_ADA7 uploads FFh tiles to PPU 1000h when Z_4B is 5.\nThe stream runs through INTRO_BG_CHR and TITLE_SPR_US_ONLY.
+1:A817	>	Area-card BG CHR. S5_ADA7 uploads FFh tiles to PPU 0000h (caller S5_ACE4).\nThe stream runs through TITLE_SPR_CHR into TITLE_BG_CHR.
+1:AAA9	>	Title sprite CHR. S5_A237 uploads FFh tiles to PPU 1000h.\nUS continues through TITLE_SPR_US_ONLY. The FFh-tile stream stops just before TITLE_BG_CHR.
+1:AF05	>	US-only bytes inside TITLE_SPR_CHR. The JP source omits them. Not a separate upload.
+1:B529	>	Title BG CHR, including the logo tiles. S5_A237 uploads FFh tiles to PPU 0000h.\nOn US the FFh-tile stream stops before the bank-end fill.
+1:B724	>	Ending sprite CHR. S5_B0DE uploads FFh tiles to PPU 1000h.\nThe stream uses the rest of bank 1, then fixed-bank bytes through 7:C122 (see shift_ignore).
+6:8000	>	Common play sprites. LOAD_AREA_CHR uploads 80h tiles to PPU 1000h.\nThe 80h-tile stream ends at AREA0_SPR_CHR.
+6:85D1	>	Area-0 sprite CHR. AREA_CHR_PTR index 0.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream runs past AREA1_SPR_CHR.
+6:89A4	>	Area-1 sprite CHR. AREA_CHR_PTR index 1.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream runs past AREA2_SPR_CHR.
+6:8E93	>	Area-2 sprite CHR. AREA_CHR_PTR index 2.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream runs past AREA3_SPR_CHR.
+6:92DC	>	Area-3 sprite CHR. AREA_CHR_PTR index 3.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream runs past AREA4_SPR_CHR.
+6:9731	>	Area-4 sprite CHR. AREA_CHR_PTR index 4.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream runs past AREA5_SPR_CHR.
+6:9D03	>	Area-5 sprite CHR. AREA_CHR_PTR index 5.\nLOAD_AREA_CHR uploads 60h tiles to PPU 1A00h. The stream ends at VS_BATTLE_SPR_CHR.
+6:A149	>	AREA_CHR_PTR index 6. LOAD_AREA_CHR uploads 60h tiles to PPU 1A00h when Z_4B is 6.\nThe stream runs through LEVEL_OBJ_TILES into UI_SPR_CHR.
+6:A246	>	Raw (not RLE) object tiles, 16 bytes each. 240h bytes, nine groups of 4, ending at UI_SPR_CHR.\nS5_802F adds D5_815B[W_04E3] shifted left 4 and uploads 4 tiles to PPU 1800h via UPLOAD_CHR_RAW.
+6:A486	>	Sprite CHR shared by the title-adjacent screens that call S5_92F6 or S5_A892, by LOAD_MODE_GFX, and by S0_B052.\nEach of those uploads FFh tiles to PPU 1000h. A few trailing bytes before FILLTO are outside that stream.

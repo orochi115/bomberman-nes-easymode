@@ -1,0 +1,126 @@
+5:A00B	>	Sound-room input. Called each frame from S5_9FC0.\nIn: JOY_NEW. Up/down wraps W_04CD in 0..2.\nB/A clamp W_04CE,X to SND_PARAM_MIN/MAX.\nStart plays that byte; Select plays command 80h.
+5:A08F	>	Draw the sound-room cursor.\nIn: W_04CD. X from SND_CURSOR_X, Y from SND_CURSOR_Y.
+5:A0B6	>	Draw the three sound-room values by calling DRAW_SND_VALUE with X=0,1,2.
+5:A0C2	>	Draw one sound parameter as two glyphs.\nIn: X = row 0..2. Value is W_04CE,X minus SND_PARAM_MIN.\nQueued at column 12h, row SND_VALUE_ROW,X.
+5:A10D	>	Queue the four sound-room strings through QUEUE_XY_BYTES.\nEach record is X, Y, length, then tiles.
+5:A139	>	Queue a nametable run from a record at Z_20.\nIn: (Z_20) = X, Y, length, bytes. Advances Z_20 past the header.\nOut: PPU queue via QUEUE_PPU_RUN. Z_2E cleared.
+5:A18E	>	Title screen. SHOW_FRONT enters here.\nLoads CHR, map and palette, then animates until Start/A or the idle timer W_051F/W_0520 hits 0.\nIdle timeout calls START_DEMO. Exit fades and turns the PPU off.
+5:A237	>	Upload TITLE_SPR_CHR at PPU $1000 and TITLE_BG_CHR at $0000.\nRLE. No inputs. Falls into the US map setup on the US path.
+5:A265	>	US title background. FARCALL bank 4 S4_BADB and S4_BACB with D4_A8F4/D4_A8B5 and D4_A900.
+5:A292	>	US title palette. FARCALL bank 4 COPY_PAL_ROWS of 8 rows from D4_B0F9, then MIRROR_BG_COLOR.
+5:A2A7	>	US: queue two 1Dh-byte nametable runs, TITLE_BANNER_TOP at (0,18h) and TITLE_BANNER_BOT at (0,1Ah).
+5:A319	>	Blink the title prompt while W_0521 is 0.\nW_051E counts to 20h (draw START_TEXT_ON) and 38h (blank START_TEXT_OFF, reset).
+5:A37E	>	Clear title sprite frame W_0525 and tick W_0526.
+5:A387	>	Title sprites. Advances W_0525 every 8 frames, 3 frames.\nDraws TITLE_ACTOR_PTR[frame] and TITLE_BOMBER_SPR unless sprite Y is in B0h..DFh.
+5:A3E1	>	Draw the scrolling logo when SCROLL_Y is 60h..87h (frame 0) or >= 88h (frame 1).\nSprite Y is fixed at B2h. Uses TITLE_SPRITE_X.
+5:A416	>	Title sprite Y from the scroll.\nOut: Z_58 = 20h-SCROLL_Y, minus 10h when SCROLL_Y >= 40h. Falls through to TITLE_SPRITE_X if SCROLL_Y >= 40h.
+5:A42F	>	Title sprite X.\nOut: Z_56 = 48h-SPLIT_SCROLL_X, Z_57 = SCROLL_NT.
+5:A521	>	Title scroll state in W_0521.\n1: wait W_0522 to 2Dh, play sound 01h, go to 2.\n2: TITLE_SHAKE drives SPLIT_SCROLL_X; SCROLL_Y increments to F0h, then the scroll stops and DRAW_TITLE_BANNER runs.\nEvery 8 scanlines of the scroll, queue one 20h-byte row from TITLE_MAP_ROWS.
+jp:5:A251	>	JP title map piece. FARCALL bank 4 S4_BACB with D4_A8B5 and D4_A900.
+jp:5:A268	>	JP title palette. FARCALL bank 4 COPY_PAL_ROWS, 8 rows from D4_B0F9.
+jp:5:A27D	>	JP: queue 11h bytes of TITLE_LOGO_TILES at the XY in JD5_A2B1.
+jp:5:A297	>	JP: queue the same 11h bytes at the XY in JD5_A2B3. Called when the title scroll finishes.
+5:A80F	>	Game-mode menu. RUN_MODE_MENU enters here.\nClears W_054E, W_054F, W_0550, sets W_0563 to 1, fills the nametable with tile 13h.\nUp/Down/Select cycle Z_49 in 0..3. Start/A confirms.\nOn the US build, Z_49 2 is rejected when JOY_SIG_OK is 0 (sound 04h).\nMODE_TO_AREA then writes W_04C9. Fades out.
+5:A892	>	Upload UI_SPR_CHR (6 RLE blocks at $1000) and PLAY_BG_CHR (C0h bytes at $0000).
+5:A8C0	>	Mode menu. Select, Down or Up change Z_49, wrapping 0..3, and play sound 07h.
+5:A8F8	>	Draw MENU_CURSOR_SPR at MODE_CURSOR_X / MODE_CURSOR_Y[Z_49].
+5:A93F	>	If Z_49 is not 0, store 6 in W_04C9. Mode 0 leaves W_04C9 alone.
+5:A97C	>	Copy 8 palette rows from MODE_MENU_PAL and mirror the background color.
+5:A9AE	>	Draw TOP and the five mode lines via DRAW_INLINE_STR.\nRecords are column, row, count, tiles.
+5:A9E8	>	Draw TOP_SCORE_LABEL, then 8 digits from W_03C8 (high index first) at column 0Eh row 03h. ORs each byte with 30h.
+5:AA6A	>	Continue / game-over screen. RUN_GAME_OVER enters here.\nDraws a map, sets Z_4A to 1, plays sound 19h.\nSelect/Up/Down toggle Z_4A. Start/A fades out.
+5:AAAE	>	Point Z_66/Z_64/Z_62 at the shared UI tiles and Z_20 at D4_ABD9, then JMP L7_CD89.
+5:AAD1	>	Palette for the game-over screen: 4 rows from D4_B119 via bank 4, then 4 rows of GAME_OVER_PAL at row 4.
+5:AB05	>	Read GAME_OVER_INPUT, then draw MENU_CURSOR_SPR at OVER_CURSOR_X / OVER_CURSOR_Y[Z_4A].
+5:AB0B	>	If JOY_NEW has Up, Down or Select (2Ch), toggle Z_4A bit 0 and play sound 07h.
+5:AB65	>	Write one inline string straight to the PPU. DRAW_INLINE_STR enters here.\nIn: Z_20 -> column, row, count, bytes. Byte 20h is stored as 40h.
+5:AC54	>	If W_03C0 is not DEFAULT_TOP_NAME, clear W_03C8, call RESET_MARKS and RESET_DEMO_IDX, then copy that 8-byte name into W_03C0.
+5:AC7F	>	Zero the 8 score digits at W_03C8.
+5:AC8A	>	Zero the 8 working score digits at W_03D0.
+5:AC95	>	If Z_49 is 0, draw W_03D0 as 8 digits (OR 30h) at column 4 row 2.\nSkipped for the other modes. Called from STAGE_LOOP.
+5:ACC2	>	If Z_49 is 0 and W_03D0 is greater than W_03C8 (high byte first), copy the 8 digits into W_03C8.
+5:ACE4	>	Area intro card. MAYBE_AREA_CARD enters here.\nReturns at once unless W_03EF, Z_49 and Z_4C are 0 and Z_4B differs from Z_4D.\nStores the area in Z_4D, shows the card, plays sound 11h, waits on Start or a timer in Z_2A/Z_2B.
+5:AD47	>	Draw the area-intro map for Z_4B.\nSix word pointers each: map, attr, layout, tiles, all in bank 4. JMP L7_CD89.
+5:ADA7	>	Load the area-intro CHR and palettes for Z_4B.\nSprite CHR from AREA_INTRO_CHR, INTRO_BG_CHR, 4 palette rows from AREA_INTRO_PAL, then 4 rows from D4_B0E9.
+5:AE22	>	Clear intro animation bytes W_0532..W_0535.
+5:AE31	>	Draw the area-intro metasprite.\nINTRO_DRAW_PTR[Z_4B]: areas 0..4 share one draw; area 5 steps W_0532 through AREA5_FRAME_DLY first.
+5:B07D	>	Ending. RUN_ENDING enters here when the area reaches 6.\nForces Z_4B=6, Z_4C=0, loads ending CHR and enemies, then waits until X_62F2 is 2.\nSCROLL_ENDING runs while X_62F2 is 1. Then fade and JMP L7_D1B0.
+5:B0DE	>	Ending/opening CHR and palettes.\nENDING_SPR_CHR at $1000, PLAY_BG_CHR (A0h bytes), ENDING_EXTRA_BG_CHR at $0A30, palettes D4_B159 and D4_B149.
+5:B14A	>	Draw the ending nametable. Four bank-4 pointers (tiles, layout, attr, map) then JMP L7_CD89.\nUS bytes are D4_9AD4, D4_9B1A, D4_98A8 and D4_AE17.
+5:B16D	>	If X_62F2 is 1, add 1 to SCROLL_X (with SCROLL_NT).
+5:B186	>	Opening scene. RUN_OPENING enters here.\nZeros Z_49, Z_4E, Z_B4. Sets area 6 stage 1, loads enemies, waits until X_62F2 is 2 or Start/A.
+5:B1E6	>	Draw the opening nametable from D4_9AD4, D4_9B1A, D4_98A8 and D4_AE17 via L7_CD89.
+5:B209	>	Versus round result. SHOW_VS_RESULT enters here.\nSets Z_4A to 1, plays sound 1Ch. Up/Down/Select toggle Z_4A. Start/A exits.
+5:B24C	>	Draw the versus-result nametable. UI tile pointers plus map D4_AA05, then JMP L7_CD89.
+5:B26F	>	Stamp two tiles from D5_B29B/D5_B29E at (0Bh,4) and (0Bh,5) using W_04C8.\nIf that index is 1, also draw a 2x2 mark via DRAW_MARK_2X2.
+5:B2A1	>	Animate the versus-result sprite.\nW_0562 flips every 8 frames. Frame and W_04C8 pick a word in VS_RESULT_SPR_PTR. Drawn at (88h, 90h).
+5:B4B8	>	Toggle Z_4A on Up/Down/Select and draw the one-tile cursor at X D5_B4F1, Y VS_CURSOR_Y[Z_4A].
+5:B4F9	>	Win-count screen. SET_WIN_COUNT enters here.\nIf Z_49 is not 2, store 5 in W_0563 and return.\nIf Z_49 is 2, show a menu: W_0563 wraps 1..5. Start/A fades out.
+5:B537	>	Win-count menu. Up wraps W_0563 down to 1; Down or Select wraps it up to 5. Sound 07h.
+5:B572	>	Draw the win-count nametable from D4_AD4D plus the shared UI tile pointers. JMP L7_CD89.
+5:B595	>	Draw MENU_CURSOR_SPR-shaped data at X = WIN_CURSOR_Y[0] and Y = WIN_CURSOR_Y[W_0563].
+5:B5DA	>	Battle pre-stage card. SETUP_BY_MODE calls this when Z_49 is 2.\nDraws digits and a mark, plays sound 1Dh, waits B4h frames, fades out.
+5:B60B	>	Draw the battle-card nametable from D4_A940. JMP L7_CD89.
+5:B62E	>	Draw W_055E, W_0560 and W_055F on the battle card.\nDigits come from SCORE_DIGIT_TILE. The middle value also places a second tile from BATTLE_TILE_RIGHT.\nColumns are D5_B66A, D5_B66B and D5_B66C; row is 0Ah.
+5:B681	>	Draw the battle mark for W_04C8.\nNegative: nothing. 1: 2x2 tiles at row 7 via DRAW_MARK_2X2. Other: one tile from D5_B6E5 at row 8.
+5:B6E8	>	Queue SCORE_DIGIT_TILE[W_0563] at column 3, row 3.
+5:B6F5	>	Versus pre-stage card. SETUP_BY_MODE calls this when Z_49 is not 0 or 2.\nPlays sound 1Dh and waits Z_2A counts of B4h frames.
+5:B734	>	Draw the versus-card nametable from D4_AAB6. JMP L7_CD89.
+5:B757	>	Queue SCORE_DIGIT_TILE[W_055E] at column D5_B77D and [W_055F] at D5_B77E, both on row 8.
+5:B77F	>	Two versus-card metasprites. W_0562 flips every 8 frames and selects VS_CARD_SPR_A / VS_CARD_SPR_B.
+5:B858	>	Compare W_055E with W_055F and queue the outcome tiles.\nEqual and >= 4: one or two strings (9 uses two). Unequal with either side >= 4: a run of tiles via QUEUE_TILE_SPAN.
+5:B8B7	>	Queue Z_2A consecutive tiles starting at A, column Z_28, row Z_29.\nEach tile increments A and the column. Uses W_04CA as the cursor.
+5:B8F6	>	Normal-mode stage card. SETUP_BY_MODE calls this when Z_49 is 0.\nSound 1Dh, waits B4h frames, fades out.
+5:B921	>	Draw the stage-card nametable from D4_AB7D. JMP L7_CD89.
+5:B944	>	Stage card: score, the two-tile suffix D5_B9C7, lives, then SCORE_DIGIT_TILE for Z_4B and Z_4C.
+5:B964	>	Draw W_03D0 as 8 digits at (0Dh, 5) and queue D5_B9C7 (two tiles) at (0Ah, 5).
+5:B9A4	>	Copy W_04E5 into W_04CB and draw it as one digit (OR 30h) at column 12h, row 15h.
+5:B9C9	>	Remote detonate for player Z_68. L7_CFD4 enters here when Z_AF is 0.\nScans the 8 bomb slots under BOMB_SLOT_BASE[Z_68]. The first positive X_6001 flag jumps to DETONATE_BOMB.
+5:B9E0	>	Place a bomb at Z_1C/Z_1D. L7_CF96 enters here.\nALLOC_BOMB_SLOT must return C=1. Writes the X_6001 slot, fuse W_03ED, map bit 10h, and plays sound 02h.\nA map byte with bit 7 also sets X_6079 bit 7 and fuse 2, and copies the actor id from FIND_ACTOR_CELL.
+5:BA56	>	Bomb and flame tick. UPDATE_BLASTS enters here.\nX_624D even: step flames. Odd: step each occupied slot of the 24 at X_6001.
+5:BBC9	>	Find a free bomb slot for player Z_68.\nEmpty map cell (bits 0..6 clear) required. Packs that player's 8 X_6001 slots down from BOMB_SLOT_BASE.\nC=1 if the free index is in range and Z_A9 >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
+5:BC41	>	Find a free flame slot among the 60 flags at X_60E2 (index 3Bh down).\nOut: C=1 and Y=slot, or C=0 if none.
+5:BC4F	>	Spread a blast from Z_1C/Z_1D. L7_D018 stores the direction mask in Z_B8 and calls this.\nRange is X_624B. LSR Z_B8 drops a direction when its bit was set: up, down, left, right.\nEach step calls BLAST_CELL and stops on C=0 or when the range count expires.
+5:BD05	>	One flame cell. In: A = flame type, Z_28/Z_29 = cell. Out: C=1 if the ray continues.\nMap bit 6 or value A0h stops the ray. Bit 4 kicks the bomb there (KICK_DIR_MASK) and stops.\nLow bits 1 or 2 go to BLAST_CONTENTS and stop. Value 20h opens a buried tile, then uses type 09h.\nLow bits 0 spawn a flame.
+5:BD4D	>	Spawn a flame actor if FIND_FREE_FLAME succeeds.\nStores cell, type|80h, range X_624A, owner X_624C. Sets map bit 7. Calls NOTE_BLAST_TYPE. C=1.
+5:BDBF	>	Flame hit a cell whose low bits are 1 or 2.\n1: clear the matching W_04EB slot and the map byte, spawn flame type 0Ah, JMP L7_D11B.\n2: JMP L7_D103. Other values return.
+5:BDEC	>	Find a placed-bomb slot whose cell is Z_28/Z_29.\nIn: those coordinates. Out: X=slot and N clear if W_04EB,X is nonzero; X=FFh (N set) if none. 15 slots.
+5:BE05	>	If this cell already has a flame actor whose low type nibble is not 9, clear that X_60E2 flag.\nSkipped when Z_1E is not 0 and the map byte Z_1F is 0.
+5:BE40	>	Open a buried cell (map value 20h).\nLow bits 2: set W_0518 to 1, reveal tile 0Ch, C=0.\nLow bits 1: if FIND_BOMB_CELL hits, reveal BURIED_REVEAL_TILE[flag & 0Fh]; either way DEC W_04E2.\nAny other low bits: C=1 and the map byte is left for the flame.
+5:A085	>	Sound-room minimum for the three W_04CE values. 3 bytes: 0Ch, 00h, 1Eh.
+5:A088	>	Sound-room exclusive maximum. 3 bytes: 1Eh, 0Ch, 2Bh. One past the last accepted value.
+5:A08C	>	Cursor Y for sound-room rows 0..2. 3 bytes: 50h, 60h, 70h. X is the single byte SND_CURSOR_X.
+5:A0FA	>	Nametable rows for the three sound values. 3 bytes: 0Ah, 0Ch, 0Eh.
+5:A0FD	>	16 tiles for a nibble, used by DRAW_SND_VALUE. 30h..39h then 41h..46h.
+5:A362	>	11 tiles queued when the title prompt turns on. START_TEXT_OFF is 11 zero tiles.
+5:A410	>	3 words. Metasprite pointers TITLE_ACTOR_0, TITLE_ACTOR_1, TITLE_ACTOR_2. Index is W_0525.
+5:A43F	>	2 words. TITLE_LOGO_A and TITLE_LOGO_B. DRAW_METASPRITE records: count, then count*(tile, dx, dy, attr).
+5:A585	>	16 words. Low byte is SPLIT_SCROLL_X, bit 0 of the high byte is SPLIT_CTRL_BIT. Index is W_0524.
+5:A5EF	>	Title nametable rows revealed while SCROLL_Y climbs. 11h rows of 20h tiles. Not pointers.
+5:A88E	>	4 bytes written back to Z_49 when the mode menu confirms: 00h, 01h, 02h, 03h.
+5:A91E	>	Mode-menu cursor Y. 4 bytes, index Z_49: 58h, 68h, 78h, 88h. X is MODE_CURSOR_X.
+5:A922	>	Shared menu cursor metasprite. Count 07h. Also used by the game-over cursor.
+5:A98E	>	8 palette rows (32 bytes) for the mode menu.
+5:AA12	>	DRAW_INLINE_STR record: column, row, count, then tiles. TOP is 3 tiles. The five MODE_TEXT lines are the same shape.
+5:AC77	>	8 tiles compared with W_03C0. Bytes are K O S A K A ! !.
+5:AD77	>	6 words, one per area. Bank-4 map pointer passed to L7_CD89 as Z_20. AREA_INTRO_TILE, AREA_INTRO_LAY and AREA_INTRO_ATTR are the matching Z_62, Z_64 and Z_66 tables.
+5:AE0A	>	6 words. RLE sprite CHR for the area intro, selected by Z_4B.
+5:AE16	>	6 words. Bank-4 palette, 4 rows, selected by Z_4B.
+5:AE43	>	6 words. Code pointers. Areas 0..4 point at the shared draw; area 5 points at INTRO_AREA5_FRAME.
+5:AE6F	>	7 frame delays for the area-5 intro. W_0534 counts up to the byte indexed by W_0532, which stops at 6.
+5:AEAA	>	6 areas, interleaved X then Y for the intro sprite. Not a pointer. INTRO_FRAME_PTR is the matching 6 words of animation lists.
+5:AED4	>	Intro metasprite. First byte is the DRAW_METASPRITE count. INTRO_META_1..3 are the later frames.
+5:B5B7	>	Win-count cursor. Byte 0 is X (48h). Bytes 1..5 are Y for W_0563 = 1..5.
+5:B66D	>	10 tiles for the left half of the middle battle-card number. BATTLE_TILE_RIGHT is the matching right half. Index is W_055F.
+5:B6D9	>	2x2 mark tiles. 3 groups of 4, index W_04C8*4: top-left, top-right, bottom-left, bottom-right.
+5:B773	>	Tiles indexed by a small count (score, wins, area, stage). Byte 0 is 6Dh; bytes 1..9 are 64h..6Ch.
+5:B7E4	>	2 words, toggled by W_0562. Left versus-card metasprite. VS_CARD_SPR_B is the right one.
+5:BB6D	>	4 bomb tiles. X_6049 & 3 selects 01h, 02h, 03h, 02h.
+5:BB71	>	16 base indexes added to the flame timer. The low nibble of X_60E2 selects the row. Unused types are 0.
+5:BB81	>	Flame tiles. 9 rows of 8. Y = (X_6196 >> 1) OR the base from FLAME_TILE_BASE. The row is queued with QUEUE_TILE_Y2.
+5:BC26	>	24 bytes, three copies of 07h..00h. After ALLOC_BOMB_SLOT packs a player's bombs, Z_A9 must be >= the byte at the free slot index.
+5:BC3E	>	3 bytes, one per player in Z_68: 07h, 0Fh, 17h. Top index of that player's 8 bomb slots in X_6001.
+5:BE37	>	9 masks ORed into X_6079 when a flame of that type hits a bomb. Index is the flame type in Z_1E.
+5:BE88	>	13 tiles revealed by OPEN_BURIED. Index is the bomb flag's low nibble, or 0Ch for map low-bits 2.
+5:BA7B	>	One bomb slot in X.\nNegative X_6001 counts X_60A9 down, then the flag becomes 1.\nThe fuse in X_6061 counts down unless X_6000 is set, or Z_AF is 1 and X_6079 is 0.\nFuse 0 jumps to DETONATE_BOMB. The tile cycles BOMB_ANIM_TILE every 8 counts of X_624E.
+5:B2DE	>	6 words. Versus-result metasprites. Index is (W_04C8*2 + W_0562)*2.\nUS bytes still raw for the entries merge cannot take as pointers. See the notes.

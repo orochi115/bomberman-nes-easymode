@@ -1189,7 +1189,7 @@
 
 ; (not seen executing during the coverage runs)
 
-; SFX 03 init and tick. Item blip from S5_9064, not item type 0B.
+; SFX 03 init and tick. Item blip from PLAY_ITEM_SND, not item type 0B.
 .SFX03_PROG
   TSX
   DEY
@@ -1313,7 +1313,7 @@
   JSR SND_MARK_CHANNEL_DIRTY
   JMP SFX_STOP
 
-; SFX 08. Timer tick while the seconds digits are 0, S5_9895.
+; SFX 08. Timer tick while the seconds digits are 0, TICK_STAGE_CLOCK.
 .SFX08_PROG
   EQUB &21,&8A,&37,&8A,&A9,&18,&8D,&48,&03,&8D,&47,&03,&A9,&07,&A2,&00
   EQUB &20
@@ -1366,7 +1366,7 @@
   JSR SND_MARK_CHANNEL_DIRTY
   JMP SFX_STOP
 
-; SFX 09. Hurry warning while the stage timer is below 4, S5_872C.
+; SFX 09. Hurry warning while the stage timer is below 4, TICK_TIMED_POWERS.
 .SFX09_PROG
   EQUB &96,&8A,&9B,&8A,&A9,&20,&8D,&48,&03,&AD,&48,&03,&4A,&B0,&0A,&29
   EQUB &01,&18,&69,&0C,&A2,&04,&20
@@ -2316,7 +2316,7 @@
 .D2_A43A
   EQUB &11,&01,&31,&00,&10,&11,&11,&31,&00,&10,&E0
 
-; BGM 11. Area-change card, requested by S5_ACE4.
+; BGM 11. Area-change card, requested by SHOW_AREA_INTRO.
 .BGM_CARD_HDR
   EQUW D2_A44F
   EQUW D2_A48E
@@ -2406,7 +2406,7 @@
   EQUW D3_92B1
   EQUW D3_93B5
 
-; BGM 17. Screen that stores 6 in Z_4B (S5_B07D). Bank 3.
+; BGM 17. Screen that stores 6 in Z_4B (ENDING_LOOP). Bank 3.
 .BGM_AREA6_HDR
   EQUW D3_94A2
   EQUW D3_952D
@@ -2414,7 +2414,7 @@
   EQUW D3_96AB
   EQUW D3_96EB
 
-; BGM 19. Game-mode select, S5_AA6A. Bank 3.
+; BGM 19. Game-mode select, GAME_OVER_LOOP. Bank 3.
 .BGM_MODE_HDR
   EQUW D3_9745
   EQUW D3_977E
@@ -2422,7 +2422,7 @@
   EQUW D3_97FA
   EQUW D3_981A
 
-; BGM 1A. One player still standing, S5_9121. Bank 3.
+; BGM 1A. One player still standing, UPDATE_ROUND. Bank 3.
 .BGM_WIN_HDR
   EQUW D3_983C
   EQUW D3_9873
@@ -2430,7 +2430,7 @@
   EQUW D3_98C1
   EQUW D3_98E5
 
-; BGM 1B. No player left standing, S5_9121. Bank 3.
+; BGM 1B. No player left standing, UPDATE_ROUND. Bank 3.
 .BGM_LOSE_HDR
   EQUW D3_990C
   EQUW D3_994A
@@ -2438,7 +2438,7 @@
   EQUW D3_999A
   EQUW D3_99C4
 
-; BGM 1C. Picture screen S5_B209. Bank 3.
+; BGM 1C. Picture screen VS_RESULT_LOOP. Bank 3.
 .BGM_SCENE_HDR
   EQUW D3_99CA
   EQUW D3_9AAF
@@ -2446,7 +2446,7 @@
   EQUW D3_9C9A
   EQUW D3_9CE3
 
-; BGM 1D. Short sting used by S5_9F5E, S5_B595 and S5_B8F6. Bank 3.
+; BGM 1D. Short sting used by SHOW_BONUS_CARD, DRAW_WIN_CURSOR and SHOW_STAGE_CARD. Bank 3.
 .BGM_STING_HDR
   EQUW D3_9D2C
   EQUW D3_9D64

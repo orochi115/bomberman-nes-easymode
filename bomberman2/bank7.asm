@@ -132,8 +132,8 @@
 ; Call bank 5 at AC8A and AC54, then zero 00h-FBh and pages 0200h-0700h.
 ; FC-FF on the zero page are left alone.
 .CLEAR_LOW_RAM
-  FARCALL 5, S5_AC8A
-  FARCALL 5, S5_AC54
+  FARCALL 5, CLEAR_STAGE_SCORE
+  FARCALL 5, SEED_DEFAULT_SCORE
   LDA #&00
   LDX #&00
 .L7_C0DA
@@ -1451,7 +1451,7 @@ ENDIF
 ; Re-enter a mode without the title. Clears 8 bytes at 03D0h, calls SET_WIN_COUNT, then STAGE_BOOT.
 ; Reached when Z_4A is set after a versus result or the game-over screen.
 .RESUME_MODE
-  FARCALL 5, S5_AC8A
+  FARCALL 5, CLEAR_STAGE_SCORE
   JSR SET_WIN_COUNT
 
 ; Blank the screen and set lives (04E5h) to 2. If Z_4A is set, keep the current area and stage.
@@ -1472,7 +1472,7 @@ ENDIF
   STA Z_4B
   LDA #&00
   STA Z_4C
-  FARCALL 5, S5_9936
+  FARCALL 5, CLEAR_SCORE_RAM
   JSR RESET_PLAYERS
   LDA #&FF
   STA W_04C8
@@ -1496,9 +1496,9 @@ ENDIF
   JSR NMI_ON
   JSR BIND_AREA_PTRS
   JSR LOAD_STAGE_META
-  FARCALL 5, S5_97E0
-  FARCALL 5, S5_98F5
-  FARCALL 5, S5_9942
+  FARCALL 5, INIT_STAGE_CLOCK
+  FARCALL 5, DRAW_STAGE_CLOCK
+  FARCALL 5, DRAW_MODE_HUD
   LDA #&00
   ABS_STA Z_B7
   STA Z_53
@@ -1516,9 +1516,9 @@ ENDIF
   JSR UPDATE_PLAYERS
   JSR UPDATE_BLASTS
   JSR UPDATE_ENEMIES
-  FARCALL 5, S5_9895
-  FARCALL 5, S5_8000
-  FARCALL 5, S5_AC95
+  FARCALL 5, TICK_STAGE_CLOCK
+  FARCALL 5, DRAW_LIVES
+  FARCALL 5, DRAW_HUD_SCORE
   ABS_LDA Z_B7
   CMP #&F0
   BCS STAGE_WON
@@ -1660,7 +1660,7 @@ ENDIF
 ; Z_B4 was nonzero after a clear. FARCALL bank 5 at 9E92h, which saves the area and stage,
 ; forces stage 7, Z_90=8, Z_93=5 and Z_4E=1, then returns to STAGE_WON.
 .PREP_STAGE_B4
-  FARCALL 5, S5_9E92
+  FARCALL 5, RUN_BONUS_STAGE
   JMP STAGE_WON
 
 ; Load area CHR and the sprite palettes, then return from the tail at CB14h.
@@ -1809,15 +1809,15 @@ ENDIF
 ; Seven pointers to enemy CHR in bank 1. Indexed by area, or by AREA5_CHR_IDX in area 5.
 ; 40h tiles are uploaded to PPU 0C00h. Entry 5 is the same address as entry 4.
 .ENEMY_CHR_PTR
-  EQUB LO(AREA0_BG_CHR)
+  EQUB LO(ENEMY_AREA0_CHR)
 .D7_CC1D
-  EQUB HI(AREA0_BG_CHR)
-  EQUW AREA1_BG_CHR
-  EQUW AREA2_BG_CHR
-  EQUW AREA3_BG_CHR
-  EQUW AREA4_BG_CHR
-  EQUW AREA4_BG_CHR
-  EQUW VS_BATTLE_BG_CHR
+  EQUB HI(ENEMY_AREA0_CHR)
+  EQUW ENEMY_AREA1_CHR
+  EQUW ENEMY_AREA2_CHR
+  EQUW ENEMY_AREA3_CHR
+  EQUW ENEMY_AREA4_CHR
+  EQUW ENEMY_AREA4_CHR
+  EQUW ENEMY_VS_CHR
 
 ; If Start is newly pressed and no death or clear is running, slide SPLIT_SCROLL_X by 8 until FCh
 ; and draw PAUSE_TEXT. Start again restores the scroll and returns.
@@ -1893,7 +1893,7 @@ ENDIF
 ; W_054F was nonzero. FARCALL bank 5 at 9FC0h, which sets Z_49 to 1 and runs its own frame loop.
 ; That call does not return; the following jump back to GAME_LOOP is not reached.
 .ENTER_Z49_1
-  FARCALL 5, S5_9FC0
+  FARCALL 5, RUN_MODE1_MENU
   JMP GAME_LOOP
 
 ; W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at 9E92h,
@@ -1901,8 +1901,8 @@ ENDIF
 .ENTER_W0550
   LDA #&01
   STA W_04E5
-  FARCALL 5, S5_AC8A
-  FARCALL 5, S5_9E92
+  FARCALL 5, CLEAR_STAGE_SCORE
+  FARCALL 5, RUN_BONUS_STAGE
   JSR FADE_PALETTE
   JSR PPU_OFF
   JMP GAME_LOOP
@@ -2029,7 +2029,7 @@ ENDIF
 
 ; FARCALL bank 5 at 802Fh, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
 .LOAD_4_TILES
-  FARCALL 5, S5_802F
+  FARCALL 5, UPLOAD_LEVEL_CHR
   RTS
 
 ; Zero A9h and AAh, clear the round flags, then fall into INIT_PLAYERS.
@@ -2153,7 +2153,7 @@ ENDIF
 
 ; FARCALL bank 5 at 8168h. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
 .UPDATE_PLAYERS
-  FARCALL 5, S5_8168
+  FARCALL 5, UPDATE_ACTORS
   RTS
 
 ; If Z_B5 is positive, Z_B0 is 1, and the WRAM cell at 611Eh/615Ah matches 9Dh/9Eh,
@@ -2315,7 +2315,7 @@ ENDIF
   JSR BANK_SWITCH
   RTS
 .L7_CF6F
-  FARCALL 5, S5_8F6E
+  FARCALL 5, FOLLOW_ACTOR_SCROLL
   RTS
 
 ; Zero 0518h and the 15 bytes at 04EBh.
@@ -2335,7 +2335,7 @@ ENDIF
   PHA
   LDX #&05
   JSR BANK_SWITCH
-  JSR S5_BA56
+  JSR STEP_BLASTS
   PLA
   TAX
   JSR BANK_SWITCH
@@ -2345,7 +2345,7 @@ ENDIF
   PHA
   LDX #&05
   JSR BANK_SWITCH
-  JSR S5_B9E0
+  JSR PLACE_BOMB
   PLA
   TAX
   JSR BANK_SWITCH
@@ -2381,7 +2381,7 @@ ENDIF
   PHA
   LDX #&05
   JSR BANK_SWITCH
-  JSR S5_B9C9
+  JSR DETONATE_REMOTE
   PLA
   TAX
   JSR BANK_SWITCH
@@ -2429,7 +2429,7 @@ ENDIF
   PHA
   LDX #&05
   JSR BANK_SWITCH
-  JSR S5_BC4F
+  JSR SPREAD_FLAME
   LDA #&27
   JSR AUDIO_CALL
   PLA
@@ -2494,17 +2494,17 @@ ENDIF
 
 ; FARCALL bank 5 at A18Eh. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
 .SHOW_FRONT
-  FARCALL 5, S5_A18E
+  FARCALL 5, RUN_TITLE
   RTS
 
 ; FARCALL bank 5 at AA6Ah. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
 .RUN_GAME_OVER
-  FARCALL 5, S5_AA6A
+  FARCALL 5, GAME_OVER_LOOP
   RTS
 
 ; FARCALL bank 5 at A80Fh. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
 .RUN_MODE_MENU
-  FARCALL 5, S5_A80F
+  FARCALL 5, MODE_MENU_LOOP
   ABS_LDA Z_49
   CMP #&03
   BNE L7_D093
@@ -2514,7 +2514,7 @@ ENDIF
 
 ; FARCALL bank 5 at AB65h. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
 .DRAW_INLINE_STR
-  FARCALL 5, S5_AB65
+  FARCALL 5, PPU_WRITE_TEXT
   RTS
 
 ; Zero the 10 bytes at X_6250 and set X_62DC and X_62DD to 1.
@@ -2604,7 +2604,7 @@ ENDIF
 
 ; FARCALL bank 5 at 9254h, which fills 1A0h bytes at 62F3h with FFh.
 .FILL_MAP_FF
-  FARCALL 5, S5_9254
+  FARCALL 5, FILL_MAP_RAM
   RTS
 
 ; Copy one layout byte into the live map. Returns if Y is 13 or more.
@@ -2659,17 +2659,17 @@ ENDIF
 
 ; FARCALL bank 5 at ACE4h. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
 .MAYBE_AREA_CARD
-  FARCALL 5, S5_ACE4
+  FARCALL 5, SHOW_AREA_INTRO
   RTS
 
 ; FARCALL bank 5 at B07Dh. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
 .RUN_ENDING
-  FARCALL 5, S5_B07D
+  FARCALL 5, ENDING_LOOP
   RTS
 
 ; FARCALL bank 5 at B186h. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
 .RUN_OPENING
-  FARCALL 5, S5_B186
+  FARCALL 5, OPENING_LOOP
   RTS
 .L7_D1B0
   FARCALL 0, S0_B008
@@ -2677,25 +2677,25 @@ ENDIF
 
 ; FARCALL bank 5 at 9280h. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
 .RESET_MARKS
-  FARCALL 5, S5_9280
+  FARCALL 5, INIT_PASS_BYTES
   RTS
 .L7_D1BE
-  FARCALL 5, S5_9295
+  FARCALL 5, RUN_PASS_SCREEN
   RTS
 
 ; FARCALL bank 5 at 9562h. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
 .MIX_STAGE_BYTES
-  FARCALL 5, S5_9562
+  FARCALL 5, MAKE_STAGE_CODE
   RTS
 
 ; FARCALL bank 5 at B209h. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
 .SHOW_VS_RESULT
-  FARCALL 5, S5_B209
+  FARCALL 5, VS_RESULT_LOOP
   RTS
 
 ; FARCALL bank 5 at B4F9h. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
 .SET_WIN_COUNT
-  FARCALL 5, S5_B4F9
+  FARCALL 5, BATTLE_WIN_MENU
   RTS
 
 ; Dispatch the pre-stage screen by Z_49.
@@ -2706,13 +2706,13 @@ ENDIF
   BEQ L7_D1EA
   CMP #&02
   BEQ L7_D1F1
-  FARCALL 5, S5_B6F5
+  FARCALL 5, SHOW_VS_CARD
   RTS
 .L7_D1EA
-  FARCALL 5, S5_B8F6
+  FARCALL 5, SHOW_STAGE_CARD
   RTS
 .L7_D1F1
-  FARCALL 5, S5_B5DA
+  FARCALL 5, SHOW_BATTLE_CARD
   RTS
 
 ; Upload the mode CHR and palettes. Uses bank 1 for one CHR block and bank 4 for palettes selected by MODE_PAL_PTR[Z_49].
@@ -2731,9 +2731,9 @@ ENDIF
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
-  LDA #LO(CARD_BG_CHR)
+  LDA #LO(MODE_BG_CHR)
   STA Z_20
-  LDA #HI(CARD_BG_CHR)
+  LDA #HI(MODE_BG_CHR)
   STA Z_21
   LDA #&00
   STA Z_22
