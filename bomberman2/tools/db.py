@@ -147,6 +147,7 @@ def cmd_comment(key, kind, text):
         sys.exit("comment kind must be '>' or ';'")
     if "\t" in text:
         sys.exit("no tabs in comments")
+    text = text.replace("\r", "").replace("\n", "\\n")   # real newlines -> \n
     mine = own_shard("comments.tsv")
     write_rows(mine, lambda r: not (norm_key(r[0]) == norm_key(key) and r[1] == kind),
                "\t".join([key, kind, text]))
@@ -185,7 +186,7 @@ def main():
         sys.exit(__doc__)
     cmd = a[0]
     if cmd == "name" and len(a) in (3, 4):
-        cmd_name(key_of(a[1]), a[2], a[3] if len(a) > 3 else None)
+        cmd_name(key_of(a[1]), a[2], a[3].replace("\n", " ") if len(a) > 3 else None)
     elif cmd == "comment" and len(a) == 4:
         cmd_comment(key_of(a[1]), a[2], a[3])
     elif cmd == "pointer" and len(a) >= 3:
