@@ -1,6 +1,8 @@
 # Binary output files
 bomberman
 bomberman.nes
+bomberman_jp
+bomberman_jp.nes
 
 # Other files
 *.cdl

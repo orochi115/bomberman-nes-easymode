@@ -1,3 +1,6 @@
+; Build region, override with: beebasm -D REGION_JP ...
+REGION_JP =? FALSE ; FALSE = USA, TRUE = Japan
+
 ; Hardware
 HW_FPS = 60
 HW_SCREEN_X = 256

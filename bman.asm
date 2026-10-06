@@ -9,8 +9,10 @@ INCLUDE "vars.asm"
 .RESET
   SEI
 
+IF REGION_JP = 0
   LDA #0
   STA PPU_CTRL_REG2:STA PPU_CTRL_REG1 ; Reset PPU
+ENDIF
 
   CLD ; NES 6502 does not have BCD-mode, clear the flag in all cases
 
@@ -112,7 +114,11 @@ INCLUDE "vars.asm"
   LDA INMENU
   BEQ DRAW_ARROW_SKIP
 
+IF REGION_JP
+  LDA #&22:LDX #&AA ; START and CONTINUE are on separate rows
+ELSE
   LDA #&22:LDX #&68
+ENDIF
   JSR VRAMADDR
 
   LDY #&B0
@@ -123,7 +129,11 @@ INCLUDE "vars.asm"
 .DRAW_ARROW_START
   STY PPU_DATA
 
+IF REGION_JP
+  LDA #&22:LDX #&EA
+ELSE
   LDA #&22:LDX #&70
+ENDIF
   JSR VRAMADDR
 
   LDY #&B0
@@ -5116,8 +5126,17 @@ INCLUDE "input.asm"
   LDA #6
   JSR SETSPR3PAL
 
-  ; Print the 7 game completed lines of text
   LDY #0
+IF REGION_JP
+  ; Print the 3 game completed lines of text
+  LDA #&20:LDX #&E8
+  JSR PRINT_ASCIIZ
+  LDA #&21:LDX #&23
+  JSR PRINT_ASCIIZ
+  LDA #&21:LDX #&62
+  JSR PRINT_ASCIIZ
+ELSE
+  ; Print the 7 game completed lines of text
   JSR PRINT_XY_ASCIIZ
   JSR PRINT_XY_ASCIIZ
   JSR PRINT_XY_ASCIIZ
@@ -5125,6 +5144,7 @@ INCLUDE "input.asm"
   JSR PRINT_XY_ASCIIZ
   JSR PRINT_XY_ASCIIZ
   JSR PRINT_XY_ASCIIZ
+ENDIF
 
   ; Draw a row of 16 bricks
   LDA #&A:STA CACHE_Y ; Y position
@@ -5148,9 +5168,11 @@ INCLUDE "input.asm"
 ; Print ASCIIZ string with A:X screen location prefix
 .PRINT_XY_ASCIIZ
 {
+IF REGION_JP = 0
   ; Get the screen location first
   LDA STRING_TABLE,Y:INY
   LDX STRING_TABLE,Y:INY
+ENDIF
 
 ; =============== S U B R O U T I N E =======================================
 .^PRINT_ASCIIZ
@@ -5174,6 +5196,11 @@ INCLUDE "input.asm"
 ; ---------------------------------------------------------------------------
 
 .STRING_TABLE
+IF REGION_JP
+  EQUS "CONGRATULATIONS", 0
+  EQUS "BOMBER:MAN:BECOMES:RUNNER", 0
+  EQUS "SEE:YOU:AGAIN:IN:LODE:RUNNER", 0
+ELSE
   EQUB &20, &88
   EQUS "CONGRATULATIONS", 0
 
@@ -5194,6 +5221,7 @@ INCLUDE "input.asm"
 
   EQUB &22, &4B
   EQUS "GOOD:BYE", 0
+ENDIF
 
 .PASSWORD_PROMPT
   EQUS "ENTER:SECRET:CODE", 0
@@ -5531,7 +5559,20 @@ INCLUDE "input.asm"
   BNE pal_loop
 
   JSR VRAMADDRZ
+IF REGION_JP
+  ; Write copyright text
+  LDA #&23:LDX #&83
+  JSR VRAMADDR
+
+  LDX #25
+
+.copyright_loop
+  LDA TITLE_COPYRIGHT,X:STA PPU_DATA ; Title strings are stored reversed
+  DEX
+  BPL copyright_loop
+ELSE
   JSR DRAWMENUTEXT    ; Write text in menus (author's rights, license)
+ENDIF
 
   ; Set screen pointer for next character to write
   LDA #&20:LDX #0
@@ -5557,9 +5598,48 @@ INCLUDE "input.asm"
   INX
   BNE logo_bottom_loop
 
+IF REGION_JP
+.logo_extra_loop
+  LDA MAINMENU_EXTRA,X:STA PPU_DATA
+  INX
+  CPX #&40
+  BNE logo_extra_loop
+
+  ; Print "START" option text
+  LDA #&22:LDX #&AD
+  JSR VRAMADDR
+
+  LDX #4
+
+.start_text_loop
+  LDA TITLE_START,X:STA PPU_DATA
+  DEX
+  BPL start_text_loop
+
+  ; Print "CONTINUE" option text
+  LDA #&22:LDX #&ED
+  JSR VRAMADDR
+
+  LDX #7
+
+.continue_text_loop
+  LDA TITLE_CONTINUE,X:STA PPU_DATA
+  DEX
+  BPL continue_text_loop
+
+  ; Print "TOP:" ahead of the top score
+  LDA #&23:LDX #&48
+  JSR VRAMADDR
+
+  LDA #'T':STA PPU_DATA
+  LDA #'O':STA PPU_DATA
+  LDA #'P':STA PPU_DATA
+  LDA #':':STA PPU_DATA
+ELSE
   ; Set screen pointer for next character to write
   LDA #&22:LDX #&AE
   JSR VRAMADDR
+ENDIF
 
   LDX #0
 
@@ -5594,7 +5674,11 @@ INCLUDE "input.asm"
   JSR VRAMADDR
 
   ; Assign palette for "BOMBERMAN" title logo
+IF REGION_JP
+  LDX #&28
+ELSE
   LDX #&20
+ENDIF
   LDA #%00000000 ; Palette 0 for whole block
 
 .title_attr_loop
@@ -5602,6 +5686,7 @@ INCLUDE "input.asm"
   DEX
   BNE title_attr_loop
 
+IF REGION_JP = 0
   ; Assign palette for bottom of "BOMBERMAN" and ">START  CONTINUE" option text
   LDX #&08
   LDA #%01010000 ; Palette 0 for top half and 1 for bottom half
@@ -5610,6 +5695,7 @@ INCLUDE "input.asm"
   STA PPU_DATA
   DEX
   BNE option_attr_loop
+ENDIF
 
   ; Assign palette for trademarks and license text
   LDX #&18
@@ -5725,6 +5811,16 @@ INCLUDE "input.asm"
 }
 
 ; ---------------------------------------------------------------------------
+IF REGION_JP
+; Title screen strings, stored reversed (drawn right to left)
+.TITLE_COPYRIGHT
+  EQUS "TFOS",&B0,"NOSDUH",&B0,"5891",&B0,"THGIRYPOC" ; COPYRIGHT 1985 HUDSON SOFT
+.TITLE_START
+  EQUS "TRATS"    ; START
+.TITLE_CONTINUE
+  EQUS "EUNITNOC" ; CONTINUE
+ENDIF
+
 .STAGEPAL
   EQUB  &F,  0, &F,&30  ; S0 /      GREY  BLACK WHITE
 
@@ -5752,6 +5848,52 @@ INCLUDE "input.asm"
   EQUB &E ; N
   EQUB  1 ; O
 
+IF REGION_JP
+; Title logo (Japanese version: extra top and shadow rows, no TM mark)
+.MAINMENU_HI
+  EQUB &B0,&B0,&DE,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD
+  EQUB &DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&DD,&F6,&B0
+  EQUB &B0,&B0,&DF,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C1,&C2,&C0,&B6,&E9,&B8
+  EQUB &C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&C1,&D9,&D3,&B3,&C1,&D9,&CB,&D3,&B3,&C1,&C5,&C6,&C1
+  EQUB &B3,&C1,&D9,&D3,&B3,&C1,&D9,&CB,&CB,&C1,&D9,&D3,&B3,&EE,&F8,&B0
+  EQUB &B0,&B0,&DF,&C1,&D0,&D1,&D2,&C1,&CF,&E9,&C4,&B3,&C1,&D5,&D6,&D7
+  EQUB &B3,&C1,&D0,&D1,&D2,&C1,&D0,&DC,&E9,&C1,&D0,&D1,&D2,&EB,&F8,&B0
+  EQUB &B0,&B0,&DF,&C1,&E0,&E1,&E2,&C1,&CF,&E9,&C4,&B3,&C1,&B7,&E6,&E7
+  EQUB &B3,&C1,&E0,&E1,&E2,&C1,&E0,&F5,&EC,&C1,&E0,&E1,&E2,&EF,&F8,&B0
+  EQUB &B0,&B0,&DF,&C1,&E8,&DA,&B3,&C1,&CF,&E9,&C4,&B3,&C1,&CF,&E5,&F0
+  EQUB &B3,&C1,&E8,&DA,&B3,&C1,&E8,&DB,&ED,&C1,&E8,&DA,&B3,&EB,&F8,&B0
+  EQUB &B0,&B0,&DF,&C1,&B5,&E3,&B3,&C1,&B5,&E9,&E3,&B3,&C1,&CF,&E9,&C4
+  EQUB &B3,&C1,&B5,&E3,&B3,&C1,&B5,&E9,&E9,&C1,&CF,&C4,&B3,&EB,&F8,&B0
+  EQUB &B0,&B0,&DF,&B1,&C1,&F1,&C3,&C7,&C1,&C1,&F1,&C3,&B4,&CF,&E9,&B2
+  EQUB &C3,&C7,&C1,&F1,&C3,&C7,&C1,&C1,&C3,&B4,&CF,&B2,&C3,&EB,&F8,&B0
+
+.MAINMENU_LO
+  EQUB &B0,&B0,&DF,&CA,&CB,&CB,&CB,&CE,&CB,&CB,&CB,&CB,&CE,&D8,&E9,&E9
+  EQUB &EA,&CE,&CB,&CB,&CB,&CE,&CB,&CB,&CB,&CE,&D8,&E9,&EA,&CD,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C0,&B6,&E9,&B8,&C2,&C0
+  EQUB &C1,&C1,&C2,&C0,&BC,&E4,&C2,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C1,&C5,&C6,&C1,&B3,&C1
+  EQUB &D9,&D3,&B3,&C1,&BD,&C4,&B3,&EE,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C1,&D5,&D6,&D7,&B3,&C1
+  EQUB &D0,&D1,&B3,&C1,&BE,&F2,&B3,&EB,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C1,&B7,&E6,&E7,&B3,&C1
+  EQUB &E0,&E1,&B3,&C1,&B9,&BF,&B3,&EB,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C1,&CF,&E5,&F0,&B3,&C1
+  EQUB &E8,&DA,&B3,&C1,&BB,&C8,&B3,&EB,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&C1,&CF,&E9,&C4,&B3,&C1
+  EQUB &CF,&C4,&B3,&C1,&C9,&C1,&B3,&EB,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&D4,&CF,&E9,&B2,&C3,&B4
+  EQUB &CF,&B2,&C3,&B4,&CF,&BA,&C3,&EB,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+
+.MAINMENU_EXTRA
+  EQUB &B0,&B0,&DF,&E9,&E9,&E9,&E9,&E9,&E9,&E9,&CA,&D8,&E9,&E9,&EA,&CE
+  EQUB &D8,&E9,&EA,&CE,&D8,&F3,&CB,&CD,&E9,&E9,&E9,&E9,&E9,&E9,&F8,&B0
+  EQUB &B0,&B0,&F4,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9
+  EQUB &F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F9,&F7,&B0
+  EQUB &B0,&B0,&B0,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF
+  EQUB &AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&AF,&B0,&B0
+ELSE
 .MAINMENU_HI
   EQUB &B0,&B0,&DF,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C1,&C2,&C0,&B6,&E9,&B8
   EQUB &C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&C0,&C1,&C1,&C2,&E9,&F8,&B0
@@ -5865,6 +6007,7 @@ INCLUDE "input.asm"
   EQUB &23, &64
   EQUS "NINTENDO",&B0,"OF",&B0,"AMERICA",&B0,"INC",FULLSTOP
   EQUB END_OF_STRING
+ENDIF
 
 ; Tile ids used on stage rows
 .STAGE_ROWS
@@ -6066,4 +6209,8 @@ INCBIN "boom.bin"
 
 .ROMEND
 
-SAVE "bomberman", ROMSTART, ROMEND
+IF REGION_JP
+  SAVE "bomberman_jp", ROMSTART, ROMEND
+ELSE
+  SAVE "bomberman", ROMSTART, ROMEND
+ENDIF
