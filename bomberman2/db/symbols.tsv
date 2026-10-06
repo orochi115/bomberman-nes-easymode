@@ -1,0 +1,10 @@
+# KEY	NAME	[comment]
+# KEY is b:XXXX for PRG bank b (0-7, 7 = fixed bank at $C000) or ram:XXXX for RAM/WRAM.
+7:C852	FAR_CALL	Call routine in another bank (inline: bank, address-1)
+7:C149	BANK_SAVE_SWITCH	Remember current bank in $1A, then switch to bank X
+7:C14E	BANK_SWITCH	Map PRG bank X at $8000
+7:C1B9	BANK_SWITCH_NMI	Map PRG bank X at $8000 (resets MMC1 if interrupted)
+7:C21B	BANK_RESTORE	Map the bank saved by BANK_SAVE_SWITCH
+7:C003	RESET
+7:C01D	NMI
+7:C0AB	IRQ

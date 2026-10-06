@@ -1,0 +1,3 @@
+# PRG ranges whose bytes may legitimately differ in PPU writes of a shifted build.
+# FROM	TO	reason
+7:C000	7:C122	The CHR decoder (FIXED $C5E0) reading the bank 1 graphics at $B724 runs past the end of bank 1 into the fixed bank and uploads code bytes as tile data
