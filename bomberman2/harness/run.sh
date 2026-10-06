@@ -51,7 +51,10 @@ LOG="$MAIN/harness/logs/$TASK.jsonl"
 GROK_OPTS=(--sandbox workspace --permission-mode dontAsk
   --allow "Bash(python3 tools/*)" --allow "Bash(tools/*)" --allow "Bash(./tools/*)"
   --allow "Edit(harness/notes/**)" --allow "Write(harness/notes/**)"
-  --deny "Bash(git*)" --deny "Bash(curl*)" --deny "Bash(wget*)" --deny "Bash(rm *)"
+  --allow "Bash(echo*)" --allow "Bash(pwd)" --allow "Bash(ls*)" --allow "Bash(head*)" --allow "Bash(tail*)"
+  --allow "Bash(grep*)" --allow "Bash(wc*)" --allow "Bash(sort*)" --allow "Bash(uniq*)" --allow "Bash(cat *)"
+  --allow "Bash(sed -n*)" --allow "Bash(awk*)" --allow "Bash(cut*)"
+  --deny "Bash(sed -i*)" --deny "Bash(git*)" --deny "Bash(curl*)" --deny "Bash(wget*)" --deny "Bash(rm *)"
   --disable-web-search --max-turns "${BM2_MAX_TURNS:-400}" --output-format streaming-json)
 
 done_yet() { grep -q "CHECK PASSED" "$W/harness/notes/$TASK.md" 2>/dev/null; }
