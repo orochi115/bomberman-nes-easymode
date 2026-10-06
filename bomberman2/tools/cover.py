@@ -142,9 +142,9 @@ for _a in range(6):
 
 
 def scen_quick(nes, rng):
-    """Short smoke test for tools/check.sh: menu, then area 3 round 2."""
+    """Short smoke test for tools/check.sh: menu, then area 0 and area 3."""
     to_menu(nes)
-    nes.extra = [play_stage(nes, 3, 2, 600, rng)]
+    nes.extra = [play_stage(nes, 0, 0, 400, rng), play_stage(nes, 3, 2, 400, rng)]
 
 SCENARIOS = {k[5:]: v for k, v in globals().items() if k.startswith("scen_")}
 

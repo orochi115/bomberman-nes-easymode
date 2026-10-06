@@ -48,4 +48,3 @@ jp:5:B0FF	lo	jp:5:B103	bank=4
 jp:5:B0F7	lo	jp:5:B0FB	bank=4
 jp:7:CBC3	lo	jp:7:CBC7
 jp:5:ADDF	word	5
-jp:5:AE46	word	5

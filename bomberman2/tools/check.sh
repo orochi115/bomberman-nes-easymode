@@ -28,12 +28,22 @@ if [ $fail -eq 0 ]; then
   else
     scen="quick"; regions="us"; shifts="1"
   fi
+  jobs=""
   for r in $regions; do
     for s in $shifts; do
       ./make.sh $r shift $s > /dev/null 2>&1 || { echo "shift build $r $s failed"; fail=1; continue; }
-      python3 tools/shifttest.py $r build/bomberman2_${r}_shift$s.nes $scen | sed "s/^/  $r shift $s: /" || fail=1
+      for sc in $scen; do jobs="$jobs $r:$s:$sc"; done
     done
   done
+  # one emulator pair per job, in parallel
+  results=$(echo $jobs | tr ' ' '\n' | xargs -P ${BM2_JOBS:-12} -I{} sh -c '
+    IFS=: read r s sc <<EOT
+{}
+EOT
+    out=$(python3 tools/shifttest.py $r build/bomberman2_${r}_shift$s.nes $sc 2>&1) || echo "FAIL"
+    echo "$out" | sed "s/^/  $r shift $s: /"')
+  echo "$results" | grep -v "^FAIL$"
+  echo "$results" | grep -q "^FAIL$\|DIFF" && fail=1
 fi
 
 if [ $fail -eq 0 ]; then echo "CHECK PASSED"; else echo "CHECK FAILED"; exit 1; fi

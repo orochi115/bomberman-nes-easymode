@@ -50,16 +50,22 @@ class Merger:
 
     def align_bytes(self):
         amap = {}
+        eqmap = {}    # only bytes inside 'equal' runs: safe for copying facts
         for n in range(8):
             base = self.us.d.banks[n].base
             us, jp = self.symbols(self.us, n), self.symbols(self.jp, n)
             sm = difflib.SequenceMatcher(None, us, jp)
             for tag, i1, i2, j1, j2 in sm.get_opcodes():
+                long_equal = tag == "equal" and i2 - i1 >= 8
                 if tag == "equal" or (tag == "replace" and i2 - i1 == j2 - j1):
                     for d in range(i2 - i1):
                         amap[(n, base + j1 + d)] = (n, base + i1 + d)
+                        if long_equal:      # short equal runs can be coincidences
+                            eqmap[(n, base + j1 + d)] = (n, base + i1 + d)
         self.amap = amap
         self.rmap = {v: k for k, v in amap.items()}
+        self.eqmap = eqmap
+        self.reqmap = {v: k for k, v in eqmap.items()}
 
     def norm_items(self, e, n):
         e.norm = True
@@ -109,7 +115,9 @@ class Merger:
     def propagate(self):
         """Share what one region's coverage found with the other region."""
         changed = 0
-        for src, dst, fwd in ((self.us, self.jp, self.rmap), (self.jp, self.us, self.amap)):
+        # Only through byte-identical runs: a 'replace' run of the same length can
+        # hold different tables in the two regions (e.g. coordinates vs pointers).
+        for src, dst, fwd in ((self.us, self.jp, self.reqmap), (self.jp, self.us, self.eqmap)):
             # pointers: map where the lo/hi bytes are, take the target from the
             # bytes actually present in the other region
             for lo, hi, tb, v, adj in list(src.pairs):

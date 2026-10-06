@@ -112,7 +112,7 @@ class Pair:
             bad = n
         if bad is not None:
             self.diff = (self.frame, self.qa[bad:bad + 1], self.qb[bad:bad + 1], self.a.illegal, self.b.illegal)
-            raise Lockstep()
+            raise Lockstep(self)
         del self.qa[:n]
         del self.qb[:n]
 
@@ -144,8 +144,9 @@ def main():
             print("%-12s OK (%d frames)" % (name, p.frame), flush=True)
             for x in getattr(p, "extra", []):
                 pass
-        except Lockstep:
+        except Lockstep as ex:
             bad += 1
+            p = ex.args[0]          # the pair that diverged (stage runs use copies)
             print("%-12s DIFF %s" % (name, describe(p.diff)), flush=True)
             out = os.environ.get("SHOTS", "/tmp")
             p.a.screenshot(os.path.join(out, "shift_%s_orig.png" % name))
