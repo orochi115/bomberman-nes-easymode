@@ -66,7 +66,7 @@ grok -p "$PROMPT" "${GROK_OPTS[@]}" >> "$LOG" 2>&1 || true
 round=1
 while ! done_yet && [ $round -le "${BM2_ROUNDS:-8}" ]; do
   echo "== round $round: task not finished, continuing the session" | tee -a "$MAIN/harness/logs/$TASK.log"
-  grok -c -p "继续执行任务 ${TASK}，不要停下来汇报计划：直接调用工具完成剩余工作（命名、注释、指针、笔记），最后运行 tools/check.sh 并把 CHECK PASSED 贴进 harness/notes/${TASK}.md。" \
+  grok -c -p "继续执行任务 ${TASK}，不要停下来汇报计划：直接调用工具完成剩余工作（命名、注释、指针、笔记），最后运行 tools/check.sh 并把 CHECK PASSED 贴进 harness/notes/${TASK}.md。如果上一条命令被拒绝，先重读 harness/RULES.md 第 2 节（每次一条命令；db.py 的文本参数用单引号，不要写撇号，不要用 \$ 变量；不要写脚本、不要用 python3 -c）。" \
     "${GROK_OPTS[@]}" >> "$LOG" 2>&1 || true
   round=$((round + 1))
 done

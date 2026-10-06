@@ -119,12 +119,20 @@ def cmd_show(src, name, maxn):
     n = src.lines[i][0]
     print("; bank%d.asm:%d" % (n, src.lines[j][1]))
     count = 0
+    pending = []          # comment lines that may belong to the next routine
     for k in range(j, len(src.lines)):
         if src.lines[k][0] != n:
             break
-        if k > i and src.routine_of[k] != src.routine_of[i] and src.lines[k][2].strip().startswith("."):
+        text = src.lines[k][2]
+        if k > i and src.routine_of[k] != src.routine_of[i] and text.strip().startswith("."):
             break
-        print(src.lines[k][2])
+        if k > i and (text.startswith(";") or not text.strip()):
+            pending.append(text)
+            continue
+        for p in pending:
+            print(p)
+        pending = []
+        print(text)
         count += 1
         if count >= maxn:
             print("... (truncated, use -n)")
@@ -201,7 +209,7 @@ def cmd_todo(src, bank):
 
 
 def cmd_stats(src):
-    print("bank  routines named/total   labels named/total   data named/total   block comments")
+    print("bank  unnamed routines   named labels   comment lines")
     for n in range(8):
         labs = [l for l, i in src.labels.items() if src.lines[i][0] == n]
         def count(prefix):
@@ -210,7 +218,7 @@ def cmd_stats(src):
         subs_ph = count("S")
         named = [l for l in labs if not PLACEHOLDER.match(l)]
         comments = sum(1 for (b, ln, t) in src.lines if b == n and t.startswith(";") and ln > 4)
-        print("%d     %4d placeholders        %4d named labels     %5d comment lines" % (
+        print("%d     %8d   %12d   %13d" % (
             n, len(subs_ph), len(named), comments))
     rams = [v for v in src.vars if RAM_PH.match(v)]
     named = [v for v in src.vars if not RAM_PH.match(v)]
