@@ -270,6 +270,9 @@ def main():
                 print("  " + c)
             # Problems caused by db/ entries must be fixed by whoever wrote them
             bad += sum(1 for c in e.conflicts if ".tsv" in c or c.startswith("pointers:"))
+        for p in e.d.db_errors:
+            print("  " + p)
+            bad += 1
     if bad:
         print("ERROR: %d db entries could not be applied (see above)" % bad)
         sys.exit(2)

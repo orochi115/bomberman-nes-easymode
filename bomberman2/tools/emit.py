@@ -120,6 +120,8 @@ class Emitter:
     def __init__(self, region):
         self.d = Disasm(region)
         self.d.trace()
+        self.d.db_errors = []
+        self.d.declared_code()
         self.d.speculate()
         self.region = region
         self.names = {}            # (bank|'ram', addr) -> name
@@ -217,6 +219,13 @@ class Emitter:
             tb = FIXED if v >= 0xC000 else int(opts.get("bank", n if n != FIXED else -1))
             if tb < 0:
                 raise ValueError("pointer to $%04X from the fixed bank needs bank=" % v)
+            bad = self.bad_pointer_bytes(kind, lo_off, hi_off)
+            if bad:
+                if self.region != "us" and len(row[0].split(":")) == 2:
+                    self.warnings.append("pointers: US %s does not apply to %s (%s)" % (row[0], self.region.upper(), bad))
+                else:
+                    self.conflicts.append("pointers: %s %s: %s (skipped)" % (row[0], kind, bad))
+                continue
             if not self.d.banks[tb].inside(v):
                 if self.region != "us" and len(row[0].split(":")) == 2:
                     # US-keyed entry whose JP counterpart differs: US only
@@ -231,6 +240,23 @@ class Emitter:
                 if off in roles and roles[off] != new:
                     raise ValueError("byte %d:%04X already has role %r" % (off // 0x4000, off % 0x4000, roles[off]))
                 roles[off] = new
+
+    def bad_pointer_bytes(self, kind, lo_off, hi_off):
+        """A declared pointer must be data bytes ('word', 'split'), or data or
+        immediate operands ('lo'); never opcodes or other operands."""
+        for off in (lo_off, hi_off):
+            n, a = off // 0x4000, off % 0x4000
+            b = self.d.banks[n]
+            k = b.kind[a]
+            if k == UNKNOWN:
+                continue
+            if k == OPND and kind == "lo":
+                st = b.base + a - 1
+                if st in b.insn and b.insn[st][2] == "imm":
+                    continue
+            return "%d:%04X is %s" % (n, b.base + a, {OP: "an opcode", OPND: "an operand",
+                                                      DATA: "inside a FARCALL"}.get(k, "code"))
+        return None
 
     def region_key(self, k):
         """db key -> (bank, addr) for this region, or None if it is another region's."""

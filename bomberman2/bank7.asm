@@ -97,6 +97,8 @@
   LDA #&00
   STA SND_NMI_LOCK
   JMP L7_C0A6
+
+; (not seen executing during the coverage runs)
 .L7_C0A5
   NOP
 .L7_C0A6
@@ -150,7 +152,7 @@
   BNE L7_C0DA
   RTS
 
-; Reset MMC1, clear the saved bank and CUR_BANK, and map bank 0 at 8000h.
+; Reset MMC1, clear the saved bank and CUR_BANK, and map bank 0 at SPAWN_STAGE_ENEMIES.
 .INIT_MAPPER
   LDA #&00
   STA MMC1_GUARD
@@ -160,7 +162,7 @@
   STX SAVED_BANK
   JMP BANK_SWITCH
 
-; Write the MMC1 reset sequence: control 0Eh (16K PRG at 8000h, fixed C000h), CHR banks 0.
+; Write the MMC1 reset sequence: control 0Eh (16K PRG at 8000h, fixed SWITCH_BANK), CHR banks 0.
 ; Does not select the PRG bank.
 .MMC1_RESET
   LDA #&FF
@@ -532,6 +534,8 @@ ELSE
   STA JOY_SIG_OK
   JSR READ_JOY_PROBE
   BNE L7_C393
+
+; (not seen executing during the coverage runs)
   INC JOY_SIG_OK
   JSR READ_JOY_ALT
   JMP L7_C3DC
@@ -585,18 +589,24 @@ ENDIF
   LDA JOYPAD1
   CMP JOYPAD1_2ND
   BEQ L7_C3EA
+
+; (not seen executing during the coverage runs)
   LDX JOYPAD1_OLD
   STX JOYPAD1
 .L7_C3EA
   LDA JOYPAD2
   CMP JOYPAD2_2ND
   BEQ L7_C3F8
+
+; (not seen executing during the coverage runs)
   LDX JOYPAD2_OLD
   STX JOYPAD2
 .L7_C3F8
   LDA JOYPAD3
   CMP JOYPAD3_2ND
   BEQ L7_C406
+
+; (not seen executing during the coverage runs)
   LDX JOYPAD3_OLD
   STX JOYPAD3
 .L7_C406
@@ -660,10 +670,14 @@ ELSE
   LDA JOY_PROBE_1
   CMP #&10
   BNE L7_C47C
+
+; (not seen executing during the coverage runs)
   LDA JOY_PROBE_2
   CMP #&20
 .L7_C47C
   RTS
+
+; (not seen executing during the coverage runs)
 
 ; US only. Second pad read, used when READ_JOY_PROBE matches.
 ; Same AND-3 test into the _2ND bytes, then 8 bits of port1 bit0 into JOYPAD3_2ND.
@@ -878,7 +892,7 @@ ENDIF
   JMP BANK_SWITCH
 
 ; Switch to bank X and copy Y*16 raw bytes from (20h) to PPU address 22h/23h.
-; Restores the previous bank. Used by the bank-5 tile upload at 802Fh.
+; Restores the previous bank. Used by the bank-5 tile upload at UPLOAD_LEVEL_CHR.
 .UPLOAD_CHR_RAW
   LDA CUR_BANK
   PHA
@@ -911,7 +925,7 @@ ENDIF
 
 ; Decode 8 pixels of one CHR bitplane from (20h) into 1Eh.
 ; A 0 bit repeats the previous byte; a 1 bit reads a new byte. Bits live in 1Dh.
-; The upload that starts at bank 1 B724h reads past that bank into C000h-C122h of this fixed bank. That is original behavior (see shift_ignore).
+; The upload that starts at bank 1 ENDING_SPR_CHR reads past that bank into SWITCH_BANK-S7_C122 of this fixed bank. That is original behavior (see shift_ignore).
 .DECODE_CHR
   LDX #&08
   LDY #&00
@@ -953,8 +967,11 @@ ENDIF
   LDA PPU_CTRL_BUF
   AND #&FB
   TAY
+.L7_C61D
   LDA PPU_QUEUE,X
   BPL L7_C626
+
+; (not seen executing during the coverage runs)
   INY
   INY
   INY
@@ -1194,6 +1211,8 @@ ENDIF
 .L7_C7DC
   CPY #&1E
   BCC L7_C7ED
+
+; (not seen executing during the coverage runs)
   TYA
   SEC
   SBC #&1E
@@ -1284,6 +1303,8 @@ ENDIF
   ADC #&03
   STA Z_38
   BCC L7_C869
+
+; (not seen executing during the coverage runs)
   INX
 .L7_C869
   TXA
@@ -1377,7 +1398,7 @@ ENDIF
 .AUDIO_CMD_80
   LDA #&80
 
-; Call the bank-2 sound routine at D803h (which jumps to L2_806Dh).
+; Call the bank-2 sound routine at SND_REQUEST_ENTRY (which jumps to L2_806Dh).
 ; In: A = command, X = argument. Out: A and X from that routine. Restores the previous bank.
 .AUDIO_CALL
   STA SND_RET_A
@@ -1439,10 +1460,14 @@ ENDIF
   BNE MENU_LOOP
   LDA W_054F
   BEQ L7_C964
+
+; (not seen executing during the coverage runs)
   JMP ENTER_Z49_1
 .L7_C964
   LDA W_0550
   BEQ L7_C96C
+
+; (not seen executing during the coverage runs)
   JMP ENTER_W0550
 .L7_C96C
   LDA #&FF
@@ -1465,9 +1490,11 @@ ENDIF
   BNE STAGE_SETUP
   LDA W_04C9
   BPL NEW_AREA
+
+; (not seen executing during the coverage runs)
   JMP ALL_CLEAR
 
-; Copy W_04C9 into the area, zero the stage, call bank 5 at 9936h (zeros 055Eh-0560h) and RESET_PLAYERS.
+; Copy W_04C9 into the area, zero the stage, call bank 5 at CLEAR_SCORE_RAM (zeros 055Eh-0560h) and RESET_PLAYERS.
 .NEW_AREA
   STA Z_4B
   LDA #&00
@@ -1540,6 +1567,8 @@ ENDIF
   LDA W_03EF
   BEQ L7_CA3F
   JMP DEMO_EXIT
+
+; (not seen executing during the coverage runs)
 .L7_CA3F
   ABS_LDA Z_B4
   BEQ L7_CA47
@@ -1576,6 +1605,8 @@ ENDIF
 .L7_CA75
   LDA Z_69,X
   BEQ L7_CA7F
+
+; (not seen executing during the coverage runs)
   LDA Z_84,X
   BNE L7_CA7F
   TXA
@@ -1586,6 +1617,8 @@ ENDIF
   STY W_04C8
   CPY #&FF
   BEQ L7_CAC1
+
+; (not seen executing during the coverage runs)
   LDA W_055E,Y
   CLC
   ADC #&01
@@ -1628,16 +1661,20 @@ ENDIF
 .L7_CAD6
   JMP RESUME_MODE
 
-; Return from a demo stage. If the demo flag is negative, go back to the menu path at C954h.
+; Return from a demo stage. If the demo flag is negative, go back to the menu path at S7_C954.
 ; If the demo index is 3, restart at GAME_LOOP. Otherwise repeat MENU_LOOP.
 .DEMO_EXIT
   LDA W_03EF
   BPL L7_CAE1
+
+; (not seen executing during the coverage runs)
   JMP L7_C954
 .L7_CAE1
   LDA W_03F0
   CMP #&03
   BNE L7_CAEB
+
+; (not seen executing during the coverage runs)
   JMP GAME_LOOP
 .L7_CAEB
   JMP MENU_LOOP
@@ -1657,13 +1694,15 @@ ENDIF
 .AREA_BGM_ID
   EQUB &0E,&0F,&0E,&0F,&0E,&10
 
-; Z_B4 was nonzero after a clear. FARCALL bank 5 at 9E92h, which saves the area and stage,
+; (not seen executing during the coverage runs)
+
+; Z_B4 was nonzero after a clear. FARCALL bank 5 at RUN_BONUS_STAGE, which saves the area and stage,
 ; forces stage 7, Z_90=8, Z_93=5 and Z_4E=1, then returns to STAGE_WON.
 .PREP_STAGE_B4
   FARCALL 5, RUN_BONUS_STAGE
   JMP STAGE_WON
 
-; Load area CHR and the sprite palettes, then return from the tail at CB14h.
+; Load area CHR and the sprite palettes, then return from the tail at S7_CB14.
 ; CB14h also copies 16 bytes of area palette data from bank 4 and mirrors the background color.
 .LOAD_STAGE_GFX
   JSR LOAD_AREA_CHR
@@ -1727,7 +1766,7 @@ ENDIF
 .SPR_PAL_OTHER
   EQUB &0F,&0F,&27,&11,&0F,&0F,&26,&30,&0F,&0F,&26,&16,&0F,&0F,&21,&20
 
-; Upload fixed CHR from bank 6 at 8000h (80h tiles to PPU 1000h),
+; Upload fixed CHR from bank 6 at PLAY_SPR_CHR (80h tiles to PPU 1000h),
 ; area CHR from AREA_CHR_PTR (60h tiles to 1A00h), and enemy CHR from bank 1.
 ; Area 5 picks the enemy set with AREA5_CHR_IDX[stage]; other areas use the area index.
 ; Enemy tiles go to PPU 0C00h, 40h tiles. Does not restore the bank itself; the caller does.
@@ -1832,6 +1871,8 @@ ENDIF
   LDA JOY_NEW
   AND #&10
   BEQ L7_CCA0
+
+; (not seen executing during the coverage runs)
   LDA #&06
   JSR AUDIO_CALL
   LDA #&83
@@ -1880,23 +1921,27 @@ ENDIF
   LDA JOY_NEW
   AND #&90
   BEQ L7_CCA0
+
+; (not seen executing during the coverage runs)
   LDA #&FF
   STA W_03EF
   LDA #&F0
   STA Z_53
   RTS
 
-; Five ASCII bytes "PAUSE", queued by UPDATE_PAUSE. The US pointer is CCB2h; the JP build uses the same bytes at its own address.
+; Five ASCII bytes "PAUSE", queued by UPDATE_PAUSE. The US pointer is PAUSE_TEXT; the JP build uses the same bytes at its own address.
 .PAUSE_TEXT
   EQUB &50,&41,&55,&53,&45
 
-; W_054F was nonzero. FARCALL bank 5 at 9FC0h, which sets Z_49 to 1 and runs its own frame loop.
+; (not seen executing during the coverage runs)
+
+; W_054F was nonzero. FARCALL bank 5 at RUN_MODE1_MENU, which sets Z_49 to 1 and runs its own frame loop.
 ; That call does not return; the following jump back to GAME_LOOP is not reached.
 .ENTER_Z49_1
   FARCALL 5, RUN_MODE1_MENU
   JMP GAME_LOOP
 
-; W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at 9E92h,
+; W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at RUN_BONUS_STAGE,
 ; fade out, blank the PPU and jump to GAME_LOOP.
 .ENTER_W0550
   LDA #&01
@@ -1915,6 +1960,8 @@ ENDIF
   LDA Z_58
   CMP #&FF
   BNE L7_CCE4
+
+; (not seen executing during the coverage runs)
   DEC Z_59
 .L7_CCE4
   LDY #&00
@@ -1956,6 +2003,8 @@ ENDIF
   LDA Z_5A
   AND #&80
   BEQ L7_CD2F
+
+; (not seen executing during the coverage runs)
   INY
   LDA (Z_54),Y
   EOR #&FF
@@ -2017,17 +2066,17 @@ ENDIF
   FARCALL 4, DECODE_LAYOUT
   RTS
 
-; FARCALL bank 4 at B800h. That routine sets 62h/64h/66h from tables indexed by the area.
+; FARCALL bank 4 at LOAD_AREA_LAYOUT. That routine sets 62h/64h/66h from tables indexed by the area.
 .BIND_AREA_PTRS
   FARCALL 4, LOAD_AREA_LAYOUT
   RTS
 
-; FARCALL bank 4 at B909h. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
+; FARCALL bank 4 at PLACE_SOFT_AND_BOMBS. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
 .LOAD_STAGE_META
   FARCALL 4, PLACE_SOFT_AND_BOMBS
   RTS
 
-; FARCALL bank 5 at 802Fh, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
+; FARCALL bank 5 at UPLOAD_LEVEL_CHR, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
 .LOAD_4_TILES
   FARCALL 5, UPLOAD_LEVEL_CHR
   RTS
@@ -2101,6 +2150,8 @@ ENDIF
 .L7_CE11
   LDA Z_B3
   BEQ L7_CE17
+
+; (not seen executing during the coverage runs)
   DEC Z_B3
 .L7_CE17
   ABS_LDY Z_49
@@ -2151,7 +2202,7 @@ ENDIF
 .MODE_BYTE_93
   EQUB &00,&02,&01
 
-; FARCALL bank 5 at 8168h. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
+; FARCALL bank 5 at UPDATE_ACTORS. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
 .UPDATE_PLAYERS
   FARCALL 5, UPDATE_ACTORS
   RTS
@@ -2165,6 +2216,8 @@ ENDIF
   LDA Z_B0
   CMP #&01
   BNE L7_CE93
+
+; (not seen executing during the coverage runs)
   LDA X_611E,Y
   CMP Z_9D
   BNE L7_CE93
@@ -2222,6 +2275,8 @@ ENDIF
   LDA #&04
   JSR AUDIO_CALL
   RTS
+
+; (not seen executing during the coverage runs)
 
 ; If Z_4E is set, increment Z_B7 and play sound 16h.
 ; Otherwise mark every live slot (Z_69 set, Z_84 clear) with Z_81=8, Z_7E=0, Z_84=1 and play sound 04h if any slot changed.
@@ -2329,7 +2384,7 @@ ENDIF
   BPL L7_CF7D
   RTS
 
-; Map bank 5 and call BA56h, which walks the 24 slots at X_6001 on alternate frames. Restores the bank.
+; Map bank 5 and call STEP_BLASTS, which walks the 24 slots at X_6001 on alternate frames. Restores the bank.
 .UPDATE_BLASTS
   LDA CUR_BANK
   PHA
@@ -2404,6 +2459,8 @@ ENDIF
 .L7_CFFD
   DEY
   BPL L7_CFE8
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 .L7_D002
@@ -2419,6 +2476,8 @@ ENDIF
   INY
   CPY #&20
   BCC L7_D014
+
+; (not seen executing during the coverage runs)
   LDY #&00
 .L7_D014
   STY X_60E1
@@ -2454,6 +2513,8 @@ ENDIF
 .L7_D047
   DEY
   BPL L7_D033
+
+; (not seen executing during the coverage runs)
   RTS
 
 ; Find a zero flag in the 15 bytes at 04EBh.
@@ -2465,6 +2526,8 @@ ENDIF
   BEQ L7_D057
   DEX
   BPL L7_D04D
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 .L7_D057
@@ -2489,20 +2552,22 @@ ENDIF
 .L7_D070
   DEX
   BPL L7_D05B
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 
-; FARCALL bank 5 at A18Eh. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
+; FARCALL bank 5 at RUN_TITLE. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
 .SHOW_FRONT
   FARCALL 5, RUN_TITLE
   RTS
 
-; FARCALL bank 5 at AA6Ah. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
+; FARCALL bank 5 at GAME_OVER_LOOP. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
 .RUN_GAME_OVER
   FARCALL 5, GAME_OVER_LOOP
   RTS
 
-; FARCALL bank 5 at A80Fh. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
+; FARCALL bank 5 at MODE_MENU_LOOP. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
 .RUN_MODE_MENU
   FARCALL 5, MODE_MENU_LOOP
   ABS_LDA Z_49
@@ -2512,7 +2577,7 @@ ENDIF
 .L7_D093
   RTS
 
-; FARCALL bank 5 at AB65h. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
+; FARCALL bank 5 at PPU_WRITE_TEXT. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
 .DRAW_INLINE_STR
   FARCALL 5, PPU_WRITE_TEXT
   RTS
@@ -2535,7 +2600,7 @@ ENDIF
   STA X_62E6
   RTS
 
-; If Z_49 is 0, map bank 0 and call 824Fh and 82FEh for each of the 10 X_6250 slots that is nonzero, then 83BEh, 8179h, 81A6h and 821Eh.
+; If Z_49 is 0, map bank 0 and call DISPATCH_ENEMY_AI and ENEMY_BLAST_OR_PLAYER for each of the 10 X_6250 slots that is nonzero, then DRAW_ALL_ENEMIES, SPAWN_BURST, SPAWN_TYPE_4 and NOTE_ENEMIES_CLEARED.
 ; Always increments X_62DD. Restores the bank.
 .UPDATE_ENEMIES
   ABS_LDA Z_49
@@ -2566,12 +2631,14 @@ ENDIF
   INC X_62DD
   RTS
 
-; FARCALL bank 0 at 8000h. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
+; FARCALL bank 0 at SPAWN_STAGE_ENEMIES. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
 .LOAD_ENEMIES
   FARCALL 0, SPAWN_STAGE_ENEMIES
   RTS
 
-; FARCALL bank 0 at 8090h. That routine uses FRAME_CNT and steps an index in X_62E6.
+; (not seen executing during the coverage runs)
+
+; FARCALL bank 0 at SPAWN_PARADE. That routine uses FRAME_CNT and steps an index in X_62E6.
 .STEP_ENEMY_GEN
   FARCALL 0, SPAWN_PARADE
   RTS
@@ -2602,7 +2669,7 @@ ENDIF
 .L7_D137
   RTS
 
-; FARCALL bank 5 at 9254h, which fills 1A0h bytes at 62F3h with FFh.
+; FARCALL bank 5 at FILL_MAP_RAM, which fills 1A0h bytes at 62F3h with FFh.
 .FILL_MAP_FF
   FARCALL 5, FILL_MAP_RAM
   RTS
@@ -2657,49 +2724,57 @@ ENDIF
   FARCALL 0, ADD_SCORE
   RTS
 
-; FARCALL bank 5 at ACE4h. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
+; FARCALL bank 5 at SHOW_AREA_INTRO. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
 .MAYBE_AREA_CARD
   FARCALL 5, SHOW_AREA_INTRO
   RTS
 
-; FARCALL bank 5 at B07Dh. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
+; (not seen executing during the coverage runs)
+
+; FARCALL bank 5 at ENDING_LOOP. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
 .RUN_ENDING
   FARCALL 5, ENDING_LOOP
   RTS
 
-; FARCALL bank 5 at B186h. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
+; FARCALL bank 5 at OPENING_LOOP. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
 .RUN_OPENING
   FARCALL 5, OPENING_LOOP
   RTS
+
+; (not seen executing during the coverage runs)
 .L7_D1B0
   FARCALL 0, SHOW_CREDITS
   RTS
 
-; FARCALL bank 5 at 9280h. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
+; FARCALL bank 5 at INIT_PASS_BYTES. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
 .RESET_MARKS
   FARCALL 5, INIT_PASS_BYTES
   RTS
 .L7_D1BE
   FARCALL 5, RUN_PASS_SCREEN
+
+; (not seen executing during the coverage runs)
   RTS
 
-; FARCALL bank 5 at 9562h. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
+; FARCALL bank 5 at MAKE_STAGE_CODE. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
 .MIX_STAGE_BYTES
   FARCALL 5, MAKE_STAGE_CODE
   RTS
 
-; FARCALL bank 5 at B209h. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
+; (not seen executing during the coverage runs)
+
+; FARCALL bank 5 at VS_RESULT_LOOP. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
 .SHOW_VS_RESULT
   FARCALL 5, VS_RESULT_LOOP
   RTS
 
-; FARCALL bank 5 at B4F9h. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
+; FARCALL bank 5 at BATTLE_WIN_MENU. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
 .SET_WIN_COUNT
   FARCALL 5, BATTLE_WIN_MENU
   RTS
 
 ; Dispatch the pre-stage screen by Z_49.
-; 0 calls bank 5 at B8F6h, 2 calls B5DAh, anything else calls B6F5h.
+; 0 calls bank 5 at SHOW_STAGE_CARD, 2 calls SHOW_BATTLE_CARD, anything else calls SHOW_VS_CARD.
 ; Each of those turns NMI off, calls LOAD_MODE_GFX, draws, and plays sound 1Dh.
 .SETUP_BY_MODE
   ABS_LDA Z_49
@@ -2711,12 +2786,14 @@ ENDIF
 .L7_D1EA
   FARCALL 5, SHOW_STAGE_CARD
   RTS
+
+; (not seen executing during the coverage runs)
 .L7_D1F1
   FARCALL 5, SHOW_BATTLE_CARD
   RTS
 
 ; Upload the mode CHR and palettes. Uses bank 1 for one CHR block and bank 4 for palettes selected by MODE_PAL_PTR[Z_49].
-; Then copies 16 more palette bytes from bank 4 at B129h and mirrors the background color.
+; Then copies 16 more palette bytes from bank 4 at MODE_SPR_PAL and mirrors the background color.
 .LOAD_MODE_GFX
   LDA CUR_BANK
   PHA
@@ -2768,7 +2845,7 @@ ENDIF
   RTS
 
 ; Three pointers, indexed by Z_49, to 16-byte palette rows in bank 4.
-; Entry 0 is B139h. Entries 1 and 2 are both B119h. LOAD_MODE_GFX copies the selected row to PAL_BUF.
+; Entry 0 is STORY_MODE_PAL. Entries 1 and 2 are both UI_BG_PAL. LOAD_MODE_GFX copies the selected row to PAL_BUF.
 .MODE_PAL_PTR
   EQUB LO(STORY_MODE_PAL)
 .D7_D25E
@@ -2853,7 +2930,7 @@ ENDIF
   EQUB &06,&00,&01,&00,&02,&02,&12,&54,&D4,&00,&02,&00,&02,&02,&55,&56
   EQUB &A3,&00,&03,&00,&02,&02,&00,&00,&00,&00
 
-; One byte, value 01h. Bank 5 at 99EDh skips copying JOYPAD1 into the demo slots when this byte is nonzero.
+; One byte, value 01h. Bank 5 at SERVICE_DEMO_PAD skips copying JOYPAD1 into the demo slots when this byte is nonzero.
 .DEMO_PAD_LOCK
   EQUB &01
 IF REGION_JP
@@ -3372,6 +3449,8 @@ ENDIF
   BMI L7_DB41
   CMP #&20
   BCC L7_DB43
+
+; (not seen executing during the coverage runs)
   LDA #&1F
   BNE L7_DB43
 .L7_DB41
@@ -3413,6 +3492,8 @@ ENDIF
   AND #&0F
   JSR SND_MUL_DURATION
   JMP L7_DB84
+
+; (not seen executing during the coverage runs)
 .L7_DB7D
   LDY #&00
   LDA (Z_00),Y
@@ -3462,6 +3543,8 @@ ENDIF
   BPL L7_DBB6
   STA W_0231,X
   BNE L7_DBD8
+
+; (not seen executing during the coverage runs)
   LDA #&01
   STA W_0231,X
 .L7_DBD8
@@ -3485,6 +3568,8 @@ ENDIF
   TAY
   INY
   BNE L7_DBE0
+
+; (not seen executing during the coverage runs)
   RTS
 .L7_DBF4
   LDA Z_0C
@@ -3495,6 +3580,8 @@ ENDIF
   AND #&0F
   JSR SND_MUL_DURATION
   JMP L7_DC12
+
+; (not seen executing during the coverage runs)
 .L7_DC07
   PLA
   TAY

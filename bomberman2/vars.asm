@@ -472,6 +472,7 @@ IF REGION_JP
   W_0561                  = &055F
   W_0562                  = &0560
   W_0563                  = &0561
+  JX_62EA                 = &62EA
 ELSE
   JOY_PROBE_1             = &45 ; US extra byte shifted from pad port 1
   JOY_PROBE_2             = &46 ; US extra byte shifted from pad port 2
@@ -598,6 +599,7 @@ ELSE
   W_0561                  = &0561
   W_0562                  = &0562
   W_0563                  = &0563
+  X_62EA                  = &62EA
 ENDIF
 
 MMC1_CONTROL            = &9FFF

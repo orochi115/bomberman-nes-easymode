@@ -82,7 +82,8 @@ def scan(e, bank_filter=None):
                 if base + p1 + 1 - b.base in roles or base + p2 + 1 - b.base in roles:
                     continue
                 val = v1 | v2b << 8
-                if target_ok(e, b.n, val, strict=False):
+                # #lo/#hi stored to a zero page pair: an address in ROM is enough
+                if val >= 0x8000 and (val >= 0xC000 or b.n != 7):
                     out.append(("imm", "%d:%04X" % (b.n, p1 + 1), "$%04X" % val, "hi %d:%04X" % (b.n, p2 + 1), "high"))
             elif md1 in ("abx", "aby") and md2b == md1 and v1 >= 0x8000 and v2b >= 0x8000:
                 tb1 = FIXED if v1 >= 0xC000 else b.n

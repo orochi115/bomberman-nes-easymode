@@ -56,6 +56,8 @@
 ; 16 row numbers. SPAWN_ENEMY_ON_EMPTY indexes this with RNG and 0F.
 .SPAWN_ROW_PICK
   EQUB &01,&02,&03,&04,&05,&06,&07,&08,&09,&0A,&0B,&03,&04,&05,&06,&07
+
+; (not seen executing during the coverage runs)
 .L0_8066
   LDA #&07
   STA Z_2A
@@ -78,6 +80,8 @@
 ; Eight rows for the Z_4E fixed spawns. Paired with FIXED_SPAWN_COL.
 .FIXED_SPAWN_ROW
   EQUB &03,&07,&05,&05,&09,&03,&07,&07
+
+; (not seen executing during the coverage runs)
 
 ; Every 4th frame, place a type-0 enemy on the next PARADE_SPAWN_COL/ROW point. X_62E6 walks 0 through 64. Also runs SPAWN_TYPE_10.
 .SPAWN_PARADE
@@ -131,8 +135,6 @@
   INC X_62E9
   RTS
 
-; (not seen executing during the coverage runs)
-
 ; If X_62E8 is 0, set it to 1 and X_62E9 to F0. The type 10 hex AI bytes call this when the phase is 0.
 .ARM_TYPE10_TIMER
   LDA X_62E8
@@ -163,6 +165,8 @@
 .SPAWN_BURST
   LDA X_62EB
   BEQ L0_81A1
+
+; (not seen executing during the coverage runs)
   DEC X_62EB
   BNE L0_81A1
   LDA X_62EC
@@ -190,6 +194,8 @@
 .SPAWN_TYPE_4
   LDA X_62EE
   BEQ L0_81BF
+
+; (not seen executing during the coverage runs)
   DEC X_62EE
   BNE L0_81BF
   LDA X_62EF
@@ -239,6 +245,8 @@
   STA X_62D2,X
   SEC
   RTS
+
+; (not seen executing during the coverage runs)
 .L0_820E
   CLC
   RTS
@@ -251,6 +259,8 @@
   BEQ L0_821C
   DEX
   BPL L0_8212
+
+; (not seen executing during the coverage runs)
   SEC
   RTS
 .L0_821C
@@ -320,7 +330,11 @@
   EQUW ENEMY_AI_13
   EQUW ENEMY_AI_14
   EQUW ENEMY_AI_15
+IF REGION_JP
+  EQUW JD0_9186
+ELSE
   EQUW ENEMY_AI_16
+ENDIF
   EQUW ENEMY_AI_17
   EQUW ENEMY_AI_18
   EQUW ENEMY_AI_19
@@ -448,6 +462,8 @@
   BNE L0_8392
   ABS_LDA Z_4E
   BEQ L0_837A
+
+; (not seen executing during the coverage runs)
   LDA X_625A,X
   CMP #&10
   BNE L0_8392
@@ -482,6 +498,8 @@
   CMP #&10
   BEQ L0_83B0
   JMP L7_CEC4
+
+; (not seen executing during the coverage runs)
 .L0_83B0
   INC W_04E5
   LDA #&00
@@ -565,6 +583,8 @@
   BEQ L0_8453
   DEY
   BEQ L0_8457
+
+; (not seen executing during the coverage runs)
   RTS
 .L0_844F
   DEC X_6278,X
@@ -593,6 +613,8 @@
   BEQ L0_847B
   DEY
   BEQ L0_8486
+
+; (not seen executing during the coverage runs)
   DEY
   BEQ L0_8499
   DEY
@@ -613,6 +635,8 @@
   SBC #&00
   STA X_626E,X
   RTS
+
+; (not seen executing during the coverage runs)
 .L0_8499
   LDA X_6278,X
   CLC
@@ -824,6 +848,8 @@
   STA X_6250,X
   RTS
 
+; (not seen executing during the coverage runs)
+
 ; Clear bit 6 of X_6250.
 .ENEMY_CLR_NOBLAST
   LDA X_6250,X
@@ -853,6 +879,8 @@
   ORA #&10
   STA X_6250,X
   RTS
+
+; (not seen executing during the coverage runs)
 .L0_861F
   LDA X_6250,X
   AND #&DF
@@ -945,6 +973,8 @@
   INC Z_1C
   DEC Z_1D
   BNE L0_86AF
+
+; (not seen executing during the coverage runs)
   LDA #&02
   STA X_62BE,X
   RTS
@@ -1351,6 +1381,8 @@ ENDIF
   LDA Z_6F
   CMP X_628C,X
   BCC L0_89BB
+
+; (not seen executing during the coverage runs)
   LDY #&02
   BNE L0_89BB
 .L0_89B0
@@ -1358,6 +1390,8 @@ ENDIF
   LDA Z_6C
   CMP X_6282,X
   BCC L0_89BB
+
+; (not seen executing during the coverage runs)
   LDY #&03
 .L0_89BB
   TYA
@@ -1494,6 +1528,8 @@ ENDIF
   DEY
   BNE L0_8A93
   JMP L0_8B99
+
+; (not seen executing during the coverage runs)
 .L0_8A93
   RTS
 .L0_8A94
@@ -1792,6 +1828,8 @@ ENDIF
   DEY
   BNE L0_8CBB
   JMP L0_8D72
+
+; (not seen executing during the coverage runs)
 .L0_8CBB
   DEY
   BNE L0_8CC1
@@ -1880,6 +1918,8 @@ ENDIF
 .L0_8D72
   DEC X_62D2,X
   BNE L0_8D71
+
+; (not seen executing during the coverage runs)
   INC X_62A0,X
   LDA #&3C
   STA X_62D2,X
@@ -1942,6 +1982,8 @@ ENDIF
   EQUB &FF,&00,&01,&00
 .D0_8DEB
   EQUB &00,&FF,&00,&01
+
+; (not seen executing during the coverage runs)
 .L0_8DEF
   DEC X_62D2,X
   BNE L0_8E02
@@ -2137,6 +2179,8 @@ ENDIF
 .L0_8F12
   JSR ENEMY_BLOCK_LEFT
   BCS L0_8F1B
+
+; (not seen executing during the coverage runs)
   INC Z_1C
   INC Z_1C
 .L0_8F1B
@@ -2144,6 +2188,8 @@ ENDIF
   BEQ L0_8F3B
   DEY
   BEQ L0_8F34
+
+; (not seen executing during the coverage runs)
   DEY
   BEQ L0_8F34
   JSR NEXT_RNG
@@ -2157,6 +2203,8 @@ ENDIF
   LDA D0_8F5D,Y
   STA X_62BE,X
   RTS
+
+; (not seen executing during the coverage runs)
 .L0_8F3B
   LDA X_628C,X
   CMP Z_6F
@@ -2204,6 +2252,8 @@ ENDIF
   LDA D0_8FBA,Y
   CMP X_62BE,X
   BNE L0_8F8D
+
+; (not seen executing during the coverage runs)
   INY
 .L0_8F8D
   LDA D0_8FB9,Y
@@ -2213,6 +2263,8 @@ ENDIF
   LDA X_6282,X
   CMP Z_6C
   BCS L0_8FA6
+
+; (not seen executing during the coverage runs)
   JSR ENEMY_BLOCK_LEFT
   BCS L0_8F57
 .L0_8FA0
@@ -2222,6 +2274,8 @@ ENDIF
 .L0_8FA6
   JSR ENEMY_BLOCK_RIGHT
   BCC L0_8FB3
+
+; (not seen executing during the coverage runs)
   JSR ENEMY_BLOCK_LEFT
   BCC L0_8FA0
   JMP L0_8F57
@@ -2419,6 +2473,8 @@ ENDIF
   BEQ L0_911F
   DEY
   BEQ L0_9142
+
+; (not seen executing during the coverage runs)
   RTS
 .L0_90EB
   LDA #&80
@@ -2499,50 +2555,122 @@ ENDIF
   LDA #&FF
   STA X_62E4
   JMP L0_8808
+IF REGION_JP
+.DRAW_ENEMY_15
+  LDA JD0_9184
+ELSE
 
 ; Type 0F hex draw. Point Z_20 at ENEMY_WALK_15 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_15
   LDA D0_9184
+ENDIF
   STA Z_20
+IF REGION_JP
+  LDA JD0_9185
+ELSE
   LDA D0_9185
+ENDIF
   STA Z_21
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
+.JD0_9184
+  EQUB &D7
+.JD0_9185
+  EQUB &A7
+.JD0_9186
+  EQUB &A9,&40,&8D,&E2,&62,&BD,&A0,&62,&F0,&1F,&BD,&BE,&62,&20,&B7,&84
+  EQUB &B0,&0E,&A9,&02,&8D,&E3,&62,&BD,&BE,&62,&20,&6E,&84,&4C,&13,&84
+  EQUB &A9,&00,&9D,&50,&62,&20,&E9,&80,&60,&AD,&E8,&62,&D0,&09,&AD
 .D0_9184
-  EQUB LO(JD0_A7D7)
-.D0_9185
-  EQUB HI(JD0_A7D7)
+  EQUB &D2,&03
+  STA JX_62EA
+  JMP L0_91C9
+  EQUB &AD,&EA,&62
 ELSE
 .D0_9184
   EQUB LO(ENEMY_WALK_15)
 .D0_9185
   EQUB HI(ENEMY_WALK_15)
-ENDIF
+
+; (not seen executing during the coverage runs)
 
 ; Type 10 hex. Coverage did not run this. If the phase is 0, clear the slot and JSR ARM_TYPE10_TIMER. Otherwise move at speed 2 when the facing cell is open, then place the enemy on a cell from the three 10-byte lists that follow.
 .ENEMY_AI_16
-  EQUB &A9,&40,&8D,&E2,&62,&BD,&A0,&62,&F0,&1F,&BD,&BE,&62,&20
-  EQUW ENEMY_DIR_BLOCKED
-  EQUB &B0,&0E,&A9,&02,&8D,&E3,&62,&BD,&BE,&62,&20
-  EQUW ENEMY_MOVE_SPEED
-  EQUB &4C
-  EQUW ENEMY_PIX_TO_CELL
-  EQUB &A9,&00,&9D,&50,&62,&20,&E9,&80,&60,&AD,&E8,&62,&D0,&09,&AD,&D2
-  EQUB &03,&8D,&EA,&62,&4C,&C9,&91,&AD,&EA,&62,&18,&69,&05,&C9,&0A,&90
-  EQUB &02,&E9,&0A,&A8,&B9,&00,&92,&9D,&82,&62,&B9,&0A,&92,&9D,&8C,&62
-  EQUB &B9,&14,&92,&9D,&BE,&62,&BD,&82,&62,&0A,&0A,&0A,&0A,&09
-  EQUW D0_9D08
-  EQUB &64,&62,&2A,&29,&01,&9D,&6E,&62,&BD,&8C,&62,&0A,&0A,&0A,&0A,&09
-  EQUW D0_9D08
-  EQUB &78,&62,&FE,&A0,&62,&4C
-  EQUW ENEMY_SET_NOBLAST
-  EQUB &01,&01,&01,&01,&01,&1D,&1D,&1D,&1D,&1D,&01,&03,&05,&07,&09,&03
-  EQUB &05,&07,&09,&0B,&03,&03,&03,&03,&03,&01,&01,&01,&01,&01
+  LDA #&40
+  STA X_62E2
+  LDA X_62A0,X
+  BEQ L0_91AF
+  LDA X_62BE,X
+  JSR ENEMY_DIR_BLOCKED
+  BCS L0_91A6
+  LDA #&02
+  STA X_62E3
+  LDA X_62BE,X
+  JSR ENEMY_MOVE_SPEED
+  JMP ENEMY_PIX_TO_CELL
+.L0_91A6
+  LDA #&00
+  STA X_6250,X
+  JSR ARM_TYPE10_TIMER
+  RTS
+.L0_91AF
+  LDA X_62E8
+  BNE L0_91BD
+  LDA W_03D2
+  STA X_62EA
+  JMP L0_91C9
+.L0_91BD
+  LDA X_62EA
+ENDIF
+  CLC
+  ADC #&05
+  CMP #&0A
+  BCC L0_91C9
+  SBC #&0A
+.L0_91C9
+  TAY
+  LDA D0_9200,Y
+  STA X_6282,X
+  LDA D0_920A,Y
+  STA X_628C,X
+  LDA D0_9214,Y
+  STA X_62BE,X
+  LDA X_6282,X
+  ASL A
+  ASL A
+  ASL A
+  ASL A
+  ORA #&08
+  STA X_6264,X
+  ROL A
+  AND #&01
+  STA X_626E,X
+  LDA X_628C,X
+  ASL A
+  ASL A
+  ASL A
+  ASL A
+  ORA #&08
+  STA X_6278,X
+  INC X_62A0,X
+  JMP ENEMY_SET_NOBLAST
+.D0_9200
+  EQUB &01,&01,&01,&01,&01,&1D,&1D,&1D,&1D,&1D
+.D0_920A
+  EQUB &01,&03,&05,&07,&09,&03,&05,&07,&09,&0B
+.D0_9214
+  EQUB &03,&03,&03,&03,&03,&01,&01,&01,&01,&01
+
+; (not seen executing during the coverage runs)
 
 ; Type 10 hex draw. Point Z_20 at the word table that follows and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_16
-  EQUB &A9,&29,&85,&20,&A9,&92,&85,&21,&4C
-  EQUW DRAW_ENEMY_WALK
+  LDA #LO(D0_9229)
+  STA Z_20
+  LDA #HI(D0_9229)
+  STA Z_21
+  JMP DRAW_ENEMY_WALK
+.D0_9229
   EQUW D0_9924
   EQUW D0_9941
   EQUW D0_995E
@@ -2707,9 +2835,15 @@ ENDIF
   EQUB &28,&02,&03,&23,&05,&03,&38,&05,&03,&00,&05,&03,&00,&05,&01,&58
   EQUB &01,&03,&20,&C0,&05,&01,&58,&02,&01,&1E,&02,&02,&FF,&FF
 
+; (not seen executing during the coverage runs)
+
 ; Type 13 hex. Bytes load Z_20 with 938C and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
 .ENEMY_AI_19
-  EQUB &A9,&8C,&85,&20,&A9,&93,&85,&21,&4C,&84,&96
+  LDA #&8C
+  STA Z_20
+  LDA #&93
+  STA Z_21
+  JMP RUN_ENEMY_SCRIPT
 
 ; Type 13 hex draw. Point Z_20 at ENEMY_FRAME_PTRS_19 and jump the shared framer at L0_9288.
 .DRAW_ENEMY_18
@@ -2743,81 +2877,121 @@ ENDIF
 .DRAW_ENEMY_21
   JMP DRAW_ENEMY_18
 
+; (not seen executing during the coverage runs)
+
 ; Type 16 hex. Coverage did not run this. Phase 0 rotates the direction every 9 frames and, after 78 hex ticks, advances the phase and JSRs into the fixed bank. Later phases step a 6-byte placement list.
 .ENEMY_AI_22
-  EQUB &BD,&A0,&62,&D0,&38,&FE,&AA,&62,&BD,&AA,&62,&C9,&09,&90,&10,&A9
-  EQUB &00,&9D,&AA,&62,&BD,&BE,&62,&18,&69,&01,&29,&03,&9D,&BE,&62,&FE
-  EQUB &B4,&62,&BD,&B4,&62,&C9,&78,&90,&13,&FE,&A0,&62,&A9,&00,&9D,&AA
-  EQUB &62,&9D,&B4,&62,&9D,&BE,&62,&A9,&27,&20
-IF REGION_JP
-  EQUB &61
-ELSE
-  EQUB &F5
-ENDIF
-  EQUB &C8,&60,&FE,&AA,&62,&BD,&AA,&62,&C9,&08,&90,&14,&A9,&00,&9D,&AA
-  EQUB &62,&FE,&BE,&62,&BD,&BE,&62,&C9,&06,&90,&06,&A9,&00,&9D,&50,&62
-  EQUB &60,&38,&E9,&01,&9D,&C8,&62,&0A,&85,&1C,&0A,&18,&65,&1C,&85,&2A
-  EQUB &A9,&00,&9D,&D2,&62,&BC,&D2,&62,&B9,&7E,&94,&85,&28,&B9,&84,&94
-  EQUB &85,&29,&A4,&2A,&B9,&8A,&94,&A6,&28,&A4,&29,&20
-IF REGION_JP
-  EQUB &84,&CE
-ELSE
-  EQUB &18,&CF
-ENDIF
-  EQUB &E6,&2A,&AE,&E0,&62,&FE,&D2,&62,&BD,&D2,&62,&C9,&06,&90,&D8,&60
-  EQUB &07,&08,&09,&07,&08,&09,&07,&07,&07,&08,&08,&08,&28,&29,&2A,&4A
-  EQUB &2B,&2C,&28,&7E,&7F,&4A,&80,&81
+  LDA X_62A0,X
+  BNE L0_9422
+  INC X_62AA,X
+  LDA X_62AA,X
+  CMP #&09
+  BCC L0_9404
+  LDA #&00
+  STA X_62AA,X
+  LDA X_62BE,X
+  CLC
+  ADC #&01
+  AND #&03
+  STA X_62BE,X
+.L0_9404
+  INC X_62B4,X
+  LDA X_62B4,X
+  CMP #&78
+  BCC L0_9421
+  INC X_62A0,X
+  LDA #&00
+  STA X_62AA,X
+  STA X_62B4,X
+  STA X_62BE,X
+  LDA #&27
+  JSR AUDIO_CALL
+.L0_9421
+  RTS
+.L0_9422
+  INC X_62AA,X
+  LDA X_62AA,X
+  CMP #&08
+  BCC L0_9440
+  LDA #&00
+  STA X_62AA,X
+  INC X_62BE,X
+  LDA X_62BE,X
+  CMP #&06
+  BCC L0_9441
+  LDA #&00
+  STA X_6250,X
+.L0_9440
+  RTS
+.L0_9441
+  SEC
+  SBC #&01
+  STA X_62C8,X
+  ASL A
+  STA Z_1C
+  ASL A
+  CLC
+  ADC Z_1C
+  STA Z_2A
+  LDA #&00
+  STA X_62D2,X
+.L0_9455
+  LDY X_62D2,X
+  LDA D0_947E,Y
+  STA Z_28
+  LDA D0_9484,Y
+  STA Z_29
+  LDY Z_2A
+  LDA D0_948A,Y
+  LDX Z_28
+  LDY Z_29
+  JSR QUEUE_MAP_TILE
+  INC Z_2A
+  LDX X_62E0
+  INC X_62D2,X
+  LDA X_62D2,X
+  CMP #&06
+  BCC L0_9455
+  RTS
+.D0_947E
+  EQUB &07,&08,&09,&07,&08,&09
+.D0_9484
+  EQUB &07,&07,&07,&08,&08,&08
+.D0_948A
+  EQUB &28,&29,&2A,&4A,&2B,&2C,&28,&7E,&7F,&4A,&80,&81
   EQUW L0_8382
   EQUW L0_8584
   EQUW L0_8786
   EQUW L0_8382
   EQUB &84,&88,&89,&8A,&82,&83,&84,&88,&89,&8A
 
+; (not seen executing during the coverage runs)
+
 ; Type 16 hex draw. Coverage did not run this. Stores a fixed X and Y, then a metasprite chosen by phase plus direction, and jumps DRAW_METASPRITE. ZP addresses differ on the JP ROM.
 .DRAW_ENEMY_22
-  EQUB &AD,&D7,&94,&8D
-IF REGION_JP
-  EQUB &48
-ELSE
-  EQUB &56
-ENDIF
-  EQUB &00,&AD,&D8,&94,&8D
-IF REGION_JP
-  EQUB &4A
-ELSE
-  EQUB &58
-ENDIF
-  EQUB &00,&A9,&00,&8D
-IF REGION_JP
-  EQUB &49
-ELSE
-  EQUB &57
-ENDIF
-  EQUB &00,&BC,&A0,&62,&B9,&DD,&94,&18,&7D,&BE,&62,&0A,&A8,&B9,&DF,&94
-  EQUB &85
-IF REGION_JP
-  EQUB &46
-ELSE
-  EQUB &54
-ENDIF
-  EQUB &B9,&E0,&94,&85
-IF REGION_JP
-  EQUB &47
-ELSE
-  EQUB &55
-ENDIF
-  EQUB &A9,&00,&8D
-IF REGION_JP
-ELSE
-  EQUB &5A,&00
-ENDIF
-  EQUB &4C
-IF REGION_JP
-  EQUB &00,&4C,&46
-ELSE
-  EQUB &DA
-ENDIF
-  EQUB &CC,&8C,&90
+  LDA D0_94D7
+  ABS_STA Z_56
+  LDA D0_94D8
+  ABS_STA Z_58
+  LDA #&00
+  ABS_STA Z_57
+  LDY X_62A0,X
+  LDA D0_94DD,Y
+  CLC
+  ADC X_62BE,X
+  ASL A
+  TAY
+  LDA D0_94DF,Y
+  STA Z_54
+  LDA D0_94E0,Y
+  STA Z_55
+  LDA #&00
+  ABS_STA Z_5A
+  JMP DRAW_METASPRITE
+.D0_94D7
+  EQUB &8C
+.D0_94D8
+  EQUB &90
 .D0_94D9
   EQUB &70
 .D0_94DA
@@ -2825,13 +2999,21 @@ ENDIF
 .D0_94DB
   EQUB &70
 .D0_94DC
-  EQUB &B8,&00,&04
+  EQUB &B8
+.D0_94DD
+  EQUB &00,&04
 IF REGION_JP
-  EQUB &E8,&A3,&F9,&A3,&E8,&A3,&0A,&A4,&1B,&A4,&4C,&A4,&71,&A4,&A6,&A4
-  EQUB &DB,&A4,&10,&A5
+.D0_94DF
+  EQUB &E8
+.D0_94E0
+  EQUB &A3,&F9,&A3,&E8,&A3,&0A,&A4,&1B,&A4,&4C,&A4,&71,&A4,&A6,&A4,&DB
+  EQUB &A4,&10,&A5
 ELSE
-  EQUB &E3,&A8,&F4,&A8,&E3,&A8,&05,&A9,&16,&A9,&47,&A9,&6C,&A9,&A1,&A9
-  EQUB &D6,&A9,&0B,&AA
+.D0_94DF
+  EQUB &E3
+.D0_94E0
+  EQUB &A8,&F4,&A8,&E3,&A8,&05,&A9,&16,&A9,&47,&A9,&6C,&A9,&A1,&A9,&D6
+  EQUB &A9,&0B,&AA
 ENDIF
 
 ; Type 17 hex. Clears the slot after 3C hex frames.
@@ -2991,8 +3173,8 @@ ENDIF
   EQUB HI(ENEMY_SCRIPT_STEP)
   EQUW L0_969E
   EQUW L0_97E4
-  EQUW D0_975A
-  EQUW D0_9770
+  EQUW L0_975A
+  EQUW L0_9770
   EQUW L0_97A6
   EQUW D0_97A4
   EQUW D0_97A2
@@ -3019,6 +3201,8 @@ ENDIF
   LDA D0_9665,Y
   STA Z_23
   JMP (Z_22)
+
+; (not seen executing during the coverage runs)
 .L0_969E
   RTS
 .L0_969F
@@ -3072,6 +3256,8 @@ ENDIF
   STA X_62AA,X
   STA X_62B4,X
   JMP RUN_ENEMY_SCRIPT
+
+; (not seen executing during the coverage runs)
 .L0_96FE
   LDA X_62D2,X
   SEC
@@ -3122,14 +3308,33 @@ ENDIF
   INC X_62D2,X
   INC X_62D2,X
   JMP ENEMY_SCRIPT_STEP
-.D0_975A
-  EQUB &BC,&AA,&62,&B9,&83,&97,&D0,&03,&4C,&E9,&97,&18,&7D,&78,&62,&9D
-  EQUB &78,&62,&FE,&AA,&62,&60
-.D0_9770
-  EQUB &BC,&AA,&62,&B9,&91,&97,&F0,&71,&18,&7D,&78,&62,&9D,&78,&62,&FE
-  EQUB &AA,&62,&60,&FB,&FB,&FC,&FC,&FC,&FD,&FD,&FE,&FE,&FF,&FF,&FF,&FF
-  EQUB &00,&01,&01,&01,&01,&02,&02,&02,&02,&03,&03,&03,&03,&03,&03,&03
-  EQUB &03,&00
+
+; (not seen executing during the coverage runs)
+.L0_975A
+  LDY X_62AA,X
+  LDA D0_9783,Y
+  BNE L0_9765
+  JMP L0_97E9
+.L0_9765
+  CLC
+  ADC X_6278,X
+  STA X_6278,X
+  INC X_62AA,X
+  RTS
+.L0_9770
+  LDY X_62AA,X
+  LDA D0_9791,Y
+  BEQ L0_97E9
+  CLC
+  ADC X_6278,X
+  STA X_6278,X
+  INC X_62AA,X
+  RTS
+.D0_9783
+  EQUB &FB,&FB,&FC,&FC,&FC,&FD,&FD,&FE,&FE,&FF,&FF,&FF,&FF,&00
+.D0_9791
+  EQUB &01,&01,&01,&01,&02,&02,&02,&02,&03,&03,&03,&03,&03,&03,&03,&03
+  EQUB &00
 .D0_97A2
   EQUB &E6,&1C
 .D0_97A4
@@ -3167,6 +3372,7 @@ ENDIF
 .L0_97E4
   DEC X_62C8,X
   BNE L0_97EE
+.L0_97E9
   LDA #&00
   STA X_62A0,X
 .L0_97EE
@@ -3218,6 +3424,8 @@ ENDIF
   LDA (Z_20),Y
   STA Z_55
   JMP DRAW_METASPRITE
+
+; (not seen executing during the coverage runs)
 .L0_984E
   RTS
 .L0_984F
@@ -4819,11 +5027,15 @@ ENDIF
   SEC
   SBC #&0A
   BCC L0_AF6C
+
+; (not seen executing during the coverage runs)
   INY
   BNE L0_AF61
 .L0_AF6C
   TYA
   BEQ L0_AF8E
+
+; (not seen executing during the coverage runs)
   INX
   CPX #&08
   BCC L0_AF5B
@@ -4875,6 +5087,8 @@ ENDIF
 .D0_AFF6
   EQUB &02,&BD,&F8,&00,&01,&BF,&00,&00,&01,&02,&BE,&F8,&00,&01,&BF,&00
   EQUB &00,&01
+
+; (not seen executing during the coverage runs)
 
 ; Credits. Clear the nametable, upload the credits CHR and palette, play sound 18 hex, and scroll until Start.
 .SHOW_CREDITS

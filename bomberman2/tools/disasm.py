@@ -201,8 +201,50 @@ class Disasm:
                 return
             pc = nxt
 
+    # --------------------------------------------------- declared code
+    def declared_code(self):
+        """Trace code entry points listed in db/code.tsv (+ shards): code that
+        never ran in the coverage runs but is known to be code (e.g. reached
+        through a pointer table). Keys: b:XXXX (US), us:b:XXXX, jp:b:XXXX."""
+        import glob as _glob
+        paths = [os.path.join(ROOT, "db", "code.tsv")] + sorted(_glob.glob(os.path.join(ROOT, "db", "code.d", "*.tsv")))
+        self.spec = getattr(self, "spec", set())
+        for path in paths:
+            if not os.path.exists(path):
+                continue
+            for ln, line in enumerate(open(path, encoding="utf-8"), 1):
+                if line.startswith("#") or not line.strip():
+                    continue
+                key = line.split("\t")[0].strip()
+                parts = key.split(":")
+                if len(parts) == 3:
+                    if parts[0] != self.region:
+                        continue
+                    parts = parts[1:]
+                elif self.region != "us":
+                    continue          # US keys reach JP through the merger
+                n, a = int(parts[0]), int(parts[1], 16)
+                b = self.banks[n]
+                before = bytes(b.kind)
+                nprob = len(self.problems)
+                work = [(n, a, None)]
+                while work:
+                    w = work.pop()
+                    self.trace_from(w[0], w[1], w[2], work)
+                for p in self.problems[nprob:]:
+                    p2 = "%s:%d: code entry %s: %s" % (os.path.relpath(path, ROOT), ln, key, p)
+                    self.problems.append(p2)
+                    self.db_errors.append(p2)
+                for bb in self.banks:
+                    for pc in bb.insn:
+                        off = bb.n * 0x4000 + pc - bb.base
+                        if not self.cdl[off] & 1:
+                            self.spec.add((bb.n, pc))
+
+    db_errors = []
+
     # ----------------------------------------------------------- speculate
-    def plausible(self, n, pc):
+    def plausible(self, n, pc, strict=True):
         """Check that a never-executed run starting at pc looks like real code.
 
         Linear decode until RTS/RTI/JMP; every byte must be unclassified and
@@ -245,13 +287,13 @@ class Disasm:
             return None
         for p, mode, v in seen:
             if mode == "rel" and not start <= v < pc:
-                if not b.inside(v) or b.kind[v - b.base] != OP:
+                if not b.inside(v) or b.kind[v - b.base] not in ((OP,) if strict else (OP, UNKNOWN)):
                     return None
         return pc
 
     def speculate(self):
         """Trace plausible code in unclassified gaps that follow code."""
-        self.spec = set()
+        self.spec = getattr(self, "spec", set())
         changed = True
         while changed:
             changed = False

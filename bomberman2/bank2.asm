@@ -223,6 +223,8 @@
   BCC L2_81C7
   DEC W_0351
   BPL L2_81C7
+
+; (not seen executing during the coverage runs)
   LDA W_0357
   STA W_0351
 .L2_81C2
@@ -402,6 +404,8 @@
   ADC Z_0D
   STA W_0315,X
   BCC L2_830F
+
+; (not seen executing during the coverage runs)
   LDA #&00
   STA W_0310,X
   LDA #&FC
@@ -443,6 +447,8 @@
   PHA
   INC Z_08
   BNE L2_8350
+
+; (not seen executing during the coverage runs)
   INC Z_09
 .L2_8350
   PLA
@@ -480,6 +486,8 @@
   SBC #&01
   STA Z_08
   BCS L2_8396
+
+; (not seen executing during the coverage runs)
   DEC Z_09
 .L2_8396
   JMP L2_8380
@@ -524,6 +532,8 @@
   STA W_0329,X
   INC Z_08
   BNE L2_83D9
+
+; (not seen executing during the coverage runs)
   INC Z_09
 .L2_83D9
   RTS
@@ -533,6 +543,8 @@
   LDA W_024D
   CMP #&04
   BCC L2_83FD
+
+; (not seen executing during the coverage runs)
   LDA W_0203
   LSR A
   LSR A
@@ -715,6 +727,8 @@
   CMP #&80
   BEQ L2_8563
   BCC L2_853E
+
+; (not seen executing during the coverage runs)
   DEC Z_07
 .L2_853E
   LDA W_034E
@@ -766,6 +780,8 @@
   LDA W_0331,Y
   CMP Z_0C
   BEQ L2_85B1
+
+; (not seen executing during the coverage runs)
   LDA W_0342,X
   ORA #&08
   STA W_0342,X
@@ -959,6 +975,8 @@
   STY W_0354
   LDA W_0208
   BMI L2_8725
+
+; (not seen executing during the coverage runs)
 .L2_8724
   RTS
 .L2_8725
@@ -985,8 +1003,8 @@
   EQUB HI(SND_CMD_SILENCE)
   EQUW SND_STOP_BGM
   EQUW L2_876C
-  EQUW D2_8778
-  EQUW D2_8797
+  EQUW L2_8778
+  EQUW L2_8797
   EQUW SND_SET_FADE
   EQUW L2_87CD
   EQUW L2_87D6
@@ -1016,12 +1034,33 @@
   LDA #&1E
   STA W_0207
   RTS
-.D2_8778
-  EQUB &AD,&53,&03,&30,&13,&C9,&11,&90,&02,&A9,&10,&AE,&51,&03,&8D,&51
-  EQUB &03,&8D,&57,&03,&8E,&53,&03,&60,&AD,&51,&03,&8D,&53,&03,&60
-.D2_8797
-  EQUB &AD,&53,&03,&30,&05,&29,&0F,&8D,&52,&03,&AD,&52,&03,&8D,&53,&03
-  EQUB &60
+
+; (not seen executing during the coverage runs)
+.L2_8778
+  LDA W_0353
+  BMI L2_8790
+  CMP #&11
+  BCC L2_8783
+  LDA #&10
+.L2_8783
+  LDX W_0351
+  STA W_0351
+  STA W_0357
+  STX W_0353
+  RTS
+.L2_8790
+  LDA W_0351
+  STA W_0353
+  RTS
+.L2_8797
+  LDA W_0353
+  BMI L2_87A1
+  AND #&0F
+  STA W_0352
+.L2_87A1
+  LDA W_0352
+  STA W_0353
+  RTS
 
 ; Command 85: store X in fade step W_0356. Returns the BGM id, or Z_FF if the id is 0C.
 .SND_SET_FADE
@@ -1375,19 +1414,47 @@
   EQUW SND_MARK_CHANNEL_DIRTY
   EQUW L2_864C
   EQUB &88
+IF REGION_JP
+.SFX0A_PROG
+  LDA L7_C61D+1,X
+ELSE
+
+; (not seen executing during the coverage runs)
 
 ; SFX 0A. Player overlaps an actor with X_625A = 10, and W_04E5 increments.
 .SFX0A_PROG
-  EQUB &BD,&8A,&C5,&8A,&A9,&24,&8D,&48,&03,&8D,&47,&03,&AD,&48,&03,&29
-  EQUB &03,&D0,&1A,&AD,&48,&03,&4A,&4A,&AA,&BD,&F4,&8A,&F0,&0F,&48,&A2
-  EQUB &04,&20
-  EQUW SND_LOAD_SFX_PATCH
-  EQUB &68,&A2,&00,&20
-  EQUW SND_LOAD_SFX_PATCH
-  EQUB &CE,&5D,&03,&CE,&48,&03,&F0,&01,&60,&A9,&01,&20
-  EQUW SND_MARK_CHANNEL_DIRTY
-  EQUW L2_864C
-  EQUB &88,&00,&00,&00,&00,&00,&10,&0E,&0F,&00,&0E
+  LDA UPLOAD_CHR_RLE,X
+ENDIF
+  TXA
+  LDA #&24
+  STA W_0348
+  STA W_0347
+  LDA W_0348
+  AND #&03
+  BNE L2_8AE6
+  LDA W_0348
+  LSR A
+  LSR A
+  TAX
+  LDA D2_8AF4,X
+  BEQ L2_8AE6
+  PHA
+  LDX #&04
+  JSR SND_LOAD_SFX_PATCH
+  PLA
+  LDX #&00
+  JSR SND_LOAD_SFX_PATCH
+  DEC W_035D
+.L2_8AE6
+  DEC W_0348
+  BEQ L2_8AEC
+  RTS
+.L2_8AEC
+  LDA #&01
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
+.D2_8AF4
+  EQUB &00,&00,&00,&00,&00,&10,&0E,&0F,&00,&0E
 
 ; SFX 0B. Descending square sweep. No direct LDA immediate 0B at a request site.
 .SFX0B_PROG
@@ -1621,6 +1688,8 @@
   PLA
   TAX
   RTS
+
+; (not seen executing during the coverage runs)
 .L2_8CD3
   LDA #&00
   STA APU_TRIANGLE_REG

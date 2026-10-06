@@ -6,6 +6,7 @@ Usage
   db.py comment KEY ';' TEXT         end-of-line comment at KEY
   db.py pointer KEY word [N] | split HIKEY N | lo HIKEY  [bank=B] [adj=1]
   db.py notptr KEY REASON            suspect checked: not a pointer
+  db.py code KEY                     KEY is code that the coverage runs never executed
   db.py unname KEY                   remove this task's entry for KEY
   db.py lint                         check every shard for clashes
 
@@ -204,6 +205,11 @@ def main():
         mine = own_shard("pointers.tsv")
         write_rows(mine, lambda r: norm_key(r[0]) != norm_key(key), "\t".join([key] + args))
         print("pointer %s %s" % (key, " ".join(args)))
+    elif cmd == "code" and len(a) == 2:
+        key = key_of(a[1])
+        mine = own_shard("code.tsv")
+        write_rows(mine, lambda r: norm_key(r[0]) != norm_key(key), key)
+        print("code %s" % key)
     elif cmd == "notptr" and len(a) == 3:
         key = key_of(a[1]) if not re.match(r"^\d:[0-9A-F]{4}$", a[1]) else a[1]
         mine = own_shard("notptr.tsv")

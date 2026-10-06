@@ -1,8 +1,8 @@
 7:C000	>	Switch to PRG bank X on the NMI-safe path, then return.\nIn: X = bank. Updates CUR_BANK and the MMC1 PRG register.
 7:C0AC	>	Wait for two vblanks, then store PPU CTRL 10h and mask 0 in the shadows and the registers.\nNMI is left disabled. Called from RESET.
 7:C0CA	>	Call bank 5 at AC8A and AC54, then zero 00h-FBh and pages 0200h-0700h.\nFC-FF on the zero page are left alone.
-7:C0F3	>	Reset MMC1, clear the saved bank and CUR_BANK, and map bank 0 at 8000h.
-7:C104	>	Write the MMC1 reset sequence: control 0Eh (16K PRG at 8000h, fixed C000h), CHR banks 0.\nDoes not select the PRG bank.
+7:C0F3	>	Reset MMC1, clear the saved bank and CUR_BANK, and map bank 0 at S0_8000.
+7:C104	>	Write the MMC1 reset sequence: control 0Eh (16K PRG at 8000h, fixed S7_C000), CHR banks 0.\nDoes not select the PRG bank.
 7:C220	>	Clear scroll, split mode and the NMI counter. PPU CTRL shadow 10h, mask shadow 1Eh.\nClear OAM, mark it ready, clear the palette-dirty flag, and jump to START_AUDIO.
 7:C25A	>	Zero SPLIT_SCROLL_X, SPLIT_CTRL_BIT, SCROLL_X, SCROLL_NT and SCROLL_Y.
 7:C26C	>	Wait until PPUSTATUS leaves vblank, then until it enters vblank again.
@@ -33,8 +33,8 @@
 7:C564	>	If PAL_DIRTY is set, write PAL_BUF to PPU 3F00h and clear the flag.\nOut: C=1 if an upload ran (NMI then skips the PPU queue), C=0 if it did not.
 7:C583	>	Set the PPU address to X*100h+A. In: X = high, A = low.
 7:C58A	>	Switch to bank X and decode Y tiles of 16 bytes to the PPU address in 22h/23h.\nSource is (20h). Each tile is two calls to DECODE_CHR. Restores the previous bank.\nIn: X = bank, Y = tile count, 20h = source, 22h = PPU address.
-7:C5AC	>	Switch to bank X and copy Y*16 raw bytes from (20h) to PPU address 22h/23h.\nRestores the previous bank. Used by the bank-5 tile upload at 802Fh.
-7:C5E0	>	Decode 8 pixels of one CHR bitplane from (20h) into 1Eh.\nA 0 bit repeats the previous byte; a 1 bit reads a new byte. Bits live in 1Dh.\nThe upload that starts at bank 1 B724h reads past that bank into C000h-C122h of this fixed bank. That is original behavior (see shift_ignore).
+7:C5AC	>	Switch to bank X and copy Y*16 raw bytes from (20h) to PPU address 22h/23h.\nRestores the previous bank. Used by the bank-5 tile upload at S5_802F.
+7:C5E0	>	Decode 8 pixels of one CHR bitplane from (20h) into 1Eh.\nA 0 bit repeats the previous byte; a 1 bit reads a new byte. Bits live in 1Dh.\nThe upload that starts at bank 1 S1_B724 reads past that bank into S7_C000-S7_C122 of this fixed bank. That is original behavior (see shift_ignore).
 7:C609	>	Drain up to 8 records from PPU_QUEUE.\nA record whose first byte is nonzero is [flags][hi][lo][count][bytes]. Bit 7 of flags sets the PPU increment-32 mode.\nA record whose first byte is 0 is a 2x2 tile plus one attribute byte (9 bytes total).
 7:C6BA	>	Queue one 2x2 tile and its attribute nibble. Spins until 10 queue bytes are free.\nUses 04A9h-04B4h as the address, tiles and masks. Updates ATTR_BUF.\nIn: those work bytes already filled by QUEUE_MAP_TILE.
 7:C78D	>	Four attribute masks, one per 2x2 quadrant inside an attribute byte: FC F3 CF 3F.
@@ -47,38 +47,38 @@
 7:C8A1	>	Step the 3-byte RNG in RNG_1..RNG_3.\nOut: A = RNG_3. The bytes after the RTS are never executed.
 7:C8E6	>	Clear SND_NMI_LOCK, map bank 2, and jump to L2_8000. Does not return.
 7:C8F3	>	Load A with 80h and fall into AUDIO_CALL. Used when the PPU is turned off.
-7:C8F5	>	Call the bank-2 sound routine at D803h (which jumps to L2_806Dh).\nIn: A = command, X = argument. Out: A and X from that routine. Restores the previous bank.
+7:C8F5	>	Call the bank-2 sound routine at S7_D803 (which jumps to L2_806Dh).\nIn: A = command, X = argument. Out: A and X from that routine. Restores the previous bank.
 7:C91F	>	AUDIO_CALL with A=85h and X=80h. Called once at the start of FADE_PALETTE.
 7:C946	>	Reset entry after the cold init. Clears the demo flag, runs the opening, then the menu.\nFrom here the loop boots a stage, plays STAGE_LOOP, and branches on clear, death, demo or bonus.
 7:C94C	>	Front end. SHOW_FRONT, then if the demo flag is set jump into STAGE_BOOT.\nOtherwise RUN_MODE_MENU. W_054E repeats this loop. W_054F goes to ENTER_Z49_1.\nW_0550 goes to ENTER_W0550.
 7:C970	>	Re-enter a mode without the title. Clears 8 bytes at 03D0h, calls SET_WIN_COUNT, then STAGE_BOOT.\nReached when Z_4A is set after a versus result or the game-over screen.
 7:C979	>	Blank the screen and set lives (04E5h) to 2. If Z_4A is set, keep the current area and stage.\nIf W_04C9 is negative, all areas are done. Otherwise it becomes the area and the stage is 0.
-7:C990	>	Copy W_04C9 into the area, zero the stage, call bank 5 at 9936h (zeros 055Eh-0560h) and RESET_PLAYERS.
+7:C990	>	Copy W_04C9 into the area, zero the stage, call bank 5 at S5_9936 (zeros 055Eh-0560h) and RESET_PLAYERS.
 7:C9A4	>	Build one stage: area card, mode setup, clear nametables, CHR, palettes, enemies.\nEnables the PPU, the top split and the area BGM, then falls into STAGE_LOOP.
 7:C9F8	>	One in-stage frame: wait for NMI, pause, players, blasts, enemies, then several bank-5 calls.\nZ_B7 at or above F0h leaves the stage. Z_53 counts up to F0h and then takes the death path.\nOtherwise MARK_OAM and repeat.
 7:CA31	>	Stage exit after a fade. Demo returns through DEMO_EXIT. Nonzero Z_B4 goes to PREP_STAGE_B4.\nOtherwise advance the stage, and the area after stage 8. Area 6 goes to ALL_CLEAR.
 7:CA5B	>	Area index reached 6. Call RUN_ENDING and then RESET.
 7:CA64	>	Fade out after Z_53 hit F0h. In a versus mode, score the round and maybe show the result.\nIn story mode, decrement lives. Negative lives run the game-over screen. Otherwise reload the stage.
-7:CAD9	>	Return from a demo stage. If the demo flag is negative, go back to the menu path at C954h.\nIf the demo index is 3, restart at GAME_LOOP. Otherwise repeat MENU_LOOP.
+7:CAD9	>	Return from a demo stage. If the demo flag is negative, go back to the menu path at S7_C954.\nIf the demo index is 3, restart at GAME_LOOP. Otherwise repeat MENU_LOOP.
 7:CAEE	>	If Z_49 is 0, play AREA_BGM_ID indexed by the area. Otherwise play sound 14h.
 7:CAFF	>	Six sound ids, one per area 0-5: 0E 0F 0E 0F 0E 10. Read by PLAY_AREA_BGM.
-7:CB05	>	Z_B4 was nonzero after a clear. FARCALL bank 5 at 9E92h, which saves the area and stage,\nforces stage 7, Z_90=8, Z_93=5 and Z_4E=1, then returns to STAGE_WON.
-7:CB0E	>	Load area CHR and the sprite palettes, then return from the tail at CB14h.\nCB14h also copies 16 bytes of area palette data from bank 4 and mirrors the background color.
+7:CB05	>	Z_B4 was nonzero after a clear. FARCALL bank 5 at S5_9E92, which saves the area and stage,\nforces stage 7, Z_90=8, Z_93=5 and Z_4E=1, then returns to STAGE_WON.
+7:CB0E	>	Load area CHR and the sprite palettes, then return from the tail at S7_CB14.\nCB14h also copies 16 bytes of area palette data from bank 4 and mirrors the background color.
 7:CB59	>	Copy PAL_BUF byte 0 onto the background color of the other seven 4-byte rows.
 7:CB72	>	16 sprite-palette bytes (4 rows) copied to PAL_BUF row 4 when Z_49 is 0.
 7:CB82	>	16 sprite-palette bytes copied to PAL_BUF row 4 when Z_49 is not 0.
-7:CB92	>	Upload fixed CHR from bank 6 at 8000h (80h tiles to PPU 1000h),\narea CHR from AREA_CHR_PTR (60h tiles to 1A00h), and enemy CHR from bank 1.\nArea 5 picks the enemy set with AREA5_CHR_IDX[stage]; other areas use the area index.\nEnemy tiles go to PPU 0C00h, 40h tiles. Does not restore the bank itself; the caller does.
+7:CB92	>	Upload fixed CHR from bank 6 at S6_8000 (80h tiles to PPU 1000h),\narea CHR from AREA_CHR_PTR (60h tiles to 1A00h), and enemy CHR from bank 1.\nArea 5 picks the enemy set with AREA5_CHR_IDX[stage]; other areas use the area index.\nEnemy tiles go to PPU 0C00h, 40h tiles. Does not restore the bank itself; the caller does.
 7:CC06	>	Eight indexes, one per stage, selecting an ENEMY_CHR_PTR entry when the area is 5.
 7:CC0E	>	Six pointers to area CHR in bank 6. First pointer is split lo/hi; the rest are words.\nLOAD_AREA_CHR uploads 60h tiles from the selected pointer.
 7:CC1C	>	Seven pointers to enemy CHR in bank 1. Indexed by area, or by AREA5_CHR_IDX in area 5.\n40h tiles are uploaded to PPU 0C00h. Entry 5 is the same address as entry 4.
 7:CC2A	>	If Start is newly pressed and no death or clear is running, slide SPLIT_SCROLL_X by 8 until FCh\nand draw PAUSE_TEXT. Start again restores the scroll and returns.\nWhile the demo flag is set, Start or A sets that flag to FFh and Z_53 to F0h so the demo exits.
-7:CCB2	>	Five ASCII bytes "PAUSE", queued by UPDATE_PAUSE. The US pointer is CCB2h; the JP build uses the same bytes at its own address.
-7:CCB7	>	W_054F was nonzero. FARCALL bank 5 at 9FC0h, which sets Z_49 to 1 and runs its own frame loop.\nThat call does not return; the following jump back to GAME_LOOP is not reached.
-7:CCC0	>	W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at 9E92h,\nfade out, blank the PPU and jump to GAME_LOOP.
+7:CCB2	>	Five ASCII bytes "PAUSE", queued by UPDATE_PAUSE. The US pointer is S7_CCB2; the JP build uses the same bytes at its own address.
+7:CCB7	>	W_054F was nonzero. FARCALL bank 5 at S5_9FC0, which sets Z_49 to 1 and runs its own frame loop.\nThat call does not return; the following jump back to GAME_LOOP is not reached.
+7:CCC0	>	W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at S5_9E92,\nfade out, blank the PPU and jump to GAME_LOOP.
 7:CCDA	>	Draw a metasprite into the OAM buffer at OAM_INDEX.\n54h/55h = data. First byte is the number of 4-byte groups (tile, dx, dy, attr), then FF-terminated runs.\n56h/57h = X, 58h/59h = Y, 5Ah = flip bits. X is reduced by SCROLL_X and Y by SCROLL_Y before the draw.
-7:CD90	>	FARCALL bank 4 at B800h. That routine sets 62h/64h/66h from tables indexed by the area.
-7:CD97	>	FARCALL bank 4 at B909h. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
-7:CD9E	>	FARCALL bank 5 at 802Fh, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
+7:CD90	>	FARCALL bank 4 at S4_B800. That routine sets 62h/64h/66h from tables indexed by the area.
+7:CD97	>	FARCALL bank 4 at S4_B909. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
+7:CD9E	>	FARCALL bank 5 at S5_802F, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
 7:CDA5	>	Zero A9h and AAh, clear the round flags, then fall into INIT_PLAYERS.
 7:CDAE	>	Set up three actor slots. Each Z_69 entry is 1. X and Y come from PLAYER_SPAWN_X/Y.\nClears the per-slot bytes at 75h, 7Eh, 81h, 84h, 87h, 96h, 99h and 7Bh.\nIf Z_53 is nonzero, also clears several work bytes and copies 10 bytes from 0404h into 04D0h.
 7:CDF1	>	Three starting X positions, one per actor slot: 18h, D8h, 78h. Read by INIT_PLAYERS.
@@ -86,47 +86,47 @@
 7:CE2C	>	Zero AE AE-adjacent round bytes AD, B0, B3, B4, B5, AF (AF is replaced by 03EEh when Z_49 is 0).\nThen copy MODE_BYTE_90/93, indexed by Z_49, into Z_90 and Z_93.
 7:CE59	>	Three bytes indexed by Z_49 and stored in Z_90: 00, 01, 00. Also used by the demo setup path.
 7:CE5C	>	Three bytes indexed by Z_49 and stored in Z_93: 00, 02, 01.
-7:CE5F	>	FARCALL bank 5 at 8168h. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
+7:CE5F	>	FARCALL bank 5 at S5_8168. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
 7:CE66	>	If Z_B5 is positive, Z_B0 is 1, and the WRAM cell at 611Eh/615Ah matches 9Dh/9Eh,\nset Z_B6 from 61D2h and Z_B5 from BLAST_TYPE_TAB indexed by the low nibble of 60E2h.\nIn: Y = index into those WRAM arrays.
 7:CE94	>	16 bytes. NOTE_BLAST_TYPE stores entry [low nibble of X_60E2] into Z_B5.\nEntries 9-15 are 00. ? what the 80h-83h values select.
 7:CEE4	>	If Z_4E is set, increment Z_B7 and play sound 16h.\nOtherwise mark every live slot (Z_69 set, Z_84 clear) with Z_81=8, Z_7E=0, Z_84=1 and play sound 04h if any slot changed.
 7:CF16	>	Add 2 to Y and fall into QUEUE_MAP_TILE. In: A = tile id, X = column, Y = row before the add.
 7:CF18	>	Queue the 2x2 tile A at column X, row Y.\nFour tile bytes come from (62h) at A*4. The attribute nibble comes from (66h), one nibble per tile id.\nSwitches to bank 4 for the read, then calls QUEUE_TILE and restores the bank.
 7:CF76	>	Zero 0518h and the 15 bytes at 04EBh.
-7:CF84	>	Map bank 5 and call BA56h, which walks the 24 slots at X_6001 on alternate frames. Restores the bank.
+7:CF84	>	Map bank 5 and call S5_BA56, which walks the 24 slots at X_6001 on alternate frames. Restores the bank.
 7:CFA8	>	Zero 24 bytes at 6001h, 60 bytes at 60E2h, 32 bytes at 60C1h, and 60E1h, 6000h, 624Dh-624Fh.
 7:D004	>	Zero X_60C1 at index X_60E1, then advance that index modulo 32.
 7:CFE6	>	Search 24 slots at X_6001 for a flag that is positive and whose X_6019/X_6031 cell equals Z_28/Z_29.\nOut: C=1 and Y=slot if found, C=0 if not.
 7:D031	>	Search 60 slots at X_60E2 (index 3Bh down). Skip a flag of 0.\nOut: Y = slot whose X_611E/X_615A cell equals Z_28/Z_29, or FFh if none.
 7:D04B	>	Find a zero flag in the 15 bytes at 04EBh.\nOut: C=1 and X=slot if one is free, C=0 if all 15 are in use.
 7:D059	>	Search the 15 slots at 04EBh for a nonzero flag whose 04FAh/0509h cell equals Z_28/Z_29.\nOut: C=1 and X=slot if found, C=0 if not.
-7:D075	>	FARCALL bank 5 at A18Eh. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
-7:D07C	>	FARCALL bank 5 at AA6Ah. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
-7:D083	>	FARCALL bank 5 at A80Fh. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
-7:D094	>	FARCALL bank 5 at AB65h. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
+7:D075	>	FARCALL bank 5 at S5_A18E. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
+7:D07C	>	FARCALL bank 5 at S5_AA6A. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
+7:D083	>	FARCALL bank 5 at S5_A80F. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
+7:D094	>	FARCALL bank 5 at S5_AB65. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
 7:D09B	>	Zero the 10 bytes at X_6250 and set X_62DC and X_62DD to 1.
-7:D0BC	>	If Z_49 is 0, map bank 0 and call 824Fh and 82FEh for each of the 10 X_6250 slots that is nonzero, then 83BEh, 8179h, 81A6h and 821Eh.\nAlways increments X_62DD. Restores the bank.
-7:D0F5	>	FARCALL bank 0 at 8000h. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
-7:D0FC	>	FARCALL bank 0 at 8090h. That routine uses FRAME_CNT and steps an index in X_62E6.
-7:D138	>	FARCALL bank 5 at 9254h, which fills 1A0h bytes at 62F3h with FFh.
+7:D0BC	>	If Z_49 is 0, map bank 0 and call S0_824F and S0_82FE for each of the 10 X_6250 slots that is nonzero, then S0_83BE, S0_8179, S0_81A6 and S0_821E.\nAlways increments X_62DD. Restores the bank.
+7:D0F5	>	FARCALL bank 0 at S0_8000. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
+7:D0FC	>	FARCALL bank 0 at S0_8090. That routine uses FRAME_CNT and steps an index in X_62E6.
+7:D138	>	FARCALL bank 5 at S5_9254, which fills 1A0h bytes at 62F3h with FFh.
 7:D13F	>	Copy one layout byte into the live map. Returns if Y is 13 or more.\nIn: Y = map row, X = column, A = index along (64h). Switches to bank 4 for the read. Out: the byte is stored through the row pointer.
 7:D165	>	Point 2Fh/30h at map row Y. Rows are 20h bytes apart starting at 62F3h. 13 rows.\nIn: Y = row 0-12. Out: 2Fh = address from MAP_ROW_LO/HI.
 7:D170	>	13 low bytes of the live map row addresses. High bytes are MAP_ROW_HI.\nRows are 62F3h, 6313h, ... 6473h (stride 20h). Not PRG pointers.
 7:D18A	>	Read one live map byte. In: X = column, Y = row. Out: A = byte at that cell. Uses MAP_ROW_PTR.
-7:D19B	>	FARCALL bank 5 at ACE4h. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
-7:D1A2	>	FARCALL bank 5 at B07Dh. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
-7:D1A9	>	FARCALL bank 5 at B186h. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
-7:D1B7	>	FARCALL bank 5 at 9280h. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
-7:D1C5	>	FARCALL bank 5 at 9562h. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
-7:D1CC	>	FARCALL bank 5 at B209h. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
-7:D1D3	>	FARCALL bank 5 at B4F9h. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
-7:D1DA	>	Dispatch the pre-stage screen by Z_49.\n0 calls bank 5 at B8F6h, 2 calls B5DAh, anything else calls B6F5h.\nEach of those turns NMI off, calls LOAD_MODE_GFX, draws, and plays sound 1Dh.
-7:D1F8	>	Upload the mode CHR and palettes. Uses bank 1 for one CHR block and bank 4 for palettes selected by MODE_PAL_PTR[Z_49].\nThen copies 16 more palette bytes from bank 4 at B129h and mirrors the background color.
-7:D25D	>	Three pointers, indexed by Z_49, to 16-byte palette rows in bank 4.\nEntry 0 is B139h. Entries 1 and 2 are both B119h. LOAD_MODE_GFX copies the selected row to PAL_BUF.
+7:D19B	>	FARCALL bank 5 at S5_ACE4. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
+7:D1A2	>	FARCALL bank 5 at S5_B07D. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
+7:D1A9	>	FARCALL bank 5 at S5_B186. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
+7:D1B7	>	FARCALL bank 5 at S5_9280. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
+7:D1C5	>	FARCALL bank 5 at S5_9562. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
+7:D1CC	>	FARCALL bank 5 at S5_B209. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
+7:D1D3	>	FARCALL bank 5 at S5_B4F9. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
+7:D1DA	>	Dispatch the pre-stage screen by Z_49.\n0 calls bank 5 at S5_B8F6, 2 calls S5_B5DA, anything else calls S5_B6F5.\nEach of those turns NMI off, calls LOAD_MODE_GFX, draws, and plays sound 1Dh.
+7:D1F8	>	Upload the mode CHR and palettes. Uses bank 1 for one CHR block and bank 4 for palettes selected by MODE_PAL_PTR[Z_49].\nThen copies 16 more palette bytes from bank 4 at S4_B129 and mirrors the background color.
+7:D25D	>	Three pointers, indexed by Z_49, to 16-byte palette rows in bank 4.\nEntry 0 is S4_B139. Entries 1 and 2 are both S4_B119. LOAD_MODE_GFX copies the selected row to PAL_BUF.
 7:D263	>	Zero W_03F0, the demo record index.
 7:D269	>	Zero W_03EF. STAGE_LOOP and STAGE_WON treat a nonzero value as a demo, and a negative value as "leave the demo".
 7:D26F	>	Load demo record W_03F0 (0-3) and set the demo flag.\nEach record is 8 bytes: area, stage, Z_90, Z_93, RNG_1, RNG_2, RNG_3, and one unused byte.\nAlso sets Z_4A, Z_AF and W_03EF to 1, clears Z_53 and FRAME_CNT, and advances the stored index modulo 4.
 7:D2D7	>	Four demo records of 8 bytes, indexed by W_03F0*8.\nBytes at this label and the next six labels are area, stage, Z_90, Z_93, RNG_1, RNG_2, RNG_3.\nThe eighth byte of each record is not read by START_DEMO.
-7:D2F7	>	One byte, value 01h. Bank 5 at 99EDh skips copying JOYPAD1 into the demo slots when this byte is nonzero.
+7:D2F7	>	One byte, value 01h. Bank 5 at S5_99ED skips copying JOYPAD1 into the demo slots when this byte is nonzero.
 7:C003	>	Power-on entry. Disable IRQ, clear decimal, set the stack, then warm up the PPU,\nblack the palette, reset MMC1, clear RAM, reset video and enter GAME_LOOP.
 7:C01D	>	Increment NMI_CNT. If OAM_READY, DMA sprites. Upload the palette or else drain the PPU queue.\nWhen SPLIT_MODE is set, wait for sprite 0 and apply the split scroll; 80h also sets the PPU address to 2660h.\nThen the normal scroll. If OAM_READY, clear the sprite buffer. On the first NMI after a clear of NMI_CNT, read the pads.\nOnce per frame, if SND_NMI_LOCK is 0, tick the bank-2 sound routine. Increments FRAME_CNT.

@@ -13,6 +13,8 @@
   BMI L5_802E
   CMP W_04CB
   BEQ L5_802E
+
+; (not seen executing during the coverage runs)
   STA W_04CB
   ORA #&30
   STA W_052A
@@ -82,6 +84,8 @@ ENDIF
   LDA W_04E4
   CMP Z_1C
   BNE L5_808D
+
+; (not seen executing during the coverage runs)
   LDA LEVEL_CHR_PICK,X
   CMP #&01
   BEQ L5_8089
@@ -109,12 +113,16 @@ ENDIF
 .L5_80AA
   ABS_LDA Z_AE
   BEQ L5_80CA
+
+; (not seen executing during the coverage runs)
   LDA #&09
   STA W_04E3
   RTS
 .L5_80B5
   ABS_LDA Z_AD
   BEQ L5_80CA
+
+; (not seen executing during the coverage runs)
   LDA #&09
   STA W_04E3
   RTS
@@ -202,6 +210,8 @@ ENDIF
   STA W_04C1
   LDA Z_A6
   BPL L5_81E4
+
+; (not seen executing during the coverage runs)
   AND #&03
   CMP #&02
   BNE L5_81E4
@@ -377,6 +387,8 @@ ENDIF
   BNE L5_8315
   LDA Z_B5
   BPL L5_82FF
+
+; (not seen executing during the coverage runs)
   JMP KNOCK_STEP
 .L5_82FF
   JSR ACTOR_XY_TO_CELL
@@ -460,6 +472,8 @@ ENDIF
 .APPLY_ACTOR_SPEED
   LDA Z_A6
   BPL L5_838F
+
+; (not seen executing during the coverage runs)
   AND #&03
   CMP #&02
   BCS L5_838F
@@ -530,6 +544,8 @@ ENDIF
 .L5_83FB
   INC Z_9F
   BNE L5_8401
+
+; (not seen executing during the coverage runs)
   INC Z_A0
 .L5_8401
   RTS
@@ -568,6 +584,8 @@ ENDIF
   LDA Z_9F
   CMP #&FF
   BNE L5_8445
+
+; (not seen executing during the coverage runs)
   DEC Z_A0
 .L5_8445
   RTS
@@ -841,6 +859,8 @@ ENDIF
 .BIAS_DELTA
   EQUB &00,&01,&FF
 
+; (not seen executing during the coverage runs)
+
 ; Knockback step. Decrements Z_B6 and clears Z_B5 at 0.
 ; Otherwise refreshes the cell, forces Z_AC to 4, clears the pad, and steps on the low 2 bits of Z_B5. Facing is then flipped with EOR 2.
 .KNOCK_STEP
@@ -889,6 +909,8 @@ ENDIF
 .TICK_ACTOR_A6
   LDA Z_A6
   BPL L5_8647
+
+; (not seen executing during the coverage runs)
   DEC Z_A7
   BNE L5_8647
   LDA #&3C
@@ -925,6 +947,8 @@ ENDIF
   ABS_LDA Z_49
   CMP #&02
   BNE L5_86E3
+
+; (not seen executing during the coverage runs)
   LDX #&00
 .L5_866B
   LDA Z_69,X
@@ -997,6 +1021,8 @@ ENDIF
 .L5_86E3
   RTS
 
+; (not seen executing during the coverage runs)
+
 ; Queue the two bytes at A6_ATTR_ON onto the attribute address for actor Z_68.
 ; XY comes from A6_ATTR_XY. Z_2E is 0.
 .QUEUE_A6_ATTR
@@ -1051,6 +1077,8 @@ ENDIF
 .TICK_TIMED_POWERS
   LDA W_04E6
   BEQ L5_875A
+
+; (not seen executing during the coverage runs)
   DEC W_04E7
   BPL L5_8780
   LDA #&3B
@@ -1072,6 +1100,8 @@ ENDIF
 .L5_875A
   LDA Z_B0
   BEQ L5_8780
+
+; (not seen executing during the coverage runs)
   DEC Z_B1
   BPL L5_8780
   LDA #&3B
@@ -1092,6 +1122,8 @@ ENDIF
   JSR AUDIO_CALL
 .L5_8780
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_8781
   LDA #&00
   STA Z_B0
@@ -1161,6 +1193,8 @@ ENDIF
   BEQ L5_8824
   AND #&40
   BEQ L5_87E4
+
+; (not seen executing during the coverage runs)
   LDA FRAME_CNT
   AND #&07
   ORA W_04E9
@@ -1493,6 +1527,8 @@ ENDIF
   SBC #&00
   STA Z_21
   BMI L5_8F98
+
+; (not seen executing during the coverage runs)
   LDX #&F8
   CPX Z_20
   LDA #&00
@@ -1512,6 +1548,8 @@ ENDIF
   LDA #&FF
   STA SCROLL_NT
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_8FAB
   LDA Z_20
   STA SCROLL_X
@@ -1564,6 +1602,8 @@ ENDIF
   JSR AUDIO_CALL
 .L5_9003
   RTS
+
+; (not seen executing during the coverage runs)
 
 ; Clear the item cell, take the low nibble of W_04EB,X as an ITEM_HANDLERS index, clear that bomb flag, queue tile 38h, and play sound 15h in story mode.
 .PICK_UP_ITEM
@@ -1625,6 +1665,8 @@ ENDIF
   EQUW ITEM_RETURN
   EQUW ITEM_RETURN
 
+; (not seen executing during the coverage runs)
+
 ; In: A is the item index. 0Bh plays sound 5. Anything else plays sound 3.
 .PLAY_ITEM_SND
   CMP #&0B
@@ -1636,8 +1678,6 @@ ENDIF
   LDA #&05
   JSR AUDIO_CALL
   RTS
-
-; (not seen executing during the coverage runs)
 
 ; Increment Z_A9 up to 7, then MARK_PWR_STAGE.
 .INC_FIRE
@@ -1718,6 +1758,9 @@ ENDIF
   AND #&0F
   TAX
   LDA EXTRA_SPAWN_IDX,X
+
+; (not seen executing during the coverage runs)
+.L5_90CF
   TAY
   JMP L7_D192
 
@@ -1725,19 +1768,30 @@ ENDIF
 .EXTRA_SPAWN_IDX
   EQUB &00,&03,&03,&02,&04,&02,&04,&01,&03,&01,&02,&04,&0A,&05,&02,&01
 
+; (not seen executing during the coverage runs)
+
 ; NEXT_RNG low 3 bits index LIFE_ROLL_TAB.
 ; A positive byte is passed to L7_D192. Bit 7 with bit 0 set starts the W_04E6 timer and SET_ACTOR_FLASH. Bit 7 with bit 0 clear increments W_04E5 and plays sound 0Ah.
 .ROLL_LIFE_OR_MOB
-  EQUB &A5,&14,&29,&07,&AA,&BD,&0C,&91,&10,&E2,&29,&01,&F0,&12,&A9,&01
-  EQUB &8D,&E6,&04,&A9,&10,&8D,&E8,&04,&A9,&00,&8D,&E7,&04,&4C
-  EQUW SET_ACTOR_FLASH
-  EQUB &EE,&E5,&04,&A9,&0A,&20
-IF REGION_JP
-  EQUB &61
-ELSE
-  EQUB &F5
-ENDIF
-  EQUB &C8,&60
+  LDA FRAME_CNT
+  AND #&07
+  TAX
+  LDA LIFE_ROLL_TAB,X
+  BPL L5_90CF
+  AND #&01
+  BEQ L5_9103
+  LDA #&01
+  STA W_04E6
+  LDA #&10
+  STA W_04E8
+  LDA #&00
+  STA W_04E7
+  JMP SET_ACTOR_FLASH
+.L5_9103
+  INC W_04E5
+  LDA #&0A
+  JSR AUDIO_CALL
+  RTS
 
 ; Eight bytes read by ROLL_LIFE_OR_MOB. Bit 7 selects the life or W_04E6 path. A positive value is a Y argument to L7_D192.
 .LIFE_ROLL_TAB
@@ -1791,6 +1845,8 @@ ENDIF
   LDX #&08
   LDA W_055A
   BPL L5_9190
+
+; (not seen executing during the coverage runs)
   LDX #&0A
   JMP L5_9190
 .L5_916B
@@ -1802,6 +1858,8 @@ ENDIF
   JSR AUDIO_CALL
 .L5_9177
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_9178
   AND #&03
   ASL A
@@ -1948,6 +2006,8 @@ ENDIF
   JSR TRY_PASS_ENTRY
   BCC L5_92E3
   JMP L5_92C6
+
+; (not seen executing during the coverage runs)
 .L5_92E3
   LDA #&01
   ABS_STA Z_4A
@@ -2166,6 +2226,8 @@ ENDIF
 .L5_944E
   DEC W_054D
   BPL L5_944D
+
+; (not seen executing during the coverage runs)
   LDA #&00
   STA W_054D
   RTS
@@ -2435,6 +2497,8 @@ ENDIF
   BNE L5_9650
   JSR APPLY_PASS_STAGE
   BCS L5_9650
+
+; (not seen executing during the coverage runs)
   JSR LOAD_PASS_BYTES
 .L5_963D
   LDA #&03
@@ -2444,6 +2508,8 @@ ENDIF
 .L5_9644
   CPX #&00
   BNE L5_9650
+
+; (not seen executing during the coverage runs)
   LDA #&01
   STA W_054E
   JMP L5_963D
@@ -2520,6 +2586,8 @@ ENDIF
   ABS_STA Z_93
   CMP #&05
   BCS L5_96C4
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 .L5_96C4
@@ -2546,6 +2614,8 @@ ELSE
 ENDIF
   CMP (Z_20),Y
   BNE L5_96E8
+
+; (not seen executing during the coverage runs)
   INY
   CPY #&08
   BCC L5_96D4
@@ -2582,6 +2652,8 @@ ELSE
 .PASS_GLYPH_US
   EQUB &50,&43,&4B,&4E,&46,&4F,&48,&49,&47,&45,&42,&41,&44,&4A,&4C,&4D
 ENDIF
+
+; (not seen executing during the coverage runs)
 
 ; Apply secret word Z_1C.
 ; 0 sets W_054F. 1 and 2 set W_03EE to 1 or 2 and W_054E. 3 sets W_0550. 4, 5 and 6 set W_03ED to 2Dh, 4Bh or 69h and set W_054E.
@@ -2712,6 +2784,8 @@ ENDIF
   LDA #&03
   STA W_055D
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_981F
   LDA #&3C
   STA W_055A
@@ -2759,6 +2833,8 @@ ENDIF
   STA W_055C
   DEC W_055D
   BPL L5_98DD
+
+; (not seen executing during the coverage runs)
   LDX #&00
   STX W_055B
   STX W_055C
@@ -2771,6 +2847,8 @@ ENDIF
   LDA W_055D
   ORA W_055C
   BNE DRAW_STAGE_CLOCK
+
+; (not seen executing during the coverage runs)
   LDA W_055A
   CMP #&3B
   BEQ L5_98F0
@@ -2836,6 +2914,8 @@ ENDIF
   BEQ DRAW_LIVES_HUD
   CPY #&01
   BEQ L5_9982
+
+; (not seen executing during the coverage runs)
   LDA #&31
   STA W_052B
   LDX #&03
@@ -2934,6 +3014,8 @@ ENDIF
   STA Z_BA
   LDA DEMO_PAD_LOCK
   BNE L5_9A4D
+
+; (not seen executing during the coverage runs)
   LDA JOYPAD1
   STA W_04C2
   LDA JOYPAD1_NEW
@@ -2960,6 +3042,8 @@ ENDIF
   STA W_04C1
 .L5_9A41
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_9A42
   INC W_03F2
   LDA W_03F2
@@ -3075,6 +3159,8 @@ ENDIF
   EQUB &00,&23,&02,&07,&82,&03,&02,&1A,&82,&06,&02,&18,&82,&00,&80,&00
   EQUB &88,&04,&08,&17,&02,&15,&00,&02,&40,&05,&00,&29,&01,&08,&05,&01
   EQUB &04,&28,&02,&18,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
+
+; (not seen executing during the coverage runs)
 
 ; Bonus stage. Saves Z_90, Z_93, Z_4B and Z_4C, sets Z_4E, area 0, stage 7, Z_90 to 8 and Z_93 to 5, then runs its own frame loop until Z_B7 reaches F0h.
 ; Restores the saved bytes, clears Z_4E and Z_B4, and returns. SHOW_BONUS_CARD runs first.
@@ -3212,6 +3298,8 @@ ENDIF
   EQUB &0B,&0D,&0B,&42,&4F,&4E,&55,&53,&20,&53,&54,&41,&47,&45,&0F,&10
   EQUB &30,&0F
 
+; (not seen executing during the coverage runs)
+
 ; Set Z_49 to 1, fill the nametable with 40h, load mode graphics, and repeat INIT_MODE1_SEL plus the menu handlers at SND_ROOM_INPUT. Does not return.
 .RUN_MODE1_MENU
   JSR NMI_OFF
@@ -3336,6 +3424,8 @@ ENDIF
 .SND_CURSOR_Y
   EQUB &50,&60,&70
 
+; (not seen executing during the coverage runs)
+
 ; Draw the sound-room cursor.
 ; In: W_04CD. X from SND_CURSOR_X, Y from SND_CURSOR_Y.
 .DRAW_SND_CURSOR
@@ -3357,6 +3447,8 @@ ENDIF
   STA Z_55
   JMP DRAW_METASPRITE
   EQUB &01,&2A,&00,&00,&00
+
+; (not seen executing during the coverage runs)
 
 ; Draw the three sound-room values by calling DRAW_SND_VALUE with X=0,1,2.
 .DRAW_SND_PARAMS
@@ -3414,6 +3506,8 @@ IF REGION_JP
 .DRAW_SND_ROOM_TEXT
   LDA #&4E
 ELSE
+
+; (not seen executing during the coverage runs)
 
 ; Queue the four sound-room strings through QUEUE_XY_BYTES.
 ; Each record is X, Y, length, then tiles.
@@ -4260,6 +4354,8 @@ ENDIF
   AND #&08
   BNE L5_A8D3
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_A8D3
   LDA #&07
   JSR AUDIO_CALL
@@ -4275,6 +4371,8 @@ ENDIF
   ABS_LDA Z_49
   CMP #&04
   BCC L5_A8F7
+
+; (not seen executing during the coverage runs)
   LDA #&00
   ABS_STA Z_49
 .L5_A8F7
@@ -4586,6 +4684,8 @@ ENDIF
   LDA DEFAULT_TOP_NAME,X
   CMP W_03C0,X
   BNE L5_AC62
+
+; (not seen executing during the coverage runs)
   DEX
   BPL L5_AC56
   RTS
@@ -4670,6 +4770,8 @@ ENDIF
   BPL L5_ACC9
 .L5_ACD6
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_ACD7
   LDX #&07
 .L5_ACD9
@@ -4900,6 +5002,8 @@ ENDIF
   LDA W_0534
   CMP AREA5_FRAME_DLY,Y
   BCC L5_AE6C
+
+; (not seen executing during the coverage runs)
   LDA #&00
   STA W_0534
   INC W_0532
@@ -5027,6 +5131,8 @@ ENDIF
   EQUB &24,&FF,&F2,&40,&26,&E7,&FA,&01,&27,&EF,&FA,&00,&27,&F7,&FA,&40
   EQUB &26,&FF,&FA,&41
 
+; (not seen executing during the coverage runs)
+
 ; Ending. RUN_ENDING enters here when the area reaches 6.
 ; Forces Z_4B=6, Z_4C=0, loads ending CHR and enemies, then waits until X_62F2 is 2.
 ; SCROLL_ENDING runs while X_62F2 is 1. Then fade and JMP L7_D1B0.
@@ -5119,6 +5225,8 @@ ENDIF
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   JMP MIRROR_BG_COLOR
+
+; (not seen executing during the coverage runs)
 
 ; Draw the ending nametable. Four bank-4 pointers (tiles, layout, attr, map) then JMP L7_CD89.
 ; US bytes are END_META_ATTR, END_META_MAP, END_META_GFX and OPENING_LAYOUT.
@@ -5217,6 +5325,8 @@ ENDIF
   STA Z_21
   JMP L7_CD89
 
+; (not seen executing during the coverage runs)
+
 ; Versus round result. SHOW_VS_RESULT enters here.
 ; Sets Z_4A to 1, plays sound 1Ch. Up/Down/Select toggle Z_4A. Start/A exits.
 .VS_RESULT_LOOP
@@ -5308,6 +5418,8 @@ ENDIF
   EQUB &0A,&0B,&0C
 .D5_B29E
   EQUB &0D,&0E,&0F
+
+; (not seen executing during the coverage runs)
 
 ; Animate the versus-result sprite.
 ; W_0562 flips every 8 frames. Frame and W_04C8 pick a word in VS_RESULT_SPR_PTR. Drawn at (88h, 90h).
@@ -5405,6 +5517,8 @@ ENDIF
   EQUB &42,&26,&E8,&00,&02,&27,&F0,&00,&02,&27,&F8,&00,&42,&26,&00,&00
   EQUB &42
 
+; (not seen executing during the coverage runs)
+
 ; Toggle Z_4A on Up/Down/Select and draw the one-tile cursor at X D5_B4F1, Y VS_CURSOR_Y[Z_4A].
 .VS_RESULT_INPUT
   LDA JOY_NEW
@@ -5447,6 +5561,8 @@ ENDIF
   LDA #&05
   STA W_0563
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_B506
   JSR NMI_OFF
   JSR LOAD_MENU_CHR
@@ -5559,6 +5675,8 @@ ENDIF
   EQUB &07,&05,&F8,&F3,&01,&06,&00,&F3,&01,&15,&F8,&FB,&03,&16,&00,&FB
   EQUB &03,&1F,&08,&FB,&03,&0E,&F8,&03,&03,&0F,&00,&03,&03
 
+; (not seen executing during the coverage runs)
+
 ; Battle pre-stage card. SETUP_BY_MODE calls this when Z_49 is 2.
 ; Draws digits and a mark, plays sound 1Dh, waits B4h frames, fades out.
 .SHOW_BATTLE_CARD
@@ -5659,6 +5777,8 @@ ENDIF
 .BATTLE_TILE_RIGHT
   EQUB &23,&11,&13,&15,&17,&19,&1B,&1D,&1F,&21
 
+; (not seen executing during the coverage runs)
+
 ; Draw the battle mark for W_04C8.
 ; Negative: nothing. 1: 2x2 tiles at row 7 via DRAW_MARK_2X2. Other: one tile from D5_B6E5 at row 8.
 .DRAW_BATTLE_MARK
@@ -5719,6 +5839,8 @@ ENDIF
   EQUB &47,&42,&43,&4E,&4F,&44,&45,&50,&51
 .D5_B6E5
   EQUB &A4,&00,&AB
+
+; (not seen executing during the coverage runs)
 
 ; Queue SCORE_DIGIT_TILE[W_0563] at column 3, row 3.
 .DRAW_WIN_COUNT_TILE
@@ -5892,6 +6014,8 @@ ENDIF
   LDA W_055E
   CMP W_055F
   BEQ L5_B87A
+
+; (not seen executing during the coverage runs)
   CMP #&04
   BCS L5_B86B
   LDA W_055F
@@ -5908,6 +6032,8 @@ ENDIF
 .L5_B87A
   CMP #&04
   BCC L5_B8CF
+
+; (not seen executing during the coverage runs)
   CMP #&09
   BNE L5_B8A4
   LDA #&03
@@ -5967,6 +6093,8 @@ ENDIF
   BNE L5_B8BC
 .L5_B8CF
   RTS
+
+; (not seen executing during the coverage runs)
 .QUEUE_STRING_TILES
   LDY #&00
   LDA (Z_24),Y
@@ -6131,6 +6259,8 @@ ENDIF
   BEQ L5_B9DB
   BMI L5_B9DB
   JMP DETONATE_BOMB
+
+; (not seen executing during the coverage runs)
 .L5_B9DB
   DEX
   DEY
@@ -6276,6 +6406,8 @@ ENDIF
   STA X_624B
   LDA Z_87,Y
   BPL L5_BAEB
+
+; (not seen executing during the coverage runs)
   AND #&03
   CMP #&03
   BNE L5_BAEB
@@ -6428,6 +6560,8 @@ ENDIF
   BEQ L5_BC4D
   DEY
   BPL L5_BC43
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 .L5_BC4D
@@ -6560,6 +6694,8 @@ ENDIF
   LDA Z_1F
   AND #&03
   BEQ SPAWN_FLAME
+
+; (not seen executing during the coverage runs)
   JSR BLAST_CONTENTS
   CLC
   RTS
@@ -6630,6 +6766,8 @@ ENDIF
 .L5_BDBA
   DEX
   BPL L5_BD88
+
+; (not seen executing during the coverage runs)
   CLC
   RTS
 
@@ -6728,6 +6866,8 @@ ENDIF
   BEQ L5_BE54
   SEC
   RTS
+
+; (not seen executing during the coverage runs)
 .L5_BE4E
   LDA #&00
   STA Z_1F

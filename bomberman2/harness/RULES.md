@@ -42,7 +42,10 @@
 | `python3 tools/db.py comment KEY '>' "文本"` | 在 KEY 上方加块注释（`\n` 换行） |
 | `python3 tools/db.py comment KEY ';' "文本"` | 在 KEY 这一行加行尾注释 |
 | `python3 tools/db.py pointer KEY word N` 等 | 声明运行时没跑到的指针（见 `db/pointers.tsv` 表头） |
-| `python3 tools/db.py notptr KEY "理由"` | 嫌疑项确认不是指针 |
+| `python3 tools/db.py notptr KEY '理由'` | 嫌疑项确认不是指针 |
+| `python3 tools/db.py code KEY` | 声明覆盖率没跑到、但确实是代码的入口（例如分派表里没执行过的项） |
+| `python3 tools/codeguess.py us` | 列出疑似被当成数据的代码（指针表的目标） |
+| `python3 tools/m6502.py us BANK ADDR N` | 从地址开始线性反汇编 N 条指令（用来确认是不是代码） |
 | `python3 tools/suspects.py us --bank N` | 还没转成标签的疑似指针 |
 | `tools/regen.sh` | 改完 db 后重新生成源码，`q.py` 才能看到新名字 |
 | `tools/check.sh` | 自检：lint、重新生成、美日两版逐字节一致、重定位测试 |
@@ -84,6 +87,8 @@
 
 - 理解了一张表的格式之后，如果其中有地址，用 `db.py pointer` 声明。如果目标在别的 bank，加 `bank=N`。
 - 处理范围内 `tools/suspects.py` 列出的嫌疑项：要么声明为指针，要么用 `db.py notptr` 写明理由（例如「图块数据」「坐标表」）。
+- **不要用 pointer 去「修补」被当成数据的代码**：如果一段 `EQUB` 其实是代码（里面有 `20 xx xx` 这种 JSR），用 `db.py code` 声明入口，工具会把它反汇编成指令，地址也会自动变成标签。
+  在指令字节上声明的 pointer 会被 check 拒绝。
 
 ## 5. 笔记
 

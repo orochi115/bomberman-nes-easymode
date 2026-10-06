@@ -1002,17 +1002,16 @@ ENDIF
 .VS_RESULT_LAY
   EQUB &40,&00,&42,&00,&49,&00,&49,&00,&50,&00,&5A,&00,&64,&00,&70,&00
   EQUB &7D,&00,&8A,&00,&96,&00,&A0,&00,&49,&00,&49,&00,&AA,&00,&40,&00
-  EQUB &40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40
-.D4_AA30
-  EQUB &00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40
-  EQUB &00,&40,&00,&40,&00,&00,&00,&30,&01,&04,&8C,&04,&06,&00,&30,&02
-  EQUB &09,&8C,&09,&07,&00,&3E,&02,&09,&29,&31,&09,&8C,&09,&07,&00,&3E
-  EQUB &02,&09,&2A,&32,&09,&8C,&09,&07,&00,&3E,&02,&3B,&2B,&33,&09,&BC
-  EQUB &09,&25,&09,&07,&00,&3F,&02,&3C,&2C,&34,&40,&46,&BC,&09,&26,&24
-  EQUB &07,&00,&3F,&02,&3D,&2D,&35,&41,&47,&BC,&09,&27,&30,&07,&00,&3E
-  EQUB &02,&3E,&2E,&36,&09,&BC,&09,&28,&09,&07,&00,&3E,&02,&09,&2F,&37
-  EQUB &09,&8C,&09,&07,&00,&3E,&02,&09,&0A,&0D,&09,&8C,&09,&07,&00,&30
-  EQUB &03,&05,&8C,&05,&08,&00
+  EQUB &40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00
+  EQUB &40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00
+  EQUB &00,&00,&30,&01,&04,&8C,&04,&06,&00,&30,&02,&09,&8C,&09,&07,&00
+  EQUB &3E,&02,&09,&29,&31,&09,&8C,&09,&07,&00,&3E,&02,&09,&2A,&32,&09
+  EQUB &8C,&09,&07,&00,&3E,&02,&3B,&2B,&33,&09,&BC,&09,&25,&09,&07,&00
+  EQUB &3F,&02,&3C,&2C,&34,&40,&46,&BC,&09,&26,&24,&07,&00,&3F,&02,&3D
+  EQUB &2D,&35,&41,&47,&BC,&09,&27,&30,&07,&00,&3E,&02,&3E,&2E,&36,&09
+  EQUB &BC,&09,&28,&09,&07,&00,&3E,&02,&09,&2F,&37,&09,&8C,&09,&07,&00
+  EQUB &3E,&02,&09,&0A,&0D,&09,&8C,&09,&07,&00,&30,&03,&05,&8C,&05,&08
+  EQUB &00
 
 ; Pre-stage card for Z_49 = 1. Strip format. UI metatiles. Drawn by DRAW_VS_CARD_MAP.
 .VS_CARD_LAY
@@ -1537,6 +1536,8 @@ ENDIF
   BEQ L4_B96E
   CMP #&01
   BEQ L4_B96B
+
+; (not seen executing during the coverage runs)
   JSR SEAL_BATTLE_CELLS
 .L4_B96B
   JSR SEAL_MODE1_CELLS
@@ -1547,6 +1548,8 @@ ENDIF
   BEQ L4_B980
   CMP #&01
   BEQ L4_B97D
+
+; (not seen executing during the coverage runs)
   JSR OPEN_BATTLE_CELLS
 .L4_B97D
   JSR OPEN_MODE1_CELLS
@@ -1600,6 +1603,8 @@ ENDIF
   DEX
   BPL L4_B9BE
   RTS
+
+; (not seen executing during the coverage runs)
 
 ; Mark the 7 battle cells from BATTLE_SEAL_COL/ROW with map byte 1.
 .SEAL_BATTLE_CELLS
@@ -1676,6 +1681,8 @@ ENDIF
   ABS_LDA Z_49
   CMP #&02
   BNE L4_BA4B
+
+; (not seen executing during the coverage runs)
   LDA #&05
   STA Z_2A
 .L4_BA3F
@@ -1804,6 +1811,8 @@ ENDIF
   LDA (Z_20),Y
   INC Z_20
   BNE L4_BB1C
+
+; (not seen executing during the coverage runs)
   INC Z_21
 .L4_BB1C
   CMP #&FF
@@ -1811,6 +1820,8 @@ ENDIF
   LDA (Z_20),Y
   INC Z_20
   BNE L4_BB28
+
+; (not seen executing during the coverage runs)
   INC Z_21
 .L4_BB28
   TAX
