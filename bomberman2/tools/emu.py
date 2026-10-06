@@ -24,6 +24,7 @@ A, B, SELECT, START, UP, DOWN, LEFT, RIGHT = (1 << i for i in range(8))
 class NES:
     def __init__(self, rom_bytes, track=True, log_ppu=False):
         hdr = rom_bytes[:16]
+        self.region = "jp" if hdr[15] == 3 else "us"   # No-Intro headers: 02 US, 03 JP
         nprg = hdr[4]
         self.prg = bytearray(rom_bytes[16:16 + nprg * 0x4000])
         self.nbanks = nprg

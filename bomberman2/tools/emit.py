@@ -668,7 +668,12 @@ class Emitter:
             for name, v in sorted(used.items(), key=lambda x: (x[1], x[0])):
                 key = ("ram", v)
                 line = "%-24s= %s" % (name, h4(v) if v > 0xFF else h2(v))
-                c = self.symcomment.get(("ram", v)) if other is None or name in self.names.values() else None
+                # comments belong to the name (db keys are US addresses)
+                c = None
+                for k, nm in self.names.items():
+                    if nm == name and k[0] == "ram":
+                        c = self.symcomment.get(k)
+                        break
                 out.append(line + (" ; " + c if c else ""))
             return out
         out = ["; RAM, WRAM and register names", "; Generated from db/symbols.tsv (ram:XXXX keys, US addresses).",

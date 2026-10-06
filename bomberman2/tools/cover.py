@@ -114,13 +114,16 @@ def scen_menu_random(nes, rng):
         press(nes, rng.choice(DIRS + [A, B, START, SELECT]), frames=rng.randint(2, 20))
 
 
-AREA, ROUND, LIVES = 0x4B, 0x4C, 0x04E5     # from Data Crystal + bank 7 stage loop
+# AREA_NUM, STAGE_NUM, LIVES per region (the JP RAM layout differs, see vars.asm)
+STAGE_VARS = {"us": (0x4B, 0x4C, 0x04E5), "jp": (0x3D, 0x3E, 0x04E5)}
 
 
 def play_stage(base, area, rnd, frames, rng):
     """Copy of a menu snapshot; start NORMAL MODE at area/round, infinite lives."""
     import copy
     nes = copy.deepcopy(base)
+    region = getattr(base, "region", None) or base.a.region
+    AREA, ROUND, LIVES = STAGE_VARS[region]
     nes.force = {AREA: lambda v: area, ROUND: lambda v: rnd, LIVES: lambda v: max(v, 2)}
     for b in (START, START, A):
         press(nes, b)

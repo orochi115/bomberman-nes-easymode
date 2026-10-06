@@ -628,9 +628,9 @@ ENDIF
   ORA JOYPAD2_NEW
   ORA JOYPAD3_NEW
   STA JOY_NEW
+  RTS
 IF REGION_JP
 ELSE
-  RTS
 
 ; US only. Read pads with the AND-3 CMP-1 test, then shift 8 more bits into JOY_PROBE_1 and JOY_PROBE_2.
 ; Returns Z set when the probe bytes are 10h and 20h. The mode menu rejects GAME_MODE=2 while JOY_SIG_OK stays 0.
@@ -707,8 +707,8 @@ ELSE
   ROL JOYPAD3_2ND
   DEY
   BNE L7_C4A1
-ENDIF
   RTS
+ENDIF
 
 ; Fill nametable 2000h with A (8 pages), then zero the 128 bytes at 0420h (ATTR_BUF).
 ; In: A = tile. Clobbers X and Y.
@@ -2853,11 +2853,7 @@ ENDIF
 .D7_D25E
   EQUB HI(STORY_MODE_PAL)
   EQUW UI_BG_PAL
-IF REGION_JP
   EQUW UI_BG_PAL
-ELSE
-  EQUB &19,&B1
-ENDIF
 
 ; Zero DEMO_SLOT, the demo record index.
 .RESET_DEMO_IDX
@@ -2941,11 +2937,7 @@ ENDIF
 ; Both sides FILLTO D800+SHIFT. The fill length differs with the bytes above.
 .DEMO_PAD_LOCK
   EQUB &01
-IF REGION_JP
   FILLTO &D800 + SHIFT
-ELSE
-  FILLTO &D800 + SHIFT
-ENDIF
 
 ; Fixed-bank entry. JMP SND_INIT with bank 2 mapped.
 .SND_RESET_ENTRY
@@ -4286,19 +4278,9 @@ ENDIF
   FILLTO &FFE0
   EQUB &42,&4F,&4D,&42,&45,&52
 IF REGION_JP
-  EQUB &20
+  EQUB &20,&4D,&41,&4E,&20,&32,&20,&20,&20,&20,&04,&F8
 ELSE
-ENDIF
-  EQUB &4D,&41,&4E
-IF REGION_JP
-  EQUB &20
-ELSE
-ENDIF
-  EQUB &32,&20
-IF REGION_JP
-  EQUB &20,&20,&20,&04,&F8
-ELSE
-  EQUB &39,&32,&38,&31,&37,&A7,&94
+  EQUB &4D,&41,&4E,&32,&20,&39,&32,&38,&31,&37,&A7,&94
 ENDIF
   EQUB &00,&00,&38,&84,&01,&0F,&18,&1C
   EQUW NMI

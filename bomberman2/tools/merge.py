@@ -32,6 +32,8 @@ class Merger:
         self.amap = {}     # jp key -> us key
         self.rmap = {}     # us key -> jp key
         self.extra = {"us": [], "jp": []}
+        self.pair_alias = {}   # JP target -> US target, from pointers at the same position
+        self.no_alias = set()  # pairs dropped because they would define a label twice
 
     # ------------------------------------------------------------ align
     @staticmethod
@@ -108,7 +110,11 @@ class Merger:
             if jk is not None and prio[kind] > prio.get(jp.kinds.get(jk), 0):
                 jp.kinds[jk] = kind
                 changed = True
-        jp.alias = lambda key: us.name_of(self.amap[key]) if key in self.amap else None
+        def alias(key):
+            if key in self.pair_alias:
+                return us.name_of(self.pair_alias[key])
+            return us.name_of(self.amap[key]) if key in self.amap else None
+        jp.alias = alias
         # db entries keyed by US address also apply to JP through the full map
         # (tables whose values moved); emit.py validates the bytes and skips
         # entries that do not fit, with a note
@@ -142,6 +148,30 @@ class Merger:
                 if dst.add_pair(dlo, dhi, dtb, dv, adj):
                     self.extra[dst.region].append((dlo, dhi, dtb, dv, adj))
                     changed += 1
+            # Pointers through the full map (also 'replace' runs, where tables
+            # differ): only if the target maps exactly onto the source target.
+            # Coordinates or tile bytes that merely look like addresses fail this.
+            full = self.rmap if src is self.us else self.amap
+            back = self.amap if src is self.us else self.rmap
+            for lo, hi, tb, v, adj in list(src.pairs):
+                kl = full.get((lo // 0x4000, src.d.banks[lo // 0x4000].base + lo % 0x4000))
+                kh = full.get((hi // 0x4000, src.d.banks[hi // 0x4000].base + hi % 0x4000))
+                if kl is None or kh is None:
+                    continue
+                dlo = kl[0] * 0x4000 + (kl[1] & 0x3FFF)
+                dhi = kh[0] * 0x4000 + (kh[1] & 0x3FFF)
+                if dlo in dst.roles and dhi in dst.roles:
+                    continue
+                dv = ((dst.d.prg[dlo] | dst.d.prg[dhi] << 8) + adj) & 0xFFFF
+                if dv < 0x8000:
+                    continue
+                own = lo // 0x4000
+                dtb = FIXED if dv >= 0xC000 else (kl[0] if tb == own else tb)
+                if back.get((dtb, dv)) != (tb, v):
+                    continue
+                if dst.add_pair(dlo, dhi, dtb, dv, adj):
+                    self.extra[dst.region].append((dlo, dhi, dtb, dv, adj))
+                    changed += 1
             # code entry points
             for b in src.d.banks:
                 for pc in list(b.insn):
@@ -158,6 +188,49 @@ class Merger:
                         changed += 1
         return changed
 
+    def cross_pointers(self):
+        """Raw words that are pointers in both regions: the US word V_us and the
+        JP word V_jp at corresponding positions differ, and the address map
+        takes V_jp exactly onto V_us (the object moved, the pointer followed).
+        Catches table entries that the coverage runs never used."""
+        from disasm import UNKNOWN
+        us, jp = self.us, self.jp
+        found = 0
+        for n in range(8):
+            ub = us.d.banks[n]
+            off = 0
+            while off < 0x3FFF:
+                a = ub.base + off
+                uo = n * 0x4000 + off
+                if ub.kind[off] != UNKNOWN or ub.kind[off + 1] != UNKNOWN or uo in us.roles or uo + 1 in us.roles:
+                    off += 1
+                    continue
+                kl, kh = self.rmap.get((n, a)), self.rmap.get((n, a + 1))
+                if not kl or not kh or kh[1] != kl[1] + 1:
+                    off += 1
+                    continue
+                jb = jp.d.banks[kl[0]]
+                jo = kl[0] * 0x4000 + (kl[1] & 0x3FFF)
+                if jb.kind[kl[1] - jb.base] != UNKNOWN or jb.kind[kh[1] - jb.base] != UNKNOWN:
+                    off += 1
+                    continue
+                vu = ub.mem[off] | ub.mem[off + 1] << 8
+                vj = jp.d.prg[jo] | jp.d.prg[jo + 1] << 8
+                ok = False
+                if vu != vj and vu >= 0x8000 and vj >= 0x8000:
+                    tb = FIXED if vu >= 0xC000 else n
+                    tbj = FIXED if vj >= 0xC000 else kl[0]
+                    if tb == tbj or tb == FIXED:
+                        ok = self.amap.get((tbj, vj)) == (tb, vu)
+                if ok and us.add_pair(uo, uo + 1, tb, vu, 0):
+                    jp.add_pair(jo, jo + 1, tbj, vj, 0)
+                    self.extra["jp"].append((jo, jo + 1, tbj, vj, 0))
+                    found += 1
+                    off += 2
+                else:
+                    off += 1
+        return found
+
     def run(self, verbose=True):
         for it in range(6):
             self.align_bytes()
@@ -167,7 +240,7 @@ class Merger:
             self.jp.roles = self.jp.pointer_roles()
             for p in self.extra["jp"]:
                 self.jp.add_pair(*p)
-            moved = self.propagate()
+            moved = self.propagate() + self.cross_pointers()
             if moved:
                 self.us.collect()
                 self.jp.collect()
@@ -176,6 +249,60 @@ class Merger:
                     it, len(self.amap), linked, moved), flush=True)
             if not linked and not moved:
                 break
+
+    def pair_targets(self):
+        """JP pointer targets correspond to the US targets of the pointer at the
+        same position: give them the US name (e.g. JP's ENEMY_WALK_00 table
+        moved, so its position maps to some other US data)."""
+        us_by_lo = {}
+        for lo, hi, tb, v, adj in self.us.pairs:
+            us_by_lo[lo] = (tb, v)
+        cand = {}
+        for lo, hi, tb, v, adj in self.jp.pairs:
+            n = lo // 0x4000
+            uk = self.amap.get((n, self.jp.d.banks[n].base + lo % 0x4000))
+            if uk is None:
+                continue
+            ulo = uk[0] * 0x4000 + (uk[1] & 0x3FFF)
+            ut = us_by_lo.get(ulo)
+            if ut is None or self.amap.get((tb, v)) == ut:
+                continue
+            cand.setdefault((tb, v), set()).add(ut)
+        back = {}
+        for jt, uts in cand.items():
+            if len(uts) == 1:
+                back.setdefault(next(iter(uts)), set()).add(jt)
+        self.pair_alias = {next(iter(jts)): ut for ut, jts in back.items()
+                           if len(jts) == 1 and (next(iter(jts)), ut) not in self.no_alias}
+        for jt, ut in self.pair_alias.items():
+            prio = {"S": 3, "L": 2, "D": 1}
+            k = self.jp.kinds.get(jt, "D")
+            if prio[k] > prio.get(self.us.kinds.get(ut), 0):
+                self.us.kinds[ut] = k
+
+    @staticmethod
+    def duplicate_labels(outdir):
+        """Label names defined twice in the US or the JP build."""
+        import re
+        seen = {"us": {}, "jp": {}}
+        dups = set()
+        for n in range(8):
+            region = None
+            for line in open(os.path.join(outdir, "bank%d.asm" % n)):
+                s = line.strip()
+                if s == "IF REGION_JP":
+                    region = "jp"
+                elif s == "ELSE" and region == "jp":
+                    region = "us"
+                elif s == "ENDIF" and region:
+                    region = None
+                elif s.startswith("."):
+                    name = s[1:].split()[0]
+                    for r in ([region] if region else ["us", "jp"]):
+                        if name in seen[r]:
+                            dups.add(name)
+                        seen[r][name] = True
+        return dups
 
     # ----------------------------------------------------------- render
     def bank_lines(self, n):
@@ -186,21 +313,31 @@ class Merger:
                  "; PRG bank %d ($%04X-$%04X)" % (n, ub.base, ub.base + 0x3FFF),
                  "; " + "-" * 75, ""]
         shared, du, dj = [], [], []
+        segs = []          # ("same", items) | ("diff", us_items, jp_items)
 
         def flush_shared():
             if shared:
-                lines.extend(render(shared))
+                segs.append(("same", list(shared)))
                 del shared[:]
 
         def flush_diff():
             if du or dj:
                 flush_shared()
-                self.ndiff += 1
-                lines.append("IF REGION_JP")
-                lines.extend(render(dj))
-                lines.append("ELSE")
-                lines.extend(render(du))
-                lines.append("ENDIF")
+                # Second pass: identical runs inside the difference (same text,
+                # labels included) are emitted once; short identical byte runs
+                # stay inside the surrounding difference
+                ut = ["\n".join(render([x])) for x in du]
+                jt = ["\n".join(render([x])) for x in dj]
+                sm = difflib.SequenceMatcher(None, ut, jt, autojunk=False)
+                for tag, i1, i2, j1, j2 in sm.get_opcodes():
+                    keep = tag == "equal" and (i2 - i1 >= 4 or any(x.kind != "byte" for x in du[i1:i2]))
+                    if keep:
+                        segs.append(("same", du[i1:i2]))
+                    elif segs and segs[-1][0] == "diff":
+                        segs[-1][1].extend(du[i1:i2])
+                        segs[-1][2].extend(dj[j1:j2])
+                    else:
+                        segs.append(("diff", list(du[i1:i2]), list(dj[j1:j2])))
                 del du[:]
                 del dj[:]
 
@@ -218,6 +355,10 @@ class Merger:
                 continue
             va = self.amap.get((n, v.addr), (None, None))[1]
             if u.kind in ("pad", "raw") and v.kind == u.kind:
+                va = u.addr
+            if va != u.addr and u.kind != "byte" and render([u]) == render([v]):
+                va = u.addr      # same text, labels included: safe to share
+            if u.kind == v.kind == "fill" and u.text == v.text:
                 va = u.addr
             if va == u.addr and (u.size == v.size or u.kind == v.kind == "fill"):
                 if render([u]) == render([v]) or (u.kind == v.kind and u.text == v.text):
@@ -245,6 +386,51 @@ class Merger:
                 i += 1
         flush_diff()
         flush_shared()
+        return lines + self.render_segments(segs)
+
+    def render_segments(self, segs):
+        """Coalesce and render: short shared byte runs between two differences
+        join them; differences that are only label positions get IF blocks
+        around the labels alone."""
+        def plain(items):
+            return all(x.kind == "byte" and not x.labels and not x.block and not x.eol for x in items)
+        out = []
+        for seg in segs:
+            if (seg[0] == "diff" and len(out) >= 2 and out[-2][0] == "diff"
+                    and out[-1][0] == "same" and len(out[-1][1]) < 4 and plain(out[-1][1])):
+                mid = out.pop()[1]
+                prev = out[-1]
+                prev[1].extend(mid + seg[1])
+                prev[2].extend(mid + seg[2])
+            elif seg[0] == "diff" and out and out[-1][0] == "diff":
+                out[-1][1].extend(seg[1])
+                out[-1][2].extend(seg[2])
+            else:
+                out.append((seg[0], list(seg[1])) if seg[0] == "same" else (seg[0], list(seg[1]), list(seg[2])))
+        lines = []
+        for seg in out:
+            if seg[0] == "same":
+                lines.extend(render(seg[1]))
+                continue
+            us_items, jp_items = seg[1], seg[2]
+            strip = lambda it: (it.kind, it.text, it.size, tuple(it.block), it.eol)
+            if len(us_items) == len(jp_items) and all(strip(a) == strip(b) for a, b in zip(us_items, jp_items)):
+                # same code and data, labels at different places
+                for a, b in zip(us_items, jp_items):
+                    if a.labels != b.labels:
+                        self.ndiff += 1
+                        lines += ["IF REGION_JP"] + ["." + n for n in b.labels] + ["ELSE"] + \
+                                 ["." + n for n in a.labels] + ["ENDIF"]
+                    labels, a.labels = a.labels, []
+                    lines.extend(render([a]))
+                    a.labels = labels
+                continue
+            self.ndiff += 1
+            lines.append("IF REGION_JP")
+            lines.extend(render(jp_items))
+            lines.append("ELSE")
+            lines.extend(render(us_items))
+            lines.append("ENDIF")
         return lines
 
     def write(self, outdir):
@@ -266,10 +452,24 @@ class Merger:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=ROOT)
+    ap.add_argument("--notes", action="store_true")
     args = ap.parse_args()
     m = Merger()
     m.run()
-    m.write(args.out)
+    m.pair_targets()
+    for _ in range(5):
+        m.write(args.out)
+        dups = m.duplicate_labels(args.out)
+        if not dups:
+            break
+        names = {jt: m.us.name_of(ut) for jt, ut in m.pair_alias.items()}
+        dropped = {(jt, m.pair_alias[jt]) for jt, nm in names.items() if nm in dups}
+        if not dropped:
+            print("ERROR: duplicate labels %s" % sorted(dups))
+            sys.exit(2)
+        m.no_alias |= dropped
+        m.pair_targets()
+    print("pointer-paired JP labels: %d" % len(m.pair_alias))
     print("IF REGION_JP blocks %d" % m.ndiff)
     bad = 0
     for e in (m.us, m.jp):
