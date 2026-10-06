@@ -1679,10 +1679,10 @@ ENDIF
   ASL A
   ASL A
   CLC
-  ADC #LO(D4_B019)
+  ADC #LO(AREA_BG_PAL)
   STA Z_16
   LDA #&00
-  ADC #HI(D4_B019)
+  ADC #HI(AREA_BG_PAL)
   STA Z_17
   LDA #&00
   LDX #&04
@@ -2014,17 +2014,17 @@ ENDIF
 .L7_CD88
   RTS
 .L7_CD89
-  FARCALL 4, S4_B826
+  FARCALL 4, DECODE_LAYOUT
   RTS
 
 ; FARCALL bank 4 at B800h. That routine sets 62h/64h/66h from tables indexed by the area.
 .BIND_AREA_PTRS
-  FARCALL 4, S4_B800
+  FARCALL 4, LOAD_AREA_LAYOUT
   RTS
 
 ; FARCALL bank 4 at B909h. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
 .LOAD_STAGE_META
-  FARCALL 4, S4_B909
+  FARCALL 4, PLACE_SOFT_AND_BOMBS
   RTS
 
 ; FARCALL bank 5 at 802Fh, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
@@ -2549,16 +2549,16 @@ ENDIF
   STX X_62E0
   LDA X_6250,X
   BEQ L7_D0DA
-  JSR S0_824F
-  JSR S0_82FE
+  JSR DISPATCH_ENEMY_AI
+  JSR ENEMY_BLAST_OR_PLAYER
 .L7_D0DA
   LDX X_62E0
   DEX
   BPL L7_D0CC
-  JSR S0_83BE
-  JSR S0_8179
-  JSR S0_81A6
-  JSR S0_821E
+  JSR DRAW_ALL_ENEMIES
+  JSR SPAWN_BURST
+  JSR SPAWN_TYPE_4
+  JSR NOTE_ENEMIES_CLEARED
   PLA
   TAX
   JSR BANK_SWITCH
@@ -2568,12 +2568,12 @@ ENDIF
 
 ; FARCALL bank 0 at 8000h. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
 .LOAD_ENEMIES
-  FARCALL 0, S0_8000
+  FARCALL 0, SPAWN_STAGE_ENEMIES
   RTS
 
 ; FARCALL bank 0 at 8090h. That routine uses FRAME_CNT and steps an index in X_62E6.
 .STEP_ENEMY_GEN
-  FARCALL 0, S0_8090
+  FARCALL 0, SPAWN_PARADE
   RTS
 .L7_D103
   LDA X_62EB
@@ -2654,7 +2654,7 @@ ENDIF
   RTS
 .L7_D192
   STY Z_1C
-  FARCALL 0, S0_AF4F
+  FARCALL 0, ADD_SCORE
   RTS
 
 ; FARCALL bank 5 at ACE4h. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
@@ -2672,7 +2672,7 @@ ENDIF
   FARCALL 5, OPENING_LOOP
   RTS
 .L7_D1B0
-  FARCALL 0, S0_B008
+  FARCALL 0, SHOW_CREDITS
   RTS
 
 ; FARCALL bank 5 at 9280h. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
@@ -2754,9 +2754,9 @@ ENDIF
   LDA #&00
   LDX #&04
   JSR COPY_PAL_ROWS
-  LDA #LO(D4_B129)
+  LDA #LO(MODE_SPR_PAL)
   STA Z_16
-  LDA #HI(D4_B129)
+  LDA #HI(MODE_SPR_PAL)
   STA Z_17
   LDA #&04
   LDX #&04
@@ -2770,11 +2770,11 @@ ENDIF
 ; Three pointers, indexed by Z_49, to 16-byte palette rows in bank 4.
 ; Entry 0 is B139h. Entries 1 and 2 are both B119h. LOAD_MODE_GFX copies the selected row to PAL_BUF.
 .MODE_PAL_PTR
-  EQUB LO(D4_B139)
+  EQUB LO(STORY_MODE_PAL)
 .D7_D25E
-  EQUB HI(D4_B139)
-  EQUW D4_B119
-  EQUW D4_B119
+  EQUB HI(STORY_MODE_PAL)
+  EQUW UI_BG_PAL
+  EQUW UI_BG_PAL
 
 ; Zero W_03F0, the demo record index.
 .RESET_DEMO_IDX

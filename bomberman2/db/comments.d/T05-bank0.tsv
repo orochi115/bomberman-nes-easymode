@@ -1,0 +1,144 @@
+0:8000	>	Spawn the stage enemies. Z_4E places eight type-0 enemies on FIXED_SPAWN_COL/ROW. Z_49 nonzero returns. Otherwise LOAD_SPAWN_LIST and place each type until a negative byte.
+0:8021	>	A is the enemy type. Random column Z_28 is 0-31. Row comes from SPAWN_ROW_PICK. Rows under 5 need column at least 5. Map cell must be 0. Then PLACE_ENEMY.
+0:8090	>	Every 4th frame, place a type-0 enemy on the next PARADE_SPAWN_COL/ROW point. X_62E6 walks 0 through 64. Also runs SPAWN_TYPE_10.
+0:80B6	>	Place enemy type 16. X_62E7 at least 16 tries once, then stores FF on success. If X_62E7 is negative and X_62E8 is positive, count X_62E9 down and try again.
+0:8179	>	When X_62EB hits 0, place eight copies of one type from D0_81A2 (types 1-4), chosen by RNG, at cell X_62EC / X_62ED.
+0:81A6	>	When X_62EE hits 0, place one type-4 enemy at cell X_62EF / X_62F0.
+0:81C0	>	Place enemy type A at cell Z_28, Z_29. Pixel is cell*16+8. Clears the slot timers. Carry set when a slot was free.
+0:8210	>	Find slot 9..0 whose X_6250 is 0. X is the slot and carry is clear. Carry set if all 10 slots are used.
+0:821E	>	Clear X_62DE if any slot is active, not negative, and not type 17. If every slot is empty or type 17, set X_62DE once. X_62EB or X_62EE also clears it.
+0:824F	>	Enemy logic for slot X. Negative X_6250 goes to ENEMY_DEATH_STEP. Otherwise jump through ENEMY_AI_LO indexed by X_625A.
+0:84B7	>	Carry set if direction A is blocked for slot X. The enemy must be near a cell edge. Then the map cell ahead is masked with X_62E2.
+0:829C	>	Draw enemy X_62E0. Skip if X_6250 is 0 or bit 4 is set. Bit 3 draws on even frames only. Jump through ENEMY_DRAW_LO indexed by type.
+0:84DB	>	Carry set if the map cell to the right, masked by X_62E2, is nonzero.
+0:82FE	>	Slot X_62E0. Bit 0 of X_62DD clear: a map cell with bit 7 starts death (X_6250 = 80, timer 30) unless bit 6 is set, and adds ENEMY_SCORE_INDEX. Bit 0 set: overlap with the player. Type 16 gives a life and sound 0A. Other types jump L7_CEC4. Z_4E only allows type 16.
+0:850B	>	Carry set if the map cell to the left, masked by X_62E2, is nonzero.
+0:83BE	>	Draw all 10 enemies. X_62DC = 0 uses order phase 0. Otherwise FRAME_CNT picks one of four rotations in ENEMY_DRAW_ORDER.
+0:8537	>	Carry set if the map cell below, masked by X_62E2, is nonzero.
+0:8413	>	Slot X: tile column from the 16-bit pixel X, tile row from pixel Y shifted right 4.
+0:8563	>	Carry set if the map cell above, masked by X_62E2, is nonzero.
+0:842C	>	Copy the enemy pixel X and Y+32 into Z_56-Z_58 for DRAW_METASPRITE.
+0:857F	>	Direction toward the player cell Z_6C / Z_6F. The larger axis wins. 0 up, 1 left, 2 down, 3 right.
+0:8442	>	Move slot X one pixel. A is 0 up, 1 left, 2 down, 3 right. Left and right use the high byte X_626E.
+0:85AD	>	If the current direction is horizontal, return up or down toward Z_6F. If vertical, return left or right toward Z_6C.
+0:85CC	>	Z set when both pixel X and Y are 18 hex mod 20 hex, the center of an odd cell.
+0:846E	>	Same directions as ENEMY_MOVE_1, stepping by X_62E3 pixels.
+0:85DD	>	Z set when both pixel X and Y are 8 mod 16, the center of any cell.
+0:AD3C	>	Point Z_20 at the spawn list for area Z_4B and stage Z_4C. Bytes are enemy types, ended by FF.
+0:85EE	>	Set bit 6 of X_6250 so ENEMY_BLAST_OR_PLAYER skips the blast reaction.
+0:AF4F	>	Add SCORE_ADD_TABLE indexed by Z_1C into the decimal digits at W_03D0. Skipped while W_03EF is set. Caps at eight 9s.
+0:B008	>	Credits. Clear the nametable, upload the credits CHR and palette, play sound 18 hex, and scroll until Start.
+0:85F7	>	Clear bit 6 of X_6250.
+0:B052	>	Upload the RLE CHR at A486 and four palette rows from bank 4. The palette address differs on the JP ROM.
+0:8600	>	Clear bits 3 and 4 of X_6250 (flicker and no-draw).
+0:8609	>	Set bit 3 and clear bit 4 of X_6250. Draw runs on even frames only.
+0:B07E	>	W_0536 = 1 scrolls up and queues the next credits line, 26 tiles, from the pointer table at B117. A 0000 pointer switches to mode 2, which waits and then queues the final line.
+0:8614	>	Set bit 4 and clear bit 3 of X_6250. DISPATCH_ENEMY_DRAW skips the slot.
+0:8711	>	Death timer. After six steps, X_6250 becomes 61 hex, the old type is saved, the type becomes 17, then L7_D192.
+0:981D	>	Walking sprite. Frame is direction times 4 plus FRAME_CNT/8 mod 4, times 2, into the word table at Z_20. ENEMY_DIR_FLIP supplies Z_5A. A negative X_6250 uses the death frames at D0_AAEA.
+0:86F3	>	Carry set if any blast slot X_6001 shares this enemy column or row.
+0:8E81	>	Compare the player cell to this enemy on the axis of X_62BE. Result is left in the flags.
+0:9684	>	Script dispatcher. While X_62A0 is below 0D, jump ENEMY_SCRIPT_OPS indexed by the phase.
+0:ADDE	>	Area 0 stage 0 spawn types, ended by FF. The following lists use the same format, one per stage.
+0:96B6	>	Read the script at Z_20, index X_62D2. 01 sets X and Y. 09, 0A, and 0B set X_62F2. 0E places an enemy. 0F calls AUDIO_CALL. 0D removes the slot. FF loops back 3 bytes. Any other byte is a phase, direction, and timer.
+0:986A	>	Four attribute bytes for directions 0-3. The fourth is horizontal flip 40 hex. Following bytes are metasprites: a count, then tile, X offset, Y offset, attribute for each sprite.
+0:8631	>	Try directions 0, 1, 3, then 2. Keep the first one ENEMY_DIR_BLOCKED accepts.
+0:955B	>	Script for enemy type 14 hex. Consumed by ENEMY_SCRIPT_STEP.
+0:8658	>	Pick a random direction. If it is blocked, try up, left, right, then down via the single-cell tests.
+0:958B	>	Script for enemy type 15 hex. Consumed by ENEMY_SCRIPT_STEP.
+0:8692	>	If the reverse of X_62BE is open, store it.
+0:95C2	>	Script for enemy type 1A hex. Consumed by ENEMY_SCRIPT_STEP.
+0:86A2	>	Turn by a delta from ENEMY_TURN_DELTAS. Eight groups of four deltas. Keep the first open direction.
+0:95D3	>	Script for enemy type 19 hex. Consumed by ENEMY_SCRIPT_STEP.
+0:8266	>	Logic entry for each enemy type, little-endian. Index is X_625A. A few entries are still raw words inside the table.
+0:AF8F	>	Score added for Z_1C 0 through 10: 1, 2, 4, 8, 16, 32, 10, 20, 40, 80, 64.
+0:82C7	>	Draw entry for each enemy type. Same index as ENEMY_AI_LO.
+0:AF9A	>	Metasprite pointers for the type-17 pickup drawn by DRAW_ENEMY_17. Indexed by X_6296.
+0:AD5A	>	Six area pointers, then the stage list. Each list is type bytes ended by FF. The JP ROM uses a different pointer table.
+0:8741	>	Type 0. Mask 70 hex. Picks a vertical or horizontal direction from the sign of its pixel position and walks one pixel, reversing at walls.
+0:87FE	>	Type 1. Mask 70 hex, speed accumulator C0. On a wall, turn by +1 or -1.
+0:8870	>	Type 2. Mask 70 hex and two speed bytes of C0, then the shared walker at L0_8FDA.
+0:888F	>	Type 3. Mask 50 hex. After two odd-cell centers, face the player with ENEMY_AIM_PLAYER.
+0:890E	>	Type 4. Mask 70 hex. Walks, then charges the player at speed 1 when the row or column matches.
+0:89DE	>	Type 5. Mask 40 hex. On an odd-cell center, chooses a random direction and keeps it. If the cell is 10 hex, plants a blast.
+0:8A6B	>	Type 6. Mask 70 hex. Wanders, pauses, then calls L7_D018 and sets bit 6.
+0:916A	>	Type 0F hex. Same walker as type 1 with speed accumulator FF.
+0:8BFD	>	Type 7. Mask 50 hex, speed accumulator C0. Reverses on a wall, then on the odd-cell grid turns toward the player on the other axis.
+0:8CA2	>	Type 8. Mask 50 hex. Random open direction, then retargets every few odd-cell centers.
+0:8EA4	>	Type 0A hex. Mask F0, then the same walker as type 0.
+0:8EBB	>	Type 0B hex. Mask 70 hex. Walks and, on the odd-cell grid, turns toward the player's row or column.
+0:9077	>	Type 0D hex. Mask 70 hex. Pauses when ENEMY_ON_BLAST_LINE is set, otherwise walks and reverses at walls.
+0:90D4	>	Type 0E hex. Mask 70 hex. Walks two odd-cell centers, aims at the player, then charges.
+0:924B	>	Type 11 hex. Clears the slot after 78 hex frames.
+0:93C9	>	Type 14 hex. Runs ENEMY_SCRIPT_20.
+0:93D4	>	Type 15 hex. Runs ENEMY_SCRIPT_21.
+0:94F3	>	Type 17 hex. Clears the slot after 3C hex frames.
+0:9522	>	Type 18 hex. Clears the slot after 78 hex frames.
+0:9611	>	Type 19 hex. Runs ENEMY_SCRIPT_25.
+0:95E4	>	Type 1A hex. Runs ENEMY_SCRIPT_26.
+0:AD28	>	20 score-group bytes, one per enemy type. Added to the blast chain count in ENEMY_BLAST_OR_PLAYER.
+0:83EB	>	40 slot indexes, four rotations of 10. DRAW_ALL_ENEMIES adds ENEMY_ORDER_BASE and draws in that order.
+0:8056	>	16 row numbers. SPAWN_ENEMY_ON_EMPTY indexes this with RNG and 0F.
+0:8080	>	Eight columns for the Z_4E fixed spawns. Paired with FIXED_SPAWN_ROW. Not pointers.
+0:80F7	>	65 columns for SPAWN_PARADE. PARADE_SPAWN_ROW is the matching row list.
+0:8E12	>	Type 9. Mask 50 hex, speed accumulator 80. On the odd-cell grid, if the player is more than one cell away on the facing axis, turn with ENEMY_STRAFE_AXIS.
+0:8FCB	>	Type 0C hex. Mask 70 hex. Horizontal and vertical use different speed accumulators, C0 and 80. At a cell center in the player's column, may turn up or down.
+0:8E03	>	Type 8 draw. Point Z_20 at ENEMY_WALK_08 and jump DRAW_ENEMY_WALK. The JP ROM uses a different table.
+0:87EF	>	Type 0 draw. Point Z_20 at ENEMY_WALK_00 and jump DRAW_ENEMY_WALK. The JP ROM uses D0_AB20.
+0:8861	>	Type 1 draw. Point Z_20 at ENEMY_WALK_01 and jump DRAW_ENEMY_WALK. The JP ROM uses another table.
+0:8880	>	Type 2 draw. Point Z_20 at ENEMY_WALK_02 and jump DRAW_ENEMY_WALK.
+0:88FF	>	Type 3 draw. Point Z_20 at ENEMY_WALK_03 and jump DRAW_ENEMY_WALK.
+0:89CF	>	Type 4 draw. Point Z_20 at ENEMY_WALK_04 and jump DRAW_ENEMY_WALK.
+0:8A5C	>	Type 5 draw. Point Z_20 at ENEMY_WALK_05 and jump DRAW_ENEMY_WALK.
+0:8BB1	>	Type 6 draw. Phases 3 through 5 pick a metasprite from the walk table plus 11 hex or 16 hex. Other phases use DRAW_ENEMY_WALK. A negative X_6250 also uses the walker.
+0:8C93	>	Type 7 draw. Point Z_20 at ENEMY_WALK_07 and jump DRAW_ENEMY_WALK.
+0:8E72	>	Type 9 draw. Point Z_20 at ENEMY_WALK_09 and jump DRAW_ENEMY_WALK.
+0:8EAC	>	Type 0A hex draw. Point Z_20 at ENEMY_WALK_10 and jump DRAW_ENEMY_WALK.
+0:8FBC	>	Type 0B hex draw. Point Z_20 at ENEMY_WALK_11 and jump DRAW_ENEMY_WALK.
+0:9068	>	Type 0C hex draw. Point Z_20 at ENEMY_WALK_12 and jump DRAW_ENEMY_WALK.
+0:90C5	>	Type 0D hex draw. Point Z_20 at ENEMY_WALK_13 and jump DRAW_ENEMY_WALK.
+0:915B	>	Type 0E hex draw. Point Z_20 at ENEMY_WALK_14 and jump DRAW_ENEMY_WALK.
+0:9177	>	Type 0F hex draw. Point Z_20 at ENEMY_WALK_15 and jump DRAW_ENEMY_WALK.
+0:9186	>	Type 10 hex. Coverage did not run this. If the phase is 0, clear the slot and JSR ARM_TYPE10_TIMER. Otherwise move at speed 2 when the facing cell is open, then place the enemy on a cell from the three 10-byte lists that follow.
+0:921E	>	Type 10 hex draw. Point Z_20 at the word table that follows and jump DRAW_ENEMY_WALK.
+0:9275	>	Type 12 hex. Point Z_20 at 935D and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
+0:93B3	>	Type 13 hex. Bytes load Z_20 with 938C and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
+0:93E5	>	Type 16 hex. Coverage did not run this. Phase 0 rotates the direction every 9 frames and, after 78 hex ticks, advances the phase and JSRs into the fixed bank. Later phases step a 6-byte placement list.
+0:94A8	>	Type 16 hex draw. Coverage did not run this. Stores a fixed X and Y, then a metasprite chosen by phase plus direction, and jumps DRAW_METASPRITE. ZP addresses differ on the JP ROM.
+0:925B	>	Type 11 hex draw. Metasprite from ITEM_SPRITE_PTRS indexed by X_6296, no flip, then DRAW_METASPRITE.
+0:9503	>	Type 17 hex draw. One metasprite at a fixed X and Y from D0_94D9 and D0_94DA.
+0:9532	>	Type 18 hex draw. Skip when FRAME_CNT/8 mod 4 is 0. Otherwise one metasprite at D0_94DB and D0_94DC.
+0:80E9	>	If X_62E8 is 0, set it to 1 and X_62E9 to F0. The type 10 hex AI bytes call this when the phase is 0.
+0:81A2	>	Four enemy types, 1 through 4. SPAWN_BURST picks one with RNG and 03.
+0:AAEA	>	Death metasprite words for DRAW_ENEMY_WALK. Index is the phase times 2. Phase 0 uses the walk table instead. The JP ROM points at different metasprites.
+0:AB3A	>	Type 0 walk frames for DRAW_ENEMY_WALK. 16 words: direction 0-3 times 4, plus frame FRAME_CNT/8 mod 4. Each word is a metasprite (count, then tile, X, Y, attribute). The JP type 0 table is D0_AB20.
+0:AAF6	>	Type 2 walk-frame words. Same layout as ENEMY_WALK_00.
+0:AB18	>	Type 3 walk-frame words. Same layout as ENEMY_WALK_00. The JP table starts at D0_AB16.
+0:AB5C	>	Type 4 walk-frame words. Same layout as ENEMY_WALK_00.
+0:AB7E	>	Type 1 walk-frame words. Same layout as ENEMY_WALK_00. JP uses JD0_A683.
+0:ABA0	>	Type 7 walk-frame words. Same layout as ENEMY_WALK_00.
+0:ABC2	>	Type 8 walk-frame words. Same layout as ENEMY_WALK_00.
+0:ABE4	>	Type 9 walk-frame words. Same layout as ENEMY_WALK_00.
+0:AC06	>	Type 0A hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:AC28	>	Type 0B hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:AC4A	>	Type 5 walk-frame words. Same layout as ENEMY_WALK_00.
+0:AC6C	>	Type 0C hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:AC8E	>	Type 0D hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:ACB0	>	Type 0E hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:ACD2	>	Type 0F hex walk-frame words. Same layout as ENEMY_WALK_00.
+0:ACF4	>	Type 6 walk-frame words. DRAW_ENEMY_06 also indexes past the 16 walk entries while the phase is 3 to 5.
+0:93BE	>	Type 13 hex draw. Point Z_20 at ENEMY_FRAME_PTRS_19 and jump the shared framer at L0_9288.
+0:93DF	>	Type 14 hex draw. Jump DRAW_ENEMY_FRAME, which uses ENEMY_FRAME_PTRS_18.
+0:93E2	>	Type 15 hex draw. Jump the type 13 hex framer.
+0:9280	>	Shared framer. Z_20 is a word table. Frame is direction times 4 plus a frame index. D0_9654 indexed by the phase selects a still frame or FRAME_CNT/8 mod 4. D0_92CD is the flip byte.
+0:92D5	>	Frame words for types 13 hex and 15 hex. Index is direction times 4 plus the frame.
+0:931D	>	Frame words for types 12 hex and 14 hex. DRAW_ENEMY_FRAME loads this table. Same index as ENEMY_FRAME_PTRS_19.
+0:95EF	>	Type 1A hex draw. Enemy pixel position, no flip, one metasprite at D0_AAB9.
+0:961C	>	Type 19 hex draw. Enemy pixel position, no flip. Phase 5 picks D0_AA6F or D0_AA94 from FRAME_CNT bit 2. Any other phase uses D0_AA6F.
+us:0:AACA	>	16 words, each a walk-frame table. Order is type 2, 3, 0, 4, 1, 7, 8, 9, 0A, 0B, 5, 0C, 0D, 0E, 0F, 6. This bank has no direct reference. The JP ROM uses different targets.
+0:8088	>	Eight rows for the Z_4E fixed spawns. Paired with FIXED_SPAWN_COL.
+0:8138	>	65 rows for SPAWN_PARADE. Index is X_62E6, same index as PARADE_SPAWN_COL.
+0:83E7	>	Four offsets into ENEMY_DRAW_ORDER: 0, 10, 20, 30. DRAW_ALL_ENEMIES picks one with FRAME_CNT bits 0 and 1, unless X_62DC is 0.
+0:86D3	>	32 direction deltas. ENEMY_PICK_TURN chooses one of eight groups of four with RNG, then keeps the first open direction.
+0:9664	>	13 words, phase 0 through 0C. RUN_ENEMY_SCRIPT indexes this with X_62A0. Phase 0 is ENEMY_SCRIPT_STEP. The other phases are move and wait handlers.
+0:9654	>	16 bytes indexed by the enemy phase. 0 keeps draw frame 1. Nonzero uses FRAME_CNT divided by 8, mod 4. Read by DRAW_ENEMY_FRAME.

@@ -1,0 +1,195 @@
+4:B800	>	Bind area metatile pointers, select the stage layout, then decode it.\nIn: Z_4B area. Uses Z_4C and Z_49 inside PICK_STAGE_LAYOUT.\nOut: Z_62/Z_64/Z_66 point at this area. Falls into DECODE_LAYOUT, which jumps to L7_CF6F.
+4:B826	>	Decode a layout blob into the nametable and, for rows 0-12, the live map.\nIn: Z_20 layout, Z_62 4-byte tiles, Z_64 map bytes, Z_66 packed attributes.\n32 strips. Each strip offset is added to Z_20. Then jumps to L7_CF6F.
+4:B854	>	Unpack 8 metatile ids into W_04D1,X.\nA header bit of 1 reads the next byte; a 0 stores 0. X advances. Y is the read index.
+4:B86F	>	Paint 15 cells of one strip.\nMap column is Z_1C. Map row is the cell index minus 2, and COPY_LAYOUT_CELL drops rows past 12.\nTile id indexes Z_62 by 4 and Z_66 as a 2-bit attribute. Columns below 15 call QUEUE_TILE.
+4:B909	>	Seal a few cells, scatter soft blocks, place bomb pickups, load enemies, then unseal.\nIn: Z_4B, Z_4C, Z_49. Soft-block count comes from SOFT_BLOCK_QUOTA, or 32h when Z_49 is not 0.\nEmpty cells are map byte 0. A soft block stores 20h and queues tile 39h.
+4:B95F	>	Write map byte 1 on cells that must stay empty during scattering.\nZ_49 0 marks 3 story cells. 1 also marks 3 mode-1 cells. 2 also marks 7 battle cells.
+4:B9A9	>	Mark the 3 mode-1 cells from MODE1_SEAL_COL/ROW with map byte 1.
+4:B9BC	>	Clear those 3 mode-1 cells back to map byte 0.
+4:B9CF	>	Mark the 7 battle cells from BATTLE_SEAL_COL/ROW with map byte 1.
+4:B9E2	>	Clear those 7 battle cells back to map byte 0.
+4:BA0F	>	Place bomb pickups on empty cells found by PLACE_ONE_PICKUP.\nZ_49 0: one bomb, flag W_04E3 with bit 7 set, plus one more soft block (map 22h).\nOtherwise 5 flags 80h and 5 flags 81h. Z_49 2 adds 5 flags 8Bh.
+4:BA82	>	Find an empty cell, store map 21h, queue tile 39h, and fill one bomb slot.\nOut: X slot from FIND_FREE_BOMB, coords in W_04FA/W_0509. Increments W_04E2.
+4:BACB	>	NMI off, upload the RLE nametable at column 20h (second screen on US), NMI on.\nJP starts at column 0. In: Z_20 RLE bytes, Z_24 64 attribute bytes.
+4:BADB	>	US only. Same upload as DRAW_NAMETABLE_RLE_2 but from column 0, nametable 2000h.
+4:BAEB	>	US only. Save X/Y in W_0527/W_0528 and convert them with XY_TO_NT_ADDR.
+4:BAF4	>	Write 400h nametable bytes from Z_20, then 40h attribute bytes from Z_24.\nFF, count, tile repeats that tile count+1 times. Attributes also go to ATTR_BUF.
+4:BBC9	>	Point Z_20 at one stage layout.\nWhen Z_49 is 0, LAYOUT_VARIANT[area*8+stage] is 0 or 1 and is stored in W_04E1.\nIndex into STAGE_LAYOUT_PTR is area*2 plus that bit. 7 areas, 2 layouts each.
+4:8000	>	Area 0 metatile graphics. 4 CHR bytes per id. AREA_GFX_PTR[0].\nPAINT_LAYOUT_STRIP indexes this with the unpacked id times 4. Areas 1-6 follow the same layout.
+4:8144	>	Area 0 attributes. Two metatile ids per byte, low nibble first.\nPAINT_LAYOUT_STRIP shifts the id right once and takes the high nibble when carry is set. Value is 0-3.
+4:816D	>	Area 0 map byte per metatile id. COPY_LAYOUT_CELL reads (Z_64),Y with Y = the id.\nOne byte per id. The byte is what later collision code sees in the live map.
+4:8BF4	>	Area-card metatiles for area 0. Same 4-byte CHR layout as AREA0_META_GFX.\nS5_AD47 selects CARD0..CARD5 by Z_4B. CARD0_LAYOUT is the compressed picture.
+4:9241	>	Shared UI metatiles, 4 CHR bytes per id, 100h ids.\nUsed by the password, game-over, mode, win-count and pre-stage cards.\nUI_META_ATTR is 80h bytes (2 ids each). UI_META_MAP is one map byte per id.
+4:97C1	>	Password-screen metatile CHR. S5_9365 points Z_62 here and Z_20 at PASSWORD_LAY.\nUS attributes start at PASS_META_ATTR. JP attributes start 3 bytes later.
+4:98A8	>	Opening and ending metatile CHR. S5_B14A and S5_B1E6 both use this set.\nEND_META_ATTR holds 2-bit attributes. END_META_MAP holds one map byte per id.\nThe picture stream is OPENING_LAYOUT.
+4:9BA5	>	Compressed stage layout, area 0 variant A.\nFirst 40h bytes are 32 word offsets added to this address by DECODE_LAYOUT.\nEach strip is then bit-packed: a 1 bit takes the next byte as the metatile id, a 0 means id 0.\nVariant B of the same area is the scrolling layout. See LAYOUT_VARIANT.
+4:A473	>	Compressed area-intro picture, area 0. Same strip format as AREA0_LAYOUT_A.\nS5_AD47 indexes CARD0_LAYOUT..CARD5_LAYOUT by Z_4B.
+4:A8B5	>	Title nametable RLE for the second screen on US (column 20h).\nUPLOAD_RLE_NAMETABLE reads it. FF starts a repeat. Title attributes are TITLE_ATTR, 40h bytes.
+4:A8F4	>	US title nametable RLE for the first screen (column 0). Same repeat format as TITLE_NT_RLE_2.
+4:A900	>	64 attribute bytes for both title nametable uploads.
+4:A940	>	Pre-stage card layout for Z_49 = 2. Strip format as AREA0_LAYOUT_A. UI metatiles. Drawn by S5_B60B.
+4:AA05	>	Versus round-result picture. Strip format. UI metatiles. Drawn by S5_B24C.
+4:AAB6	>	Pre-stage card for Z_49 = 1. Strip format. UI metatiles. Drawn by S5_B734.
+4:AB7D	>	Pre-stage card for Z_49 = 0. Strip format. UI metatiles. Drawn by S5_B921.
+4:ABD9	>	Game-over picture. Strip format. UI metatiles. Drawn by S5_AAAE.
+4:AC9E	>	Password / continue picture. Strip format. Drawn by S5_9365 with PASS_META_GFX.
+4:AD4D	>	Win-count picture used when Z_49 is 2. Strip format. UI metatiles. Drawn by S5_B572.
+4:AE17	>	Opening picture, also used by the ending screen S5_B14A. Strip format. END_META_GFX tiles.
+4:B019	>	Background palettes for a stage, 16 bytes each, areas 0-6.\nL7_CB14 adds area*16 to this address and copies 4 rows through COPY_PAL_ROWS.
+4:B089	>	Area-intro background palette, 16 bytes. S5_ADA7 indexes CARD0_BG_PAL..CARD5_BG_PAL by Z_4B.
+4:B0E9	>	16 sprite-palette bytes copied to PAL_BUF row 4 by the area-intro screen.
+4:B0F9	>	Title palette, 32 bytes. S5_A292 copies 8 rows from here.
+4:B119	>	16 background palette bytes shared by the password screen, game over, and modes 1 and 2.
+4:B129	>	16 sprite palette bytes. LOAD_MODE_GFX copies them to PAL_BUF row 4.
+4:B139	>	16 background palette bytes for mode 0. MODE_PAL_PTR entry 0.
+4:B149	>	16 ending background palette bytes. S5_B0DE copies them to PAL_BUF row 0.
+4:B159	>	16 ending sprite palette bytes. S5_B0DE copies them to PAL_BUF row 4.
+4:B8DF	>	7 words, areas 0-6. Low/high of the 4-byte metatile CHR table. LOAD_AREA_LAYOUT stores the pair in Z_62.
+4:B8ED	>	7 words, areas 0-6. Attribute-nibble tables. Stored in Z_66.
+4:B8FB	>	7 words, areas 0-6. One map byte per metatile. Stored in Z_64.
+4:B9F5	>	3 columns paired with STORY_SEAL_ROW. SEAL_STORY_CELLS writes map byte 1 there.
+4:B9FB	>	3 columns paired with MODE1_SEAL_ROW. Used when Z_49 is 1 or 2.
+4:BA01	>	7 columns paired with BATTLE_SEAL_ROW. Used when Z_49 is 2.
+4:BABB	>	16 row numbers. A random low nibble indexes this when scattering soft blocks and pickups.\nEntries are rows 1-11, so the top and bottom map rows are not chosen.
+4:BB69	>	48 bytes, one per stage: area 0-5 times stages 0-7. Each byte is 0 or 1.\nPICK_STAGE_LAYOUT stores it in W_04E1 and uses it to choose layout A or B.\nS5_8F6E later treats a nonzero W_04E1 as a horizontal scroll setup.
+4:BB99	>	48 bytes, area*8+stage. Initial soft-block count for story mode.\nPLACE_SOFT_AND_BOMBS replaces it with 32h when Z_49 is not 0. The count is also copied to W_04E2.
+4:BBF7	>	14 words. Layout pointer for (area * 2 + variant). Areas 0-6, variant from LAYOUT_VARIANT.\nArea 6 uses AREA6_LAYOUT for both variants. Area 5 variant A is AREA5_LAYOUT_A inside the area-4 blob.
+3:8000	>	BGM 14 channel 0. Stage music when Z_49 is not 0. Header is BGM_BATTLE_HDR.\nBytes below D0 are notes (high nibble pitch, low nibble duration). D0 and above are SND_STREAM_CMDS.\nDF is a phrase call: the next word is the phrase address. E0 returns from a phrase.
+3:834F	>	BGM 14 channel 1. Same stream encoding as BGM_BATTLE_CH0.
+3:8577	>	BGM 14 channel 2.
+3:86EE	>	BGM 14 channel 3.
+3:8796	>	BGM 14 channel 4.
+3:8840	>	BGM 13 channel 0. Title menu and password. Header BGM_TITLE_HDR. Five channels follow.
+3:8940	>	BGM 15 channel 0. Item pickup. Header BGM_ITEM_HDR.
+3:8D17	>	BGM 16 channel 0. Played when exit flag Z_B7 is set. Header BGM_EXIT_HDR.
+3:8E1C	>	BGM 18 channel 0. Credits scroll. Header BGM_CREDITS_HDR.
+3:94A2	>	BGM 17 channel 0. Ending screen that stores area 6. Header BGM_AREA6_HDR.
+3:9745	>	BGM 19 channel 0. Game-over mode select. Header BGM_MODE_HDR.
+3:983C	>	BGM 1A channel 0. One player still standing. Header BGM_WIN_HDR.
+3:990C	>	BGM 1B channel 0. No player left standing. Header BGM_LOSE_HDR.
+3:99CA	>	BGM 1C channel 0. Versus result picture. Header BGM_SCENE_HDR.
+3:9D2C	>	BGM 1D channel 0. Short sting. Header BGM_STING_HDR.
+3:893D	>	BGM 13 channel 4. Sets a duration and ends with stream command D0.
+4:81BE	>	Area 1 metatile CHR. 4 bytes per id. Same use as AREA0_META_GFX.
+4:830E	>	Area 1 attribute nibbles. Two ids per byte, same use as AREA0_META_ATTR.
+4:8338	>	Area 1 map byte per metatile id. Same use as AREA0_META_MAP.
+4:838C	>	Area 2 metatile CHR. 4 bytes per id.
+4:84C0	>	Area 2 attribute nibbles. Two ids per byte.
+4:84E7	>	Area 2 map byte per metatile id.
+4:8534	>	Area 3 metatile CHR. 4 bytes per id.
+4:8678	>	Area 3 attribute nibbles. Two ids per byte.
+4:86A1	>	Area 3 map byte per metatile id.
+4:86F2	>	Area 4 metatile CHR. 4 bytes per id.
+4:8836	>	Area 4 attribute nibbles. Two ids per byte.
+4:885F	>	Area 4 map byte per metatile id.
+4:88B0	>	Area 5 metatile CHR. 4 bytes per id.
+4:8A08	>	Area 5 attribute nibbles. Two ids per byte.
+4:8A33	>	Area 5 map byte per metatile id.
+4:8A89	>	Area 6 metatile CHR. 4 bytes per id. Area 6 is the ending flow.
+4:8B91	>	Area 6 attribute nibbles. Two ids per byte.
+4:8BB2	>	Area 6 map byte per metatile id.
+4:8CAC	>	Area-card 0 attribute nibbles.
+4:8CC3	>	Area-card 0 map byte per metatile id.
+4:8CF1	>	Area-card 1 metatile CHR.
+4:8D5D	>	Area-card 1 attribute nibbles.
+4:8D6B	>	Area-card 1 map byte per metatile id.
+4:8D86	>	Area-card 2 metatile CHR.
+4:8E56	>	Area-card 2 attribute nibbles.
+4:8E70	>	Area-card 2 map byte per metatile id.
+4:8EA4	>	Area-card 3 metatile CHR.
+4:9018	>	Area-card 3 attribute nibbles.
+4:9047	>	Area-card 3 map byte per metatile id.
+4:90A4	>	Area-card 4 metatile CHR.
+4:9100	>	Area-card 4 attribute nibbles.
+4:910C	>	Area-card 4 map byte per metatile id.
+4:9123	>	Area-card 5 metatile CHR.
+4:91F3	>	Area-card 5 attribute nibbles.
+4:920D	>	Area-card 5 map byte per metatile id.
+4:9641	>	UI attribute nibbles, 2 metatile ids per byte. Pair with UI_META_GFX.
+4:96C1	>	US UI map byte per metatile id. JP map starts at UI_META_MAP_JP.
+4:96C5	>	JP entry into the UI map-byte table. US bytes here continue UI_META_MAP.
+4:9869	>	US password-screen attribute nibbles.
+4:986C	>	JP entry into the password attribute table.
+4:987E	>	US password map bytes. The table continues through PASS_META_MAP_JP.
+4:9880	>	JP entry into the password map-byte table.
+4:9AD4	>	Opening/ending attribute nibbles. Two metatile ids per byte.
+4:9B1A	>	Opening/ending map byte per metatile id.
+4:A03D	>	Area 0 layout variant B. Same strip format as AREA0_LAYOUT_A. Chosen when LAYOUT_VARIANT is 1.
+4:9C91	>	Area 1 layout variant A. Same strip format as AREA0_LAYOUT_A.
+4:A129	>	Area 1 layout variant B.
+4:9D4A	>	Area 2 layout variant A.
+4:A1DB	>	Area 2 layout variant B.
+4:9DC3	>	Area 3 layout variant A.
+4:A24E	>	Area 3 layout variant B.
+4:9E56	>	Area 4 layout variant A. AREA5_LAYOUT_A is a second layout stored inside this blob.
+4:9EDE	>	Area 5 layout variant A. Same strip format. STAGE_LAYOUT_PTR reaches it from inside AREA4_LAYOUT_A.
+4:A2EF	>	Area 4 layout variant B.
+4:A377	>	Area 5 layout variant B.
+4:9FDA	>	Area 6 layout. Both STAGE_LAYOUT_PTR slots for area 6 point here on US.
+4:B099	>	Area-intro background palette for area 1. 16 bytes.
+4:B0A9	>	Area-intro background palette for area 2. 16 bytes.
+4:B0B9	>	Area-intro background palette for area 3. 16 bytes.
+4:B0C9	>	Area-intro background palette for area 4. 16 bytes.
+4:B0D9	>	Area-intro background palette for area 5. 16 bytes.
+4:B8E0	;	High byte of AREA_GFX_PTR entry 0. The table is 7 words.
+4:B8EE	;	High byte of AREA_ATTR_PTR entry 0.
+4:B8FC	;	High byte of AREA_MAP_PTR entry 0.
+4:BBF8	;	High byte of STAGE_LAYOUT_PTR entry 0.
+4:B9F8	>	3 rows paired with STORY_SEAL_COL.
+4:B9FE	>	3 rows paired with MODE1_SEAL_COL.
+4:BA08	>	7 rows paired with BATTLE_SEAL_COL.
+4:A53B	>	Area-intro picture for area 1. Same strip format as CARD0_LAYOUT.
+4:A5CD	>	Area-intro picture for area 2.
+4:A69A	>	Area-intro picture for area 3.
+4:A77A	>	Area-intro picture for area 4.
+4:A7F5	>	Area-intro picture for area 5.
+3:80A6	>	Phrase called with stream command DF from BGM 14.
+3:80B4	>	Phrase called with stream command DF from BGM 14.
+3:8109	>	Phrase called with stream command DF from BGM 14.
+3:82B5	>	Phrase called with stream command DF from BGM 14.
+3:83B9	>	Phrase called with stream command DF from BGM 14.
+3:85CB	>	Phrase called with stream command DF from BGM 14.
+3:8683	>	Phrase called with stream command DF from BGM 14.
+3:8748	>	Phrase called with stream command DF from BGM 14.
+3:878C	>	Phrase called with stream command DF from BGM 14.
+3:87F2	>	Phrase called with stream command DF from BGM 14.
+3:8836	>	Phrase called with stream command DF from BGM 14.
+3:8886	>	BGM 13 channel 1.
+3:88C6	>	BGM 13 channel 2.
+3:891A	>	BGM 13 channel 3.
+3:8A29	>	BGM 15 channel 1.
+3:8B12	>	BGM 15 channel 2.
+3:8C19	>	BGM 15 channel 3.
+3:8CA2	>	BGM 15 channel 4.
+3:8D5D	>	BGM 16 channel 1.
+3:8DA2	>	BGM 16 channel 2.
+3:8DE3	>	BGM 16 channel 3.
+3:8DFE	>	BGM 16 channel 4.
+3:8F59	>	BGM 18 channel 1.
+3:91EB	>	BGM 18 channel 2.
+3:92B1	>	BGM 18 channel 3.
+3:93B5	>	BGM 18 channel 4.
+3:952D	>	BGM 17 channel 1.
+3:95E6	>	BGM 17 channel 2.
+3:96AB	>	BGM 17 channel 3.
+3:96EB	>	BGM 17 channel 4.
+3:977E	>	BGM 19 channel 1.
+3:97B9	>	BGM 19 channel 2.
+3:97FA	>	BGM 19 channel 3.
+3:981A	>	BGM 19 channel 4.
+3:9873	>	BGM 1A channel 1.
+3:98A4	>	BGM 1A channel 2.
+3:98C1	>	BGM 1A channel 3.
+3:98E5	>	BGM 1A channel 4.
+3:994A	>	BGM 1B channel 1.
+3:997A	>	BGM 1B channel 2.
+3:999A	>	BGM 1B channel 3.
+3:99C4	>	BGM 1B channel 4.
+3:9AAF	>	BGM 1C channel 1.
+3:9BD2	>	BGM 1C channel 2.
+3:9C9A	>	BGM 1C channel 3.
+3:9CE3	>	BGM 1C channel 4.
+3:9D64	>	BGM 1D channel 1.
+3:9DA3	>	BGM 1D channel 2.
+3:9DDA	>	BGM 1D channel 3.
+3:9DDD	>	BGM 1D channel 4. Immediate stream end, command D0.

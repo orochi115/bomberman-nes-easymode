@@ -629,7 +629,7 @@
   EQUB &6F,&7B,&5B,&5F,&6F,&7B,&7B,&00,&9F,&87,&BF,&BF,&9F,&87,&87,&FF
   EQUB &FE,&6E,&6E,&FE,&FE,&7E,&7E,&00,&FD,&FD,&FD,&FD,&F9,&E1,&E1,&FF
 
-; Sprite CHR shared by the title-adjacent screens that call LOAD_PASS_CHR or LOAD_MENU_CHR, by LOAD_MODE_GFX, and by S0_B052.
+; Sprite CHR shared by the title-adjacent screens that call LOAD_PASS_CHR or LOAD_MENU_CHR, by LOAD_MODE_GFX, and by LOAD_CREDITS_GFX.
 ; Each of those uploads FFh tiles to PPU 1000h. A few trailing bytes before FILLTO are outside that stream.
 .UI_SPR_CHR
   EQUB &00,&00,&71,&7F,&40,&5F,&5E,&30,&3F,&20,&71,&FF,&00,&FF,&00,&30

@@ -1,0 +1,83 @@
+4:A492	layout strip offsets are relative to the blob; 00 C6 is offset 00C6 repeated, not address C600
+4:9A57	metatile CHR bytes 00 80, not a pointer
+4:9CDE	metatile or layout data bytes, not a pointer
+4:9CF9	metatile or layout data bytes, not a pointer
+4:9D14	metatile or layout data bytes, not a pointer
+4:9D2F	metatile or layout data bytes, not a pointer
+4:9D97	metatile or layout data bytes, not a pointer
+4:9E19	metatile or layout data bytes, not a pointer
+4:9E45	metatile or layout data bytes, not a pointer
+4:9E52	metatile or layout data bytes, not a pointer
+4:9EAC	metatile or layout data bytes, not a pointer
+4:A176	layout relative offset overlapping the next entry
+4:A191	layout relative offset overlapping the next entry
+4:A1AC	layout relative offset overlapping the next entry
+4:A1C7	layout relative offset overlapping the next entry
+4:A228	layout relative offset overlapping the next entry
+4:A2A4	layout relative offset overlapping the next entry
+4:A2D1	layout relative offset overlapping the next entry
+4:A2EB	layout relative offset overlapping the next entry
+4:A345	layout relative offset overlapping the next entry
+4:A955	layout relative offset overlapping the next entry
+4:AD5E	layout relative offset overlapping the next entry
+3:88D0	note byte then stream command D1, not an address
+3:8B7D	note byte then stream command D1, not an address
+3:8D33	note byte then stream command D1, not an address
+3:8D6B	note byte then stream command D1, not an address
+3:8DB7	note byte then stream command D1, not an address
+3:99BC	note byte then stream command, not an address
+3:9A87	note byte then stream command D1, not an address
+3:9C79	note byte then stream command D1, not an address
+3:85D9	rest note 00 followed by note 80, not a pointer
+3:85FB	rest note 00 followed by note 80, not a pointer
+3:8671	rest note 00 followed by note 80, not a pointer
+3:8694	rest note 00 followed by note 80, not a pointer
+3:8FBC	rest note 00 followed by note 80, not a pointer
+3:94DA	rest note 00 followed by note 80, not a pointer
+3:94DE	rest note 00 followed by note 80, not a pointer
+3:94EC	rest note 00 followed by note 80, not a pointer
+3:94F0	rest note 00 followed by note 80, not a pointer
+3:94FE	rest note 00 followed by note 80, not a pointer
+3:9502	rest note 00 followed by note 80, not a pointer
+3:9506	rest note 00 followed by note 80, not a pointer
+3:9513	rest note 00 followed by note 80, not a pointer
+3:9525	rest note 00 followed by note 80, not a pointer
+3:9540	rest note 00 followed by note 80, not a pointer
+3:9545	rest note 00 followed by note 80, not a pointer
+3:954A	rest note 00 followed by note 80, not a pointer
+3:9554	rest note 00 followed by note 80, not a pointer
+3:9565	rest note 00 followed by note 80, not a pointer
+3:9578	rest note 00 followed by note 80, not a pointer
+3:957D	rest note 00 followed by note 80, not a pointer
+3:9582	rest note 00 followed by note 80, not a pointer
+3:958C	rest note 00 followed by note 80, not a pointer
+3:959E	rest note 00 followed by note 80, not a pointer
+3:963A	rest note 00 followed by note 80, not a pointer
+3:9693	rest note 00 followed by note 80, not a pointer
+3:9796	rest note 00 followed by note 80, not a pointer
+3:9DB1	rest note 00 followed by note 80, not a pointer
+4:82E7	JP metatile bytes that look like an address, not a pointer
+4:A471	JP layout relative offsets, not absolute pointers
+4:A5CB	JP layout relative offsets, not absolute pointers
+4:B10A	JP fill bytes FF, not a pointer
+4:BC13	JP fill bytes FF, not a pointer
+4:9A36	JP metatile CHR bytes, not a pointer
+4:9CBD	JP metatile or layout bytes, not a pointer
+4:9CD8	JP metatile or layout bytes, not a pointer
+4:9CF3	JP metatile or layout bytes, not a pointer
+4:9D0E	JP metatile or layout bytes, not a pointer
+4:9D76	JP metatile or layout bytes, not a pointer
+4:9DF8	JP metatile or layout bytes, not a pointer
+4:9E24	JP metatile or layout bytes, not a pointer
+4:9E31	JP metatile or layout bytes, not a pointer
+4:9E8B	JP metatile or layout bytes, not a pointer
+4:A155	JP layout relative offset, not a pointer
+4:A170	JP layout relative offset, not a pointer
+4:A18B	JP layout relative offset, not a pointer
+4:A1A6	JP layout relative offset, not a pointer
+4:A207	JP layout relative offset, not a pointer
+4:A283	JP layout relative offset, not a pointer
+4:A2B0	JP layout relative offset, not a pointer
+4:A2CA	JP layout relative offset, not a pointer
+4:A324	JP layout relative offset, not a pointer
+4:BBFD	JP fill FF bytes after the layout table, not pointers

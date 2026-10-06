@@ -1,0 +1,7 @@
+0:8080	FIXED_SPAWN_COL/ROW are tile coordinates, not a split pointer
+0:935E	script byte 00 then speed 80 inside the type data after D0_931D, not SPAWN_STAGE_ENEMIES
+0:94A2	consecutive metasprite tile ids 82 83, not a pointer to 8382
+0:95C3	ENEMY_SCRIPT_26 parameter 00 80, same pattern as the other 80 speed bytes
+0:95CA	ENEMY_SCRIPT_26 parameter 00 80, not a pointer
+0:95CD	ENEMY_SCRIPT_26 parameter 00 80, not a pointer
+0:A7CE	metasprite stream: attribute 02 then tile A3, overlapping D0_A302 by chance
