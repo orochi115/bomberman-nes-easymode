@@ -1,0 +1,78 @@
+2:9B58	BGM note bytes; D2 is octave-down, not an address
+2:9FB7	BGM note bytes; D2 is octave-down, not an address
+2:A0D4	BGM note bytes; D2 is octave-down, not an address
+2:A27E	BGM note 80 followed by duration 00, not a pointer
+2:8B90	four-byte APU register patches for SFX
+2:8D15	pitch-envelope delta bytes
+2:8E03	pitch-envelope delta bytes
+2:8E0D	pitch-envelope delta bytes
+2:8E19	vibrato-table terminator 00 80, not an address
+2:8E2A	vibrato waveform bytes
+2:8E96	detune-table bytes ending at 80
+2:8EC7	DMC register image 40 00 80 00
+2:9440	BGM note bytes
+2:98BB	BGM note bytes
+2:98C0	BGM note bytes
+2:9922	BGM note bytes
+2:9926	BGM note bytes
+2:99DA	BGM note bytes
+2:9A2A	BGM note bytes
+2:9A38	BGM note bytes
+2:9A46	BGM note bytes
+2:9A60	BGM note bytes
+2:9A6E	BGM note bytes
+2:9A7A	BGM note bytes
+2:9B8F	BGM note bytes
+2:9E10	BGM note bytes
+2:9F9A	BGM note bytes
+2:9FAD	BGM note bytes
+2:A00D	BGM note bytes
+2:A0B7	BGM note bytes
+2:A0CA	BGM note bytes
+2:A216	BGM note bytes
+2:A24B	BGM note bytes
+2:A574	BGM note bytes
+7:E248	DPCM sample bits
+7:E300	DPCM sample bits
+7:E50F	DPCM sample bits
+7:E627	DPCM sample bits
+7:E6AE	DPCM sample bits
+7:E6E6	DPCM sample bits
+7:E7FE	DPCM sample bits
+7:E99E	DPCM sample bits
+7:E9F1	DPCM sample bits
+7:EADB	DPCM sample bits
+7:EB3F	DPCM sample bits
+7:EC15	DPCM sample bits
+7:EC86	DPCM sample bits
+7:ED07	DPCM sample bits
+7:ED2C	DPCM sample bits
+7:EDAE	DPCM sample bits
+7:EE5F	DPCM sample bits
+7:EEB5	DPCM sample bits
+7:EF27	DPCM sample bits
+7:EFE6	DPCM sample bits
+7:EFEA	DPCM sample bits
+7:EFF5	DPCM sample bits
+7:F01B	DPCM sample bits
+7:F0A4	DPCM sample bits
+7:F1FA	DPCM sample bits
+7:F3F5	DPCM sample bits
+7:F498	DPCM sample bits
+7:F4CF	DPCM sample bits
+7:F505	DPCM sample bits
+7:F5F0	DPCM sample bits
+7:F5F4	DPCM sample bits
+7:F5FB	DPCM sample bits
+7:F611	DPCM sample bits
+7:F8CA	DPCM sample bits
+7:F92B	DPCM sample bits
+7:F9E3	DPCM sample bits
+7:FA8F	DPCM sample bits
+7:FAB5	DPCM sample bits
+7:FB12	DPCM sample bits
+7:FC6B	DPCM sample bits
+7:FD91	DPCM sample bits
+7:FDC7	DPCM sample bits
+2:91E0	BGM stream: DB sets the pitch envelope, the next byte is its argument
+2:A55D	BGM stream bytes (note C0 and E8 volume adjust), not an address

@@ -4,48 +4,56 @@
 
   PAD SHIFT                               ; relocation test, see make.sh
 
-.S7_C000
+; Switch to PRG bank X on the NMI-safe path, then return.
+; In: X = bank. Updates CUR_BANK and the MMC1 PRG register.
+.SWITCH_BANK
   JMP BANK_SWITCH_NMI
 
+; Power-on entry. Disable IRQ, clear decimal, set the stack, then warm up the PPU,
+; black the palette, reset MMC1, clear RAM, reset video and enter GAME_LOOP.
 .RESET
   SEI
   CLD
   LDX #&FF
   TXS
-  JSR S7_C0AC
-  JSR S7_C556
-  JSR S7_C0F3
-  JSR S7_C0CA
-  JSR S7_C220
-  JSR S7_C2BE
-  JMP L7_C946
+  JSR PPU_WARMUP
+  JSR FILL_PAL_BLACK
+  JSR INIT_MAPPER
+  JSR CLEAR_LOW_RAM
+  JSR RESET_VIDEO
+  JSR NMI_ON
+  JMP GAME_LOOP
 
+; Increment NMI_CNT. If OAM_READY, DMA sprites. Upload the palette or else drain the PPU queue.
+; When SPLIT_MODE is set, wait for sprite 0 and apply the split scroll; 80h also sets the PPU address to 2660h.
+; Then the normal scroll. If OAM_READY, clear the sprite buffer. On the first NMI after a clear of NMI_CNT, read the pads.
+; Once per frame, if SND_NMI_LOCK is 0, tick the bank-2 sound routine. Increments FRAME_CNT.
 .NMI
   PHA
   TXA
   PHA
   TYA
   PHA
-  LDA Z_11
-  INC Z_11
-  LDA Z_12
+  LDA NMI_CNT
+  INC NMI_CNT
+  LDA OAM_READY
   BEQ L7_C02D
-  JSR S7_C316
+  JSR OAM_DMA
 .L7_C02D
-  JSR S7_C564
+  JSR UPLOAD_PALETTE
   BCS L7_C035
-  JSR S7_C609
+  JSR DRAIN_PPU_Q
 .L7_C035
-  JSR S7_C35F
-  LDA Z_31
+  JSR PPU_BUS_FIX
+  LDA SPLIT_MODE
   BEQ L7_C06F
-  LDA Z_18
+  LDA PPU_CTRL_BUF
   AND #&FE
-  ORA W_04A1
+  ORA SPLIT_CTRL_BIT
   STA PPU_CTRL_REG1
-  LDA W_04A0
+  LDA SPLIT_SCROLL_X
   STA PPU_SCROLL_REG
-  LDA W_04A4
+  LDA SCROLL_Y
   STA PPU_SCROLL_REG
 .L7_C052
   BIT PPU_STATUS
@@ -57,37 +65,37 @@
 .L7_C05E
   DEX
   BNE L7_C05E
-  LDA Z_31
+  LDA SPLIT_MODE
   BPL L7_C06F
   LDA #&26
   STA PPU_ADDRESS
   LDA #&60
   STA PPU_ADDRESS
 .L7_C06F
-  JSR S7_C287
-  LDA Z_12
+  JSR APPLY_SCROLL
+  LDA OAM_READY
   BEQ L7_C079
-  JSR S7_C321
+  JSR CLEAR_OAM
 .L7_C079
-  LDA Z_11
+  LDA NMI_CNT
   CMP #&01
   BNE L7_C082
-  JSR S7_C370
+  JSR READ_JOYPADS
 .L7_C082
-  INC Z_14
-  LDA W_04C7
+  INC FRAME_CNT
+  LDA SND_NMI_LOCK
   BNE L7_C0A5
-  INC W_04C7
-  LDA W_0100
+  INC SND_NMI_LOCK
+  LDA CUR_BANK
   PHA
   LDX #&02
   JSR BANK_SWITCH_NMI
-  JSR S7_D806
+  JSR SND_FRAME_ENTRY
   PLA
   TAX
   JSR BANK_SWITCH_NMI
   LDA #&00
-  STA W_04C7
+  STA SND_NMI_LOCK
   JMP L7_C0A6
 .L7_C0A5
   NOP
@@ -101,13 +109,15 @@
 .IRQ
   RTI
 
-.S7_C0AC
+; Wait for two vblanks, then store PPU CTRL 10h and mask 0 in the shadows and the registers.
+; NMI is left disabled. Called from RESET.
+.PPU_WARMUP
   LDA #&10
   STA PPU_CTRL_REG1
-  STA Z_18
+  STA PPU_CTRL_BUF
   LDA #&00
   STA PPU_CTRL_REG2
-  STA Z_19
+  STA PPU_MASK_BUF
   LDX #&02
 .L7_C0BC
   BIT PPU_STATUS
@@ -119,7 +129,9 @@
   BNE L7_C0BC
   RTS
 
-.S7_C0CA
+; Call bank 5 at AC8A and AC54, then zero 00h-FBh and pages 0200h-0700h.
+; FC-FF on the zero page are left alone.
+.CLEAR_LOW_RAM
   FARCALL 5, S5_AC8A
   FARCALL 5, S5_AC54
   LDA #&00
@@ -130,24 +142,27 @@
   STA Z_00,X
 .L7_C0E0
   STA W_0200,X
-  STA W_0400,X
+  STA PAL_BUF,X
   STA W_0500,X
-  STA W_0600,X
+  STA PPU_QUEUE,X
   STA W_0700,X
   INX
   BNE L7_C0DA
   RTS
 
-.S7_C0F3
+; Reset MMC1, clear the saved bank and CUR_BANK, and map bank 0 at 8000h.
+.INIT_MAPPER
   LDA #&00
-  STA Z_1B
-  JSR S7_C104
+  STA MMC1_GUARD
+  JSR MMC1_RESET
   LDX #&00
-  STX W_0100
-  STX Z_1A
+  STX CUR_BANK
+  STX SAVED_BANK
   JMP BANK_SWITCH
 
-.S7_C104
+; Write the MMC1 reset sequence: control 0Eh (16K PRG at 8000h, fixed C000h), CHR banks 0.
+; Does not select the PRG bank.
+.MMC1_RESET
   LDA #&FF
   STA MMC1_CONTROL
   LDA #&0E
@@ -185,10 +200,10 @@
   EQUB &AD,&00,&01,&85,&1A
 
 .BANK_SWITCH
-  STX W_0100
+  STX CUR_BANK
 .L7_C151
   LDA #&01
-  STA Z_1B
+  STA MMC1_GUARD
   TXA
   STA MMC1_PRG
   LSR A
@@ -199,7 +214,7 @@
   STA MMC1_PRG
   LSR A
   STA MMC1_PRG
-  LDA Z_1B
+  LDA MMC1_GUARD
   CMP #&01
   BEQ L7_C1B6
   LDA #&FF
@@ -236,14 +251,14 @@
   STA MMC1_CHR1
   JMP L7_C151
 .L7_C1B6
-  DEC Z_1B
+  DEC MMC1_GUARD
   RTS
 
 .BANK_SWITCH_NMI
-  STX W_0100
-  LDA Z_1B
+  STX CUR_BANK
+  LDA MMC1_GUARD
   BEQ L7_C206
-  INC Z_1B
+  INC MMC1_GUARD
   LDA #&FF
   STA MMC1_CONTROL
   LDA #&0E
@@ -289,152 +304,173 @@
   STA MMC1_PRG
   RTS
 .BANK_RESTORE
-  EQUB &A6,&1A,&4C,&4E,&C1
+  EQUB &A6,&1A,&4C
+  EQUW BANK_SWITCH
 
-.S7_C220
+; Clear scroll, split mode and the NMI counter. PPU CTRL shadow 10h, mask shadow 1Eh.
+; Clear OAM, mark it ready, clear the palette-dirty flag, and jump to START_AUDIO.
+.RESET_VIDEO
   LDA #&00
-  STA W_04A0
-  STA W_04A1
-  STA W_04A2
-  STA W_04A3
-  STA W_04A4
+  STA SPLIT_SCROLL_X
+  STA SPLIT_CTRL_BIT
+  STA SCROLL_X
+  STA SCROLL_NT
+  STA SCROLL_Y
   LDA #&10
-  STA Z_18
+  STA PPU_CTRL_BUF
   LDA #&1E
-  STA Z_19
+  STA PPU_MASK_BUF
   LDA #&00
-  STA Z_12
-  STA Z_10
-  STA Z_11
-  STA W_04A5
-  STA W_04A6
+  STA OAM_READY
+  STA PPU_ENABLED
+  STA NMI_CNT
+  STA PPU_Q_WR
+  STA PPU_Q_RD
   LDA #&00
-  STA Z_31
-  JSR S7_C321
+  STA SPLIT_MODE
+  JSR CLEAR_OAM
   LDA #&01
-  STA Z_12
+  STA OAM_READY
   LDA #&00
-  STA Z_15
-  JSR S7_C8E6
+  STA PAL_DIRTY
+  JSR START_AUDIO
   RTS
 
-.S7_C25A
+; Zero SPLIT_SCROLL_X, SPLIT_CTRL_BIT, SCROLL_X, SCROLL_NT and SCROLL_Y.
+.CLEAR_SCROLL
   LDA #&00
-  STA W_04A2
-  STA W_04A3
-  STA W_04A4
-  STA W_04A0
-  STA W_04A1
+  STA SCROLL_X
+  STA SCROLL_NT
+  STA SCROLL_Y
+  STA SPLIT_SCROLL_X
+  STA SPLIT_CTRL_BIT
   RTS
 
-.S7_C26C
+; Wait until PPUSTATUS leaves vblank, then until it enters vblank again.
+.WAIT_VBLANK
   LDA PPU_STATUS
-  BMI S7_C26C
+  BMI WAIT_VBLANK
 .L7_C271
   LDA PPU_STATUS
   BPL L7_C271
   RTS
 
-.S7_C277
+; Clear NMI_CNT and return after the next NMI increments it.
+.WAIT_NMI
   LDA #&00
-  STA Z_11
+  STA NMI_CNT
 .L7_C27B
-  LDA Z_11
+  LDA NMI_CNT
   BEQ L7_C27B
   RTS
 
-.S7_C280
-  LDA Z_14
+; Return after FRAME_CNT changes. Spins, so it must be called with NMI enabled.
+.WAIT_FRAME
+  LDA FRAME_CNT
 .L7_C282
-  CMP Z_14
+  CMP FRAME_CNT
   BEQ L7_C282
   RTS
 
-.S7_C287
-  LDA W_04A2
+; Write SCROLL_X, SCROLL_Y and PPU CTRL (shadow ORed with bit 0 of SCROLL_NT) to the PPU.
+.APPLY_SCROLL
+  LDA SCROLL_X
   STA PPU_SCROLL_REG
-  LDA W_04A4
+  LDA SCROLL_Y
   STA PPU_SCROLL_REG
-  LDA W_04A3
+  LDA SCROLL_NT
   AND #&01
-  ORA Z_18
+  ORA PPU_CTRL_BUF
   STA PPU_CTRL_REG1
   RTS
 
-.S7_C29E
-  JSR S7_C849
-  JSR S7_C2E7
-  JSR S7_C26C
-  JSR S7_C316
-  JSR S7_C35F
-  JSR S7_C287
+; Wait until the PPU queue is empty, then in vblank DMA sprites, upload PAL_BUF,
+; apply scroll, set the mask to 1Eh and enable NMI. Sets PPU_ENABLED.
+.PPU_ON
+  JSR WAIT_PPU_Q
+  JSR NMI_OFF
+  JSR WAIT_VBLANK
+  JSR OAM_DMA
+  JSR PPU_BUS_FIX
+  JSR APPLY_SCROLL
   LDA #&1E
   STA PPU_CTRL_REG2
-  STA Z_19
+  STA PPU_MASK_BUF
   LDA #&01
-  STA Z_10
-  JMP S7_C2BE
+  STA PPU_ENABLED
+  JMP NMI_ON
 
-.S7_C2BE
-  LDA Z_18
+; Set bit 7 of the PPU CTRL shadow and write it to the register.
+.NMI_ON
+  LDA PPU_CTRL_BUF
   ORA #&80
   STA PPU_CTRL_REG1
-  STA Z_18
+  STA PPU_CTRL_BUF
   RTS
 
-.S7_C2C8
-  JSR S7_C849
+; Wait for an empty PPU queue, clear the split and the OAM buffer, then blank the mask.
+; Clears PPU_ENABLED and calls AUDIO_CMD_80. Waits one frame on either side.
+.PPU_OFF
+  JSR WAIT_PPU_Q
   LDA #&00
-  STA Z_31
-  JSR S7_C321
-  JSR S7_C280
+  STA SPLIT_MODE
+  JSR CLEAR_OAM
+  JSR WAIT_FRAME
   LDA #&00
   STA PPU_CTRL_REG2
-  STA Z_19
+  STA PPU_MASK_BUF
   LDA #&00
-  STA Z_10
-  JSR S7_C8F3
-  JSR S7_C280
+  STA PPU_ENABLED
+  JSR AUDIO_CMD_80
+  JSR WAIT_FRAME
   RTS
 
-.S7_C2E7
-  LDA Z_18
+; Clear bit 7 of the PPU CTRL shadow and write it to the register.
+.NMI_OFF
+  LDA PPU_CTRL_BUF
   AND #&7F
   STA PPU_CTRL_REG1
-  STA Z_18
+  STA PPU_CTRL_BUF
   RTS
 
-.S7_C2F1
+; Enable the sprite-0 split with sprite 0 at Y=10h (SPLIT_MODE=1).
+; Turns NMI off, waits a frame, turns NMI on. Out: A=0.
+.SET_TOP_SPLIT
   LDA #&01
-  STA Z_31
+  STA SPLIT_MODE
   LDA #&10
-  STA Z_32
+  STA SPRITE0_Y
 .L7_C2F9
-  JSR S7_C2E7
-  JSR S7_C26C
-  JSR S7_C321
-  JSR S7_C316
-  JSR S7_C26C
-  JMP S7_C2BE
+  JSR NMI_OFF
+  JSR WAIT_VBLANK
+  JSR CLEAR_OAM
+  JSR OAM_DMA
+  JSR WAIT_VBLANK
+  JMP NMI_ON
 
-.S7_C30B
+; Enable the sprite-0 split with sprite 0 at Y=90h (SPLIT_MODE=80h).
+; Same NMI off/on bracket as SET_TOP_SPLIT.
+.SET_LOW_SPLIT
   LDA #&80
-  STA Z_31
+  STA SPLIT_MODE
   LDA #&90
-  STA Z_32
+  STA SPRITE0_Y
   JMP L7_C2F9
 
-.S7_C316
+; DMA the page-7 OAM buffer to the PPU. Clobbers A.
+.OAM_DMA
   LDA #&00
   STA PPU_SPR_ADDR
   LDA #&07
   STA PPU_SPR_DMA
   RTS
 
-.S7_C321
+; Hide every sprite (Y=F8h) and clear OAM_READY. If SPLIT_MODE is set, sprite 0 is
+; rewritten from SPRITE0_Y with tile 3F and attribute 20h. OAM_INDEX becomes 0 or 4.
+.CLEAR_OAM
   LDA #&00
-  STA Z_13
-  STA Z_12
+  STA OAM_INDEX
+  STA OAM_READY
   LDX #&3C
   LDA #&F8
 .L7_C32B
@@ -447,9 +483,9 @@
   DEX
   DEX
   BPL L7_C32B
-  LDA Z_31
+  LDA SPLIT_MODE
   BEQ L7_C359
-  LDA Z_32
+  LDA SPRITE0_Y
   STA W_0700
   LDA #&01
   STA W_0701
@@ -458,16 +494,18 @@
   LDA #&00
   STA W_0703
   LDA #&04
-  STA Z_13
+  STA OAM_INDEX
 .L7_C359
   RTS
 
-.S7_C35A
+; Set OAM_READY so the next NMI will DMA the sprite buffer and then clear it.
+.MARK_OAM
   LDA #&01
-  STA Z_12
+  STA OAM_READY
   RTS
 
-.S7_C35F
+; Point the PPU address at 3F00h and then at 0000h so a later render does not show a palette glitch.
+.PPU_BUS_FIX
   LDA #&3F
   STA PPU_ADDRESS
   LDA #&00
@@ -476,28 +514,36 @@
   STA PPU_ADDRESS
   RTS
 
-.S7_C370
-  LDA W_04B5
-  STA W_04BB
-  LDA W_04B6
-  STA W_04BC
-  LDA W_04B7
-  STA W_04BD
+; Read the controllers once per NMI.
+; US: probe for signature 10h/20h. On a match use READ_JOY_ALT and set JOY_SIG_OK, else READ_JOY_STD.
+; A second sample that differs is discarded and the previous frame is kept.
+; Fills JOYPAD1-3, the _NEW and _OLD bytes, JOY_HELD and JOY_NEW.
+.READ_JOYPADS
+  LDA JOYPAD1
+  STA JOYPAD1_OLD
+  LDA JOYPAD2
+  STA JOYPAD2_OLD
+  LDA JOYPAD3
+  STA JOYPAD3_OLD
 IF REGION_JP
   LDA #&01
 ELSE
   LDA #&00
-  STA Z_48
-  JSR S7_C430
+  STA JOY_SIG_OK
+  JSR READ_JOY_PROBE
   BNE L7_C393
-  INC Z_48
-  JSR S7_C47D
+  INC JOY_SIG_OK
+  JSR READ_JOY_ALT
   JMP L7_C3DC
 .L7_C393
-  JSR S7_C399
+  JSR READ_JOY_STD
   JMP L7_C3DC
 
-.S7_C399
+; Strobe the pads and shift in 8 bits twice.
+; First pass: port1 bit0 -> JOYPAD1, port1 bit1 -> JOYPAD3, port2 bit0 -> JOYPAD2.
+; Second pass: the same bits into JOYPAD1_2ND, JOYPAD3_2ND, JOYPAD2_2ND.
+; On US this is the fallback when the probe misses. On JP it is the whole read, and it also builds the _NEW and OR bytes.
+.READ_JOY_STD
   LDA #&01
 ENDIF
   STA JOYPAD_PORT1
@@ -507,12 +553,12 @@ ENDIF
 .L7_C3A5
   LDA JOYPAD_PORT1
   LSR A
-  ROL W_04B5
+  ROL JOYPAD1
   LSR A
-  ROL W_04B7
+  ROL JOYPAD3
   LDA JOYPAD_PORT2
   LSR A
-  ROL W_04B6
+  ROL JOYPAD2
   DEX
   BNE L7_C3A5
   LDA #&01
@@ -523,12 +569,12 @@ ENDIF
 .L7_C3C6
   LDA JOYPAD_PORT1
   LSR A
-  ROL W_04BE
+  ROL JOYPAD1_2ND
   LSR A
-  ROL W_04C0
+  ROL JOYPAD3_2ND
   LDA JOYPAD_PORT2
   LSR A
-  ROL W_04BF
+  ROL JOYPAD2_2ND
   DEX
   BNE L7_C3C6
 IF REGION_JP
@@ -536,45 +582,47 @@ ELSE
   RTS
 ENDIF
 .L7_C3DC
-  LDA W_04B5
-  CMP W_04BE
+  LDA JOYPAD1
+  CMP JOYPAD1_2ND
   BEQ L7_C3EA
-  LDX W_04BB
-  STX W_04B5
+  LDX JOYPAD1_OLD
+  STX JOYPAD1
 .L7_C3EA
-  LDA W_04B6
-  CMP W_04BF
+  LDA JOYPAD2
+  CMP JOYPAD2_2ND
   BEQ L7_C3F8
-  LDX W_04BC
-  STX W_04B6
+  LDX JOYPAD2_OLD
+  STX JOYPAD2
 .L7_C3F8
-  LDA W_04B7
-  CMP W_04C0
+  LDA JOYPAD3
+  CMP JOYPAD3_2ND
   BEQ L7_C406
-  LDX W_04BD
-  STX W_04B7
+  LDX JOYPAD3_OLD
+  STX JOYPAD3
 .L7_C406
   LDX #&02
 .L7_C408
-  LDA W_04B5,X
-  EOR W_04BB,X
-  AND W_04B5,X
-  STA W_04B8,X
+  LDA JOYPAD1,X
+  EOR JOYPAD1_OLD,X
+  AND JOYPAD1,X
+  STA JOYPAD1_NEW,X
   DEX
   BPL L7_C408
-  LDA W_04B5
-  ORA W_04B6
-  ORA W_04B7
-  STA W_04C4
-  LDA W_04B8
-  ORA W_04B9
-  ORA W_04BA
-  STA W_04C3
+  LDA JOYPAD1
+  ORA JOYPAD2
+  ORA JOYPAD3
+  STA JOY_HELD
+  LDA JOYPAD1_NEW
+  ORA JOYPAD2_NEW
+  ORA JOYPAD3_NEW
+  STA JOY_NEW
 IF REGION_JP
 ELSE
   RTS
 
-.S7_C430
+; US only. Read pads with the AND-3 CMP-1 test, then shift 8 more bits into JOY_PROBE_1 and JOY_PROBE_2.
+; Returns Z set when the probe bytes are 10h and 20h. The mode menu rejects Z_49=2 while JOY_SIG_OK stays 0.
+.READ_JOY_PROBE
   LDX #&01
   STX JOYPAD_PORT1
   DEX
@@ -584,18 +632,18 @@ ELSE
   LDA JOYPAD_PORT1
   AND #&03
   CMP #&01
-  ROL W_04B5
+  ROL JOYPAD1
   LDA JOYPAD_PORT2
   AND #&03
   CMP #&01
-  ROL W_04B6
+  ROL JOYPAD2
   DEY
   BNE L7_C43B
   LDY #&08
 .L7_C454
   LDA JOYPAD_PORT1
   LSR A
-  ROL W_04B7
+  ROL JOYPAD3
   LDA JOYPAD_PORT2
   DEY
   BNE L7_C454
@@ -603,21 +651,23 @@ ELSE
 .L7_C463
   LDA JOYPAD_PORT1
   LSR A
-  ROL Z_45
+  ROL JOY_PROBE_1
   LDA JOYPAD_PORT2
   LSR A
-  ROL Z_46
+  ROL JOY_PROBE_2
   DEY
   BNE L7_C463
-  LDA Z_45
+  LDA JOY_PROBE_1
   CMP #&10
   BNE L7_C47C
-  LDA Z_46
+  LDA JOY_PROBE_2
   CMP #&20
 .L7_C47C
   RTS
 
-.S7_C47D
+; US only. Second pad read, used when READ_JOY_PROBE matches.
+; Same AND-3 test into the _2ND bytes, then 8 bits of port1 bit0 into JOYPAD3_2ND.
+.READ_JOY_ALT
   LDX #&01
   STX JOYPAD_PORT1
   DEX
@@ -627,24 +677,26 @@ ELSE
   LDA JOYPAD_PORT1
   AND #&03
   CMP #&01
-  ROL W_04BE
+  ROL JOYPAD1_2ND
   LDA JOYPAD_PORT2
   AND #&03
   CMP #&01
-  ROL W_04BF
+  ROL JOYPAD2_2ND
   DEY
   BNE L7_C488
   LDY #&08
 .L7_C4A1
   LDA JOYPAD_PORT1
   LSR A
-  ROL W_04C0
+  ROL JOYPAD3_2ND
   DEY
   BNE L7_C4A1
 ENDIF
   RTS
 
-.S7_C4AC
+; Fill nametable 2000h with A (8 pages), then zero the 128 bytes at 0420h (ATTR_BUF).
+; In: A = tile. Clobbers X and Y.
+.FILL_NAMETABLE
   PHA
   LDA #&20
   STA PPU_ADDRESS
@@ -661,26 +713,30 @@ ENDIF
   BNE L7_C4BC
   JMP L7_C514
 
-.S7_C4C8
+; Write 40h zeros to attribute tables 23C0h and 27C0h.
+.CLEAR_ATTRS
   LDA #&C0
   LDX #&23
-  JSR S7_C583
+  JSR SET_PPU_ADDR
   LDA #&00
   LDX #&40
-  JSR S7_C4E1
+  JSR PPU_FILL
   LDA #&C0
   LDX #&27
-  JSR S7_C583
+  JSR SET_PPU_ADDR
   LDA #&00
   LDX #&40
 
-.S7_C4E1
+; Write A to PPUDATA, X times. In: A = byte, X = count (1-256, 0 means 256).
+.PPU_FILL
   STA PPU_DATA
   DEX
-  BNE S7_C4E1
+  BNE PPU_FILL
   RTS
 
-.S7_C4E8
+; Copy X groups of 4 bytes from (16h) into PAL_BUF at index A*4.
+; In: A = palette row, X = row count, 16h/17h = source.
+.COPY_PAL_ROWS
   ASL A
   ASL A
   CLC
@@ -707,26 +763,30 @@ ENDIF
   BNE L7_C4F7
   RTS
 
-.S7_C50F
+; Set PAL_DIRTY so the next NMI uploads PAL_BUF.
+.MARK_PALETTE
   LDA #&01
-  STA Z_15
+  STA PAL_DIRTY
   RTS
 .L7_C514
   LDX #&7F
   LDA #&00
 .L7_C518
-  STA W_0420,X
+  STA ATTR_BUF,X
   DEX
   BPL L7_C518
   RTS
 
-.S7_C51F
-  JSR S7_C91F
+; Play sound command 85h, then darken PAL_BUF one step at a time.
+; Each non-0F byte loses 10h from its high nibble, otherwise it becomes 0Fh.
+; Marks the palette dirty and waits 5 NMIs per step until every byte is 0Fh.
+.FADE_PALETTE
+  JSR AUDIO_CMD_85
 .L7_C522
   LDX #&00
   STX Z_1C
 .L7_C526
-  LDA W_0400,X
+  LDA PAL_BUF,X
   CMP #&0F
   BEQ L7_C540
   TAY
@@ -739,45 +799,48 @@ ENDIF
   SEC
   SBC #&10
 .L7_C53B
-  STA W_0400,X
+  STA PAL_BUF,X
   INC Z_1C
 .L7_C540
   INX
   CPX #&20
   BCC L7_C526
   LDA #&01
-  STA Z_15
+  STA PAL_DIRTY
   LDX #&05
 .L7_C54B
-  JSR S7_C277
+  JSR WAIT_NMI
   DEX
   BNE L7_C54B
   LDA Z_1C
   BNE L7_C522
   RTS
 
-.S7_C556
+; Fill all 32 palette bytes with 0Fh and upload them to 3F00h immediately.
+.FILL_PAL_BLACK
   LDA #&0F
   LDX #&00
 .L7_C55A
-  STA W_0400,X
+  STA PAL_BUF,X
   INX
   CPX #&20
   BCC L7_C55A
   BCS L7_C568
 
-.S7_C564
-  LDA Z_15
+; If PAL_DIRTY is set, write PAL_BUF to PPU 3F00h and clear the flag.
+; Out: C=1 if an upload ran (NMI then skips the PPU queue), C=0 if it did not.
+.UPLOAD_PALETTE
+  LDA PAL_DIRTY
   BEQ L7_C581
 .L7_C568
   LDA #&3F
   STA PPU_ADDRESS
   LDA #&00
   STA PPU_ADDRESS
-  STA Z_15
+  STA PAL_DIRTY
   TAY
 .L7_C575
-  LDA W_0400,Y
+  LDA PAL_BUF,Y
   STA PPU_DATA
   INY
   CPY #&20
@@ -787,13 +850,17 @@ ENDIF
   CLC
   RTS
 
-.S7_C583
+; Set the PPU address to X*100h+A. In: X = high, A = low.
+.SET_PPU_ADDR
   STX PPU_ADDRESS
   STA PPU_ADDRESS
   RTS
 
-.S7_C58A
-  LDA W_0100
+; Switch to bank X and decode Y tiles of 16 bytes to the PPU address in 22h/23h.
+; Source is (20h). Each tile is two calls to DECODE_CHR. Restores the previous bank.
+; In: X = bank, Y = tile count, 20h = source, 22h = PPU address.
+.UPLOAD_CHR_RLE
+  LDA CUR_BANK
   PHA
   JSR BANK_SWITCH
   STY Z_1E
@@ -802,15 +869,18 @@ ENDIF
   LDA Z_22
   STA PPU_ADDRESS
 .L7_C59D
-  JSR S7_C5E0
-  JSR S7_C5E0
+  JSR DECODE_CHR
+  JSR DECODE_CHR
   DEC Z_1E
   BNE L7_C59D
   PLA
   TAX
   JMP BANK_SWITCH
-.L7_C5AC
-  LDA W_0100
+
+; Switch to bank X and copy Y*16 raw bytes from (20h) to PPU address 22h/23h.
+; Restores the previous bank. Used by the bank-5 tile upload at 802Fh.
+.UPLOAD_CHR_RAW
+  LDA CUR_BANK
   PHA
   JSR BANK_SWITCH
   STY Z_1E
@@ -839,7 +909,10 @@ ENDIF
   TAX
   JMP BANK_SWITCH
 
-.S7_C5E0
+; Decode 8 pixels of one CHR bitplane from (20h) into 1Eh.
+; A 0 bit repeats the previous byte; a 1 bit reads a new byte. Bits live in 1Dh.
+; The upload that starts at bank 1 B724h reads past that bank into C000h-C122h of this fixed bank. That is original behavior (see shift_ignore).
+.DECODE_CHR
   LDX #&08
   LDY #&00
   LDA (Z_20),Y
@@ -866,18 +939,21 @@ ENDIF
   STA Z_21
   RTS
 
-.S7_C609
+; Drain up to 8 records from PPU_QUEUE.
+; A record whose first byte is nonzero is [flags][hi][lo][count][bytes]. Bit 7 of flags sets the PPU increment-32 mode.
+; A record whose first byte is 0 is a 2x2 tile plus one attribute byte (9 bytes total).
+.DRAIN_PPU_Q
   LDA #&08
   STA W_04A8
   JMP L7_C6AE
 .L7_C611
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   AND #&7F
   BEQ L7_C64D
-  LDA Z_18
+  LDA PPU_CTRL_BUF
   AND #&FB
   TAY
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   BPL L7_C626
   INY
   INY
@@ -886,82 +962,85 @@ ENDIF
 .L7_C626
   STY PPU_CTRL_REG1
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_ADDRESS
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_ADDRESS
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   TAY
 .L7_C63C
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
   DEY
   BNE L7_C63C
   INX
-  STX W_04A6
+  STX PPU_Q_RD
   JMP L7_C6A9
 .L7_C64D
-  LDA Z_18
+  LDA PPU_CTRL_BUF
   AND #&FB
   STA PPU_CTRL_REG1
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_ADDRESS
-  STA W_04A7
+  STA PPU_Q_HI
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_ADDRESS
   PHA
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
-  LDA W_04A7
+  LDA PPU_Q_HI
   STA PPU_ADDRESS
   PLA
   CLC
   ADC #&20
   STA PPU_ADDRESS
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
-  LDA W_04A7
+  LDA PPU_Q_HI
   ORA #&03
   STA PPU_ADDRESS
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_ADDRESS
   INX
-  LDA W_0600,X
+  LDA PPU_QUEUE,X
   STA PPU_DATA
   INX
-  STX W_04A6
+  STX PPU_Q_RD
 .L7_C6A9
   DEC W_04A8
   BEQ L7_C6B9
 .L7_C6AE
-  LDX W_04A6
-  CPX W_04A5
+  LDX PPU_Q_RD
+  CPX PPU_Q_WR
   BEQ L7_C6B9
   JMP L7_C611
 .L7_C6B9
   RTS
 
-.S7_C6BA
+; Queue one 2x2 tile and its attribute nibble. Spins until 10 queue bytes are free.
+; Uses 04A9h-04B4h as the address, tiles and masks. Updates ATTR_BUF.
+; In: those work bytes already filled by QUEUE_MAP_TILE.
+.QUEUE_TILE
   LDA #&0A
-  JSR S7_C839
-  BCC S7_C6BA
-  LDX W_04A5
+  JSR PPU_Q_HAS_ROOM
+  BCC QUEUE_TILE
+  LDX PPU_Q_WR
   LDY W_04B0
-  LDA D7_C791,Y
+  LDA ATTR_PAL_BYTE,Y
   STA W_04B0
   LDY #&20
   LDA W_04AB
@@ -1009,53 +1088,61 @@ ENDIF
   LDA W_04AC
   AND #&03
   TAY
-  LDA D7_C78D,Y
+  LDA ATTR_QUAD_MASK,Y
   STA W_04AE
   EOR #&FF
   STA W_04AF
   LDA #&00
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04AA
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04A9
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04B1
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04B2
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04B3
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04B4
   INX
-  STA W_0600,X
+  STA PPU_QUEUE,X
   LDA W_04AD
   TAY
   ORA #&C0
   INX
-  STA W_0600,X
-  LDA W_0420,Y
+  STA PPU_QUEUE,X
+  LDA ATTR_BUF,Y
   AND W_04AE
   STA W_04AE
   LDA W_04B0
   AND W_04AF
   ORA W_04AE
   INX
-  STA W_0600,X
-  STA W_0420,Y
+  STA PPU_QUEUE,X
+  STA ATTR_BUF,Y
   INX
-  STX W_04A5
+  STX PPU_Q_WR
   RTS
-.D7_C78D
+
+; Four attribute masks, one per 2x2 quadrant inside an attribute byte: FC F3 CF 3F.
+.ATTR_QUAD_MASK
   EQUB &FC,&F3,&CF,&3F
-.D7_C791
+
+; Palette index 0-3 expanded to a full attribute byte: 00 55 AA FF.
+; QUEUE_TILE indexes this with the map nibble, which is therefore 0-3.
+.ATTR_PAL_BYTE
   EQUB &00,&55,&AA,&FF
 
-.S7_C795
+; Tile column X and row Y to a nametable address in 22h/23h.
+; X below 20h uses nametable 2000h; otherwise the column wraps and the base is 2400h.
+; In: X, Y. Out: 22h = address. Clobbers A.
+.XY_TO_NT_ADDR
   LDA #&20
   CPX #&20
   BCC L7_C7A2
@@ -1087,7 +1174,10 @@ ENDIF
   STA Z_23
   RTS
 
-.S7_C7C4
+; Tile column X and row Y to an attribute address.
+; Out: 23h = high (23h or 27h), 22h = low ORed with C0h, 1Ch = offset inside the attribute byte group.
+; Wraps X at 20h and Y at 1Eh onto the second screen.
+.XY_TO_ATTR
   LDA #&23
   STA Z_23
   LDA #&00
@@ -1128,50 +1218,56 @@ ENDIF
   STA Z_22
   RTS
 
-.S7_C802
+; Queue a raw PPU run. Spins until 25h bytes are free, then writes
+; [2Eh ORed with 01h][23h][22h][count][count bytes from (20h)].
+; In: X = count, 22h/23h = PPU address, 20h = source, 2Eh = flag byte (bit 7 selects vertical increment).
+.QUEUE_PPU_RUN
   LDA #&25
-  JSR S7_C839
-  BCC S7_C802
+  JSR PPU_Q_HAS_ROOM
+  BCC QUEUE_PPU_RUN
   STX Z_1C
-  LDX W_04A5
+  LDX PPU_Q_WR
   LDA Z_2E
   ORA #&01
-  STA W_0600,X
+  STA PPU_QUEUE,X
   INX
   LDA Z_23
-  STA W_0600,X
+  STA PPU_QUEUE,X
   INX
   LDA Z_22
-  STA W_0600,X
+  STA PPU_QUEUE,X
   INX
   LDA Z_1C
-  STA W_0600,X
+  STA PPU_QUEUE,X
   INX
   LDY #&00
 .L7_C82A
   LDA (Z_20),Y
-  STA W_0600,X
+  STA PPU_QUEUE,X
   INY
   INX
   DEC Z_1C
   BNE L7_C82A
-  STX W_04A5
+  STX PPU_Q_WR
   RTS
 
-.S7_C839
+; Test whether the PPU queue can take A more bytes.
+; Out: C=1 if the gap from PPU_Q_WR to PPU_Q_RD is large enough. A gap of 0 is treated as empty, so C=1.
+.PPU_Q_HAS_ROOM
   STA W_04AD
-  LDA W_04A6
+  LDA PPU_Q_RD
   SEC
-  SBC W_04A5
+  SBC PPU_Q_WR
   BEQ L7_C848
   CMP W_04AD
 .L7_C848
   RTS
 
-.S7_C849
-  LDA W_04A5
-  CMP W_04A6
-  BNE S7_C849
+; Spin until PPU_Q_WR equals PPU_Q_RD. NMI must be enabled.
+.WAIT_PPU_Q
+  LDA PPU_Q_WR
+  CMP PPU_Q_RD
+  BNE WAIT_PPU_Q
   RTS
 
 .FAR_CALL
@@ -1194,7 +1290,7 @@ ENDIF
   PHA
   LDA Z_38
   PHA
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDY #&03
   LDA (Z_36),Y
@@ -1226,20 +1322,22 @@ ENDIF
   LDX Z_3A
   RTS
 
-.S7_C8A1
-  INC W_03D8
-  DEC W_03D9
+; Step the 3-byte RNG in RNG_1..RNG_3.
+; Out: A = RNG_3. The bytes after the RTS are never executed.
+.NEXT_RNG
+  INC RNG_1
+  DEC RNG_2
   BNE L7_C8AE
   LDA #&75
-  STA W_03D9
+  STA RNG_2
 .L7_C8AE
-  LDA W_03D8
+  LDA RNG_1
   CMP #&77
   BNE L7_C8BA
   LDA #&01
-  STA W_03D8
+  STA RNG_1
 .L7_C8BA
-  EOR W_03D9
+  EOR RNG_2
   ASL A
   PHP
   LSR A
@@ -1250,172 +1348,202 @@ ENDIF
   LSR A
   PLP
   ROL A
-  EOR W_03DA
+  EOR RNG_3
   SEC
-  SBC W_03D9
+  SBC RNG_2
   CLC
-  ADC W_03D8
+  ADC RNG_1
   CLC
-  ADC W_03D8
-  STA W_03DA
+  ADC RNG_1
+  STA RNG_3
   RTS
 
 ; (not seen executing during the coverage runs)
   LDA #&00
-  STA W_03D8
-  STA W_03D9
-  STA W_03DA
+  STA RNG_1
+  STA RNG_2
+  STA RNG_3
   RTS
 
-.S7_C8E6
+; Clear SND_NMI_LOCK, map bank 2, and jump to SND_INIT. Does not return.
+.START_AUDIO
   LDA #&00
-  STA W_04C7
+  STA SND_NMI_LOCK
   LDX #&02
   JSR BANK_SWITCH
-  JMP L7_D800
+  JMP SND_RESET_ENTRY
 
-.S7_C8F3
+; Load A with 80h and fall into AUDIO_CALL. Used when the PPU is turned off.
+.AUDIO_CMD_80
   LDA #&80
 
-.S7_C8F5
-  STA W_04C5
-  STX W_04C6
-  LDA W_0100
+; Call the bank-2 sound routine at D803h (which jumps to L2_806Dh).
+; In: A = command, X = argument. Out: A and X from that routine. Restores the previous bank.
+.AUDIO_CALL
+  STA SND_RET_A
+  STX SND_RET_X
+  LDA CUR_BANK
   PHA
   LDX #&02
   JSR BANK_SWITCH
-  LDA W_04C5
-  LDX W_04C6
-  JSR S7_D803
-  STA W_04C5
-  STX W_04C6
+  LDA SND_RET_A
+  LDX SND_RET_X
+  JSR SND_REQUEST_ENTRY
+  STA SND_RET_A
+  STX SND_RET_X
   PLA
   TAX
   JSR BANK_SWITCH
-  LDA W_04C5
-  LDX W_04C6
+  LDA SND_RET_A
+  LDX SND_RET_X
   RTS
 
-.S7_C91F
+; AUDIO_CALL with A=85h and X=80h. Called once at the start of FADE_PALETTE.
+.AUDIO_CMD_85
   LDA #&85
   LDX #&80
-  FARCALL 2, S7_D803
+  FARCALL 2, SND_REQUEST_ENTRY
   RTS
 
 ; (not seen executing during the coverage runs)
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&02
   JSR BANK_SWITCH
   LDA #&86
-  JSR S7_D803
-  STX W_04C5
+  JSR SND_REQUEST_ENTRY
+  STX SND_RET_A
   PLA
   TAX
   JSR BANK_SWITCH
-  LDX W_04C5
+  LDX SND_RET_A
   CPX #&0C
   RTS
-.L7_C946
-  JSR S7_D269
-  JSR S7_D1A9
-.L7_C94C
-  JSR S7_D075
+
+; Reset entry after the cold init. Clears the demo flag, runs the opening, then the menu.
+; From here the loop boots a stage, plays STAGE_LOOP, and branches on clear, death, demo or bonus.
+.GAME_LOOP
+  JSR CLEAR_DEMO_FLAG
+  JSR RUN_OPENING
+
+; Front end. SHOW_FRONT, then if the demo flag is set jump into STAGE_BOOT.
+; Otherwise RUN_MODE_MENU. W_054E repeats this loop. W_054F goes to ENTER_Z49_1.
+; W_0550 goes to ENTER_W0550.
+.MENU_LOOP
+  JSR SHOW_FRONT
   LDA W_03EF
-  BNE L7_C979
+  BNE STAGE_BOOT
 .L7_C954
-  JSR S7_D083
+  JSR RUN_MODE_MENU
   LDA W_054E
-  BNE L7_C94C
+  BNE MENU_LOOP
   LDA W_054F
   BEQ L7_C964
-  JMP L7_CCB7
+  JMP ENTER_Z49_1
 .L7_C964
   LDA W_0550
   BEQ L7_C96C
-  JMP L7_CCC0
+  JMP ENTER_W0550
 .L7_C96C
   LDA #&FF
   STA Z_4D
-.L7_C970
+
+; Re-enter a mode without the title. Clears 8 bytes at 03D0h, calls SET_WIN_COUNT, then STAGE_BOOT.
+; Reached when Z_4A is set after a versus result or the game-over screen.
+.RESUME_MODE
   FARCALL 5, S5_AC8A
-  JSR S7_D1D3
-.L7_C979
-  JSR S7_C2C8
-  JSR S7_C280
+  JSR SET_WIN_COUNT
+
+; Blank the screen and set lives (04E5h) to 2. If Z_4A is set, keep the current area and stage.
+; If W_04C9 is negative, all areas are done. Otherwise it becomes the area and the stage is 0.
+.STAGE_BOOT
+  JSR PPU_OFF
+  JSR WAIT_FRAME
   LDA #&02
   STA W_04E5
   LDA Z_4A
-  BNE L7_C9A4
+  BNE STAGE_SETUP
   LDA W_04C9
-  BPL L7_C990
-  JMP L7_CA5B
-.L7_C990
+  BPL NEW_AREA
+  JMP ALL_CLEAR
+
+; Copy W_04C9 into the area, zero the stage, call bank 5 at 9936h (zeros 055Eh-0560h) and RESET_PLAYERS.
+.NEW_AREA
   STA Z_4B
   LDA #&00
   STA Z_4C
   FARCALL 5, S5_9936
-  JSR S7_CDA5
+  JSR RESET_PLAYERS
   LDA #&FF
   STA W_04C8
-.L7_C9A4
-  JSR S7_D19B
-  JSR S7_D1DA
-  JSR S7_C2E7
-  JSR S7_CF76
+
+; Build one stage: area card, mode setup, clear nametables, CHR, palettes, enemies.
+; Enables the PPU, the top split and the area BGM, then falls into STAGE_LOOP.
+.STAGE_SETUP
+  JSR MAYBE_AREA_CARD
+  JSR SETUP_BY_MODE
+  JSR NMI_OFF
+  JSR CLEAR_BOMB_RAM
   LDA #&00
-  JSR S7_C4AC
-  JSR S7_C4C8
-  JSR S7_CFA8
-  JSR S7_D138
-  JSR S7_CDAE
-  JSR S7_D09B
-  JSR S7_CB0E
-  JSR S7_C26C
-  JSR S7_C2BE
-  JSR S7_CD90
-  JSR S7_CD97
+  JSR FILL_NAMETABLE
+  JSR CLEAR_ATTRS
+  JSR CLEAR_BLAST_RAM
+  JSR FILL_MAP_FF
+  JSR INIT_PLAYERS
+  JSR RESET_ENEMY_RAM
+  JSR LOAD_STAGE_GFX
+  JSR WAIT_VBLANK
+  JSR NMI_ON
+  JSR BIND_AREA_PTRS
+  JSR LOAD_STAGE_META
   FARCALL 5, S5_97E0
   FARCALL 5, S5_98F5
   FARCALL 5, S5_9942
   LDA #&00
   ABS_STA Z_B7
   STA Z_53
-  JSR S7_C29E
-  JSR S7_C2F1
-  JSR S7_C50F
-  JSR S7_CAEE
-.L7_C9F8
-  JSR S7_C277
-  JSR S7_CC2A
-  JSR S7_CE5F
-  JSR S7_CF84
-  JSR S7_D0BC
+  JSR PPU_ON
+  JSR SET_TOP_SPLIT
+  JSR MARK_PALETTE
+  JSR PLAY_AREA_BGM
+
+; One in-stage frame: wait for NMI, pause, players, blasts, enemies, then several bank-5 calls.
+; Z_B7 at or above F0h leaves the stage. Z_53 counts up to F0h and then takes the death path.
+; Otherwise MARK_OAM and repeat.
+.STAGE_LOOP
+  JSR WAIT_NMI
+  JSR UPDATE_PAUSE
+  JSR UPDATE_PLAYERS
+  JSR UPDATE_BLASTS
+  JSR UPDATE_ENEMIES
   FARCALL 5, S5_9895
   FARCALL 5, S5_8000
   FARCALL 5, S5_AC95
   ABS_LDA Z_B7
   CMP #&F0
-  BCS L7_CA31
+  BCS STAGE_WON
   LDX Z_53
   BEQ L7_CA2B
   INX
   STX Z_53
   CPX #&F0
-  BCS L7_CA64
+  BCS STAGE_LOST
 .L7_CA2B
-  JSR S7_C35A
-  JMP L7_C9F8
-.L7_CA31
-  JSR S7_C51F
-  JSR S7_C2C8
+  JSR MARK_OAM
+  JMP STAGE_LOOP
+
+; Stage exit after a fade. Demo returns through DEMO_EXIT. Nonzero Z_B4 goes to PREP_STAGE_B4.
+; Otherwise advance the stage, and the area after stage 8. Area 6 goes to ALL_CLEAR.
+.STAGE_WON
+  JSR FADE_PALETTE
+  JSR PPU_OFF
   LDA W_03EF
   BEQ L7_CA3F
-  JMP L7_CAD9
+  JMP DEMO_EXIT
 .L7_CA3F
   ABS_LDA Z_B4
   BEQ L7_CA47
-  JMP L7_CB05
+  JMP PREP_STAGE_B4
 .L7_CA47
   INC Z_4C
   LDA Z_4C
@@ -1427,16 +1555,21 @@ ENDIF
   LDA Z_4B
   CMP #&06
   BCC L7_CA61
-.L7_CA5B
-  JSR S7_D1A2
+
+; Area index reached 6. Call RUN_ENDING and then RESET.
+.ALL_CLEAR
+  JSR RUN_ENDING
   JMP RESET
 .L7_CA61
-  JMP L7_C9A4
-.L7_CA64
-  JSR S7_C51F
-  JSR S7_C2C8
+  JMP STAGE_SETUP
+
+; Fade out after Z_53 hit F0h. In a versus mode, score the round and maybe show the result.
+; In story mode, decrement lives. Negative lives run the game-over screen. Otherwise reload the stage.
+.STAGE_LOST
+  JSR FADE_PALETTE
+  JSR PPU_OFF
   LDA W_03EF
-  BNE L7_CAD9
+  BNE DEMO_EXIT
   LDX Z_49
   BEQ L7_CAC4
   LDY #&FF
@@ -1473,28 +1606,31 @@ ENDIF
   CMP #&02
   BCC L7_CAC1
 .L7_CAB0
-  JSR S7_D1CC
+  JSR SHOW_VS_RESULT
   LDA Z_4A
   BNE L7_CABA
-  JMP L7_C946
+  JMP GAME_LOOP
 .L7_CABA
   LDA #&00
   STA Z_4A
-  JMP L7_C970
+  JMP RESUME_MODE
 .L7_CAC1
-  JMP L7_C9A4
+  JMP STAGE_SETUP
 .L7_CAC4
   DEC W_04E5
   BMI L7_CACC
-  JMP L7_C9A4
+  JMP STAGE_SETUP
 .L7_CACC
-  JSR S7_D07C
+  JSR RUN_GAME_OVER
   LDA Z_4A
   BNE L7_CAD6
-  JMP L7_C946
+  JMP GAME_LOOP
 .L7_CAD6
-  JMP L7_C970
-.L7_CAD9
+  JMP RESUME_MODE
+
+; Return from a demo stage. If the demo flag is negative, go back to the menu path at C954h.
+; If the demo index is 3, restart at GAME_LOOP. Otherwise repeat MENU_LOOP.
+.DEMO_EXIT
   LDA W_03EF
   BPL L7_CAE1
   JMP L7_C954
@@ -1502,30 +1638,38 @@ ENDIF
   LDA W_03F0
   CMP #&03
   BNE L7_CAEB
-  JMP L7_C946
+  JMP GAME_LOOP
 .L7_CAEB
-  JMP L7_C94C
+  JMP MENU_LOOP
 
-.S7_CAEE
+; If Z_49 is 0, play AREA_BGM_ID indexed by the area. Otherwise play sound 14h.
+.PLAY_AREA_BGM
   LDA Z_49
   BNE L7_CAFA
   LDX Z_4B
-  LDA D7_CAFF,X
-  JMP S7_C8F5
+  LDA AREA_BGM_ID,X
+  JMP AUDIO_CALL
 .L7_CAFA
   LDA #&14
-  JMP S7_C8F5
-.D7_CAFF
-  EQUB &0E,&0F,&0E,&0F,&0E,&10
-.L7_CB05
-  FARCALL 5, S5_9E92
-  JMP L7_CA31
+  JMP AUDIO_CALL
 
-.S7_CB0E
-  JSR S7_CB92
+; Six sound ids, one per area 0-5: 0E 0F 0E 0F 0E 10. Read by PLAY_AREA_BGM.
+.AREA_BGM_ID
+  EQUB &0E,&0F,&0E,&0F,&0E,&10
+
+; Z_B4 was nonzero after a clear. FARCALL bank 5 at 9E92h, which saves the area and stage,
+; forces stage 7, Z_90=8, Z_93=5 and Z_4E=1, then returns to STAGE_WON.
+.PREP_STAGE_B4
+  FARCALL 5, S5_9E92
+  JMP STAGE_WON
+
+; Load area CHR and the sprite palettes, then return from the tail at CB14h.
+; CB14h also copies 16 bytes of area palette data from bank 4 and mirrors the background color.
+.LOAD_STAGE_GFX
+  JSR LOAD_AREA_CHR
   JMP L7_CB14
 .L7_CB14
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&04
   JSR BANK_SWITCH
@@ -1542,29 +1686,30 @@ ENDIF
   STA Z_17
   LDA #&00
   LDX #&04
-  JSR S7_C4E8
-  LDA #LO(D7_CB72)
+  JSR COPY_PAL_ROWS
+  LDA #LO(SPR_PAL_STORY)
   STA Z_16
-  LDA #HI(D7_CB72)
+  LDA #HI(SPR_PAL_STORY)
   STA Z_17
   LDA Z_49
   BEQ L7_CB49
-  LDA #LO(D7_CB82)
+  LDA #LO(SPR_PAL_OTHER)
   STA Z_16
-  LDA #HI(D7_CB82)
+  LDA #HI(SPR_PAL_OTHER)
   STA Z_17
 .L7_CB49
   LDA #&04
   LDX #&04
-  JSR S7_C4E8
-  JSR S7_CB59
+  JSR COPY_PAL_ROWS
+  JSR MIRROR_BG_COLOR
   PLA
   TAX
   JSR BANK_SWITCH
   RTS
 
-.S7_CB59
-  LDA W_0400
+; Copy PAL_BUF byte 0 onto the background color of the other seven 4-byte rows.
+.MIRROR_BG_COLOR
+  LDA PAL_BUF
   STA W_0404
   STA W_0408
   STA W_040C
@@ -1573,15 +1718,23 @@ ENDIF
   STA W_0418
   STA W_041C
   RTS
-.D7_CB72
+
+; 16 sprite-palette bytes (4 rows) copied to PAL_BUF row 4 when Z_49 is 0.
+.SPR_PAL_STORY
   EQUB &0F,&20,&01,&06,&0F,&0D,&26,&20,&0F,&0F,&2A,&20,&0F,&0F,&21,&20
-.D7_CB82
+
+; 16 sprite-palette bytes copied to PAL_BUF row 4 when Z_49 is not 0.
+.SPR_PAL_OTHER
   EQUB &0F,&0F,&27,&11,&0F,&0F,&26,&30,&0F,&0F,&26,&16,&0F,&0F,&21,&20
 
-.S7_CB92
-  LDA #LO(D6_8000)
+; Upload fixed CHR from bank 6 at 8000h (80h tiles to PPU 1000h),
+; area CHR from AREA_CHR_PTR (60h tiles to 1A00h), and enemy CHR from bank 1.
+; Area 5 picks the enemy set with AREA5_CHR_IDX[stage]; other areas use the area index.
+; Enemy tiles go to PPU 0C00h, 40h tiles. Does not restore the bank itself; the caller does.
+.LOAD_AREA_CHR
+  LDA #LO(PLAY_SPR_CHR)
   STA Z_20
-  LDA #HI(D6_8000)
+  LDA #HI(PLAY_SPR_CHR)
   STA Z_21
   LDA #&00
   STA Z_22
@@ -1589,12 +1742,12 @@ ENDIF
   STA Z_23
   LDX #&06
   LDY #&80
-  JSR S7_C58A
-  JSR S7_CD9E
+  JSR UPLOAD_CHR_RLE
+  JSR LOAD_4_TILES
   LDA Z_4B
   ASL A
   TAX
-  LDA D7_CC0E,X
+  LDA AREA_CHR_PTR,X
   STA Z_20
   LDA D7_CC0F,X
   STA Z_21
@@ -1604,10 +1757,10 @@ ENDIF
   STA Z_23
   LDX #&06
   LDY #&60
-  JSR S7_C58A
-  LDA #LO(D1_8000)
+  JSR UPLOAD_CHR_RLE
+  LDA #LO(PLAY_BG_CHR)
   STA Z_20
-  LDA #HI(D1_8000)
+  LDA #HI(PLAY_BG_CHR)
   STA Z_21
   LDA #&00
   STA Z_22
@@ -1615,16 +1768,16 @@ ENDIF
   STA Z_23
   LDX #&01
   LDY #&C0
-  JSR S7_C58A
+  JSR UPLOAD_CHR_RLE
   LDA Z_4B
   CMP #&05
   BNE L7_CBEB
   LDX Z_4C
-  LDA D7_CC06,X
+  LDA AREA5_CHR_IDX,X
 .L7_CBEB
   ASL A
   TAX
-  LDA D7_CC1C,X
+  LDA ENEMY_CHR_PTR,X
   STA Z_20
   LDA D7_CC1D,X
   STA Z_21
@@ -1634,90 +1787,97 @@ ENDIF
   STA Z_23
   LDX #&01
   LDY #&40
-  JMP S7_C58A
-.D7_CC06
-  EQUB &00,&01,&02,&03,&04,&00,&03,&00
-.D7_CC0E
-  EQUB LO(D6_85D1)
-.D7_CC0F
-  EQUB HI(D6_85D1)
-  EQUW D6_89A4
-  EQUW D6_8E93
-  EQUW D6_92DC
-  EQUW D6_9731
-  EQUW D6_9D03
-  EQUW D6_A149
-.D7_CC1C
-  EQUB LO(D1_8D9C)
-.D7_CC1D
-  EQUB HI(D1_8D9C)
-  EQUW D1_8F22
-  EQUW D1_900C
-  EQUW D1_9132
-  EQUW D1_926F
-  EQUB &6F,&92
-  EQUW D1_94ED
+  JMP UPLOAD_CHR_RLE
 
-.S7_CC2A
+; Eight indexes, one per stage, selecting an ENEMY_CHR_PTR entry when the area is 5.
+.AREA5_CHR_IDX
+  EQUB &00,&01,&02,&03,&04,&00,&03,&00
+
+; Six pointers to area CHR in bank 6. First pointer is split lo/hi; the rest are words.
+; LOAD_AREA_CHR uploads 60h tiles from the selected pointer.
+.AREA_CHR_PTR
+  EQUB LO(AREA0_SPR_CHR)
+.D7_CC0F
+  EQUB HI(AREA0_SPR_CHR)
+  EQUW AREA1_SPR_CHR
+  EQUW AREA2_SPR_CHR
+  EQUW AREA3_SPR_CHR
+  EQUW AREA4_SPR_CHR
+  EQUW AREA5_SPR_CHR
+  EQUW VS_BATTLE_SPR_CHR
+
+; Seven pointers to enemy CHR in bank 1. Indexed by area, or by AREA5_CHR_IDX in area 5.
+; 40h tiles are uploaded to PPU 0C00h. Entry 5 is the same address as entry 4.
+.ENEMY_CHR_PTR
+  EQUB LO(AREA0_BG_CHR)
+.D7_CC1D
+  EQUB HI(AREA0_BG_CHR)
+  EQUW AREA1_BG_CHR
+  EQUW AREA2_BG_CHR
+  EQUW AREA3_BG_CHR
+  EQUW AREA4_BG_CHR
+  EQUW AREA4_BG_CHR
+  EQUW VS_BATTLE_BG_CHR
+
+; If Start is newly pressed and no death or clear is running, slide SPLIT_SCROLL_X by 8 until FCh
+; and draw PAUSE_TEXT. Start again restores the scroll and returns.
+; While the demo flag is set, Start or A sets that flag to FFh and Z_53 to F0h so the demo exits.
+.UPDATE_PAUSE
   LDA W_03EF
   BNE L7_CCA1
   ABS_LDA Z_B7
   ORA Z_53
   ORA W_051B
   BNE L7_CCA0
-  LDA W_04C3
+  LDA JOY_NEW
   AND #&10
   BEQ L7_CCA0
   LDA #&06
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   LDA #&83
   LDX #&00
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   STX W_04CC
   LDX #&2D
   LDY #&02
-  JSR S7_C795
-IF REGION_JP
-  LDA #&1E
-ELSE
-  LDA #&B2
-ENDIF
+  JSR XY_TO_NT_ADDR
+  LDA #LO(PAUSE_TEXT)
   STA Z_20
-  LDA #&CC
+  LDA #HI(PAUSE_TEXT)
   STA Z_21
   LDA #&00
   STA Z_2E
   LDX #&05
-  JSR S7_C802
+  JSR QUEUE_PPU_RUN
 .L7_CC67
-  JSR S7_C277
-  LDA W_04C3
+  JSR WAIT_NMI
+  LDA JOY_NEW
   AND #&10
   BNE L7_CC8B
-  LDA W_04A0
+  LDA SPLIT_SCROLL_X
   CMP #&FC
   BCS L7_CC67
-  LDA W_04A0
+  LDA SPLIT_SCROLL_X
   CLC
   ADC #&08
-  STA W_04A0
+  STA SPLIT_SCROLL_X
   BNE L7_CC67
   LDA #&FC
-  STA W_04A0
+  STA SPLIT_SCROLL_X
   JMP L7_CC67
 .L7_CC8B
   LDA #&06
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   LDX W_04CC
   LDA #&83
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   LDA #&00
-  STA W_04A0
-  STA W_04A1
+  STA SPLIT_SCROLL_X
+  STA SPLIT_CTRL_BIT
 .L7_CCA0
   RTS
 .L7_CCA1
-  LDA W_04C3
+  LDA JOY_NEW
   AND #&90
   BEQ L7_CCA0
   LDA #&FF
@@ -1725,20 +1885,32 @@ ENDIF
   LDA #&F0
   STA Z_53
   RTS
+
+; Five ASCII bytes "PAUSE", queued by UPDATE_PAUSE. The US pointer is CCB2h; the JP build uses the same bytes at its own address.
+.PAUSE_TEXT
   EQUB &50,&41,&55,&53,&45
-.L7_CCB7
+
+; W_054F was nonzero. FARCALL bank 5 at 9FC0h, which sets Z_49 to 1 and runs its own frame loop.
+; That call does not return; the following jump back to GAME_LOOP is not reached.
+.ENTER_Z49_1
   FARCALL 5, S5_9FC0
-  JMP L7_C946
-.L7_CCC0
+  JMP GAME_LOOP
+
+; W_0550 was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at 9E92h,
+; fade out, blank the PPU and jump to GAME_LOOP.
+.ENTER_W0550
   LDA #&01
   STA W_04E5
   FARCALL 5, S5_AC8A
   FARCALL 5, S5_9E92
-  JSR S7_C51F
-  JSR S7_C2C8
-  JMP L7_C946
+  JSR FADE_PALETTE
+  JSR PPU_OFF
+  JMP GAME_LOOP
 
-.S7_CCDA
+; Draw a metasprite into the OAM buffer at OAM_INDEX.
+; 54h/55h = data. First byte is the number of 4-byte groups (tile, dx, dy, attr), then FF-terminated runs.
+; 56h/57h = X, 58h/59h = Y, 5Ah = flip bits. X is reduced by SCROLL_X and Y by SCROLL_Y before the draw.
+.DRAW_METASPRITE
   DEC Z_58
   LDA Z_58
   CMP #&FF
@@ -1816,17 +1988,17 @@ ENDIF
   STA Z_61
   LDA Z_5C
   SEC
-  SBC W_04A2
+  SBC SCROLL_X
   STA Z_5C
   LDA Z_5D
-  SBC W_04A3
+  SBC SCROLL_NT
   BNE L7_CD81
-  LDA Z_13
+  LDA OAM_INDEX
   TAX
   CLC
   ADC #&04
   BEQ L7_CD88
-  STA Z_13
+  STA OAM_INDEX
   LDA Z_5C
   STA W_0703,X
   LDA Z_5E
@@ -1845,25 +2017,32 @@ ENDIF
   FARCALL 4, S4_B826
   RTS
 
-.S7_CD90
+; FARCALL bank 4 at B800h. That routine sets 62h/64h/66h from tables indexed by the area.
+.BIND_AREA_PTRS
   FARCALL 4, S4_B800
   RTS
 
-.S7_CD97
+; FARCALL bank 4 at B909h. That routine loads a per-stage byte into Z_2A and 04E2h (32h if Z_49 is not 0) and then scatters objects with NEXT_RNG.
+.LOAD_STAGE_META
   FARCALL 4, S4_B909
   RTS
 
-.S7_CD9E
+; FARCALL bank 5 at 802Fh, which uploads 4 raw tiles to PPU 1800h from a bank-6 table selected by 04E3h.
+.LOAD_4_TILES
   FARCALL 5, S5_802F
   RTS
 
-.S7_CDA5
+; Zero A9h and AAh, clear the round flags, then fall into INIT_PLAYERS.
+.RESET_PLAYERS
   LDA #&00
   STA Z_A9
   STA Z_AA
-  JSR S7_CE2C
+  JSR CLEAR_ROUND_FLAGS
 
-.S7_CDAE
+; Set up three actor slots. Each Z_69 entry is 1. X and Y come from PLAYER_SPAWN_X/Y.
+; Clears the per-slot bytes at 75h, 7Eh, 81h, 84h, 87h, 96h, 99h and 7Bh.
+; If Z_53 is nonzero, also clears several work bytes and copies 10 bytes from 0404h into 04D0h.
+.INIT_PLAYERS
   LDX #&02
   LDA #&00
 .L7_CDB2
@@ -1874,9 +2053,9 @@ ENDIF
 .L7_CDB9
   LDA #&01
   STA Z_69,X
-  LDA D7_CDF1,X
+  LDA PLAYER_SPAWN_X,X
   STA Z_72,X
-  LDA D7_CDF4,X
+  LDA PLAYER_SPAWN_Y,X
   STA Z_78,X
   LDA #&00
   STA Z_75,X
@@ -1898,9 +2077,13 @@ ENDIF
   ABS_LDA Z_53
   BNE L7_CDF7
   RTS
-.D7_CDF1
+
+; Three starting X positions, one per actor slot: 18h, D8h, 78h. Read by INIT_PLAYERS.
+.PLAYER_SPAWN_X
   EQUB &18,&D8,&78
-.D7_CDF4
+
+; Three starting Y positions, one per actor slot: 18h, B8h, 78h. Read by INIT_PLAYERS.
+.PLAYER_SPAWN_Y
   EQUB &18,&B8,&78
 .L7_CDF7
   LDA #&00
@@ -1924,16 +2107,18 @@ ENDIF
   BEQ L7_CE2B
   LDX #&02
 .L7_CE1E
-  LDA D7_CE59,Y
+  LDA MODE_BYTE_90,Y
   STA Z_90,X
-  LDA D7_CE5C,Y
+  LDA MODE_BYTE_93,Y
   STA Z_93,X
   DEX
   BPL L7_CE1E
 .L7_CE2B
   RTS
 
-.S7_CE2C
+; Zero AE AE-adjacent round bytes AD, B0, B3, B4, B5, AF (AF is replaced by 03EEh when Z_49 is 0).
+; Then copy MODE_BYTE_90/93, indexed by Z_49, into Z_90 and Z_93.
+.CLEAR_ROUND_FLAGS
   LDA #&00
   STA Z_AE
   STA Z_AD
@@ -1950,23 +2135,31 @@ ENDIF
   ABS_LDY Z_49
   LDX #&02
 .L7_CE4B
-  LDA D7_CE59,Y
+  LDA MODE_BYTE_90,Y
   STA Z_90,X
-  LDA D7_CE5C,Y
+  LDA MODE_BYTE_93,Y
   STA Z_93,X
   DEX
   BPL L7_CE4B
   RTS
-.D7_CE59
+
+; Three bytes indexed by Z_49 and stored in Z_90: 00, 01, 00. Also used by the demo setup path.
+.MODE_BYTE_90
   EQUB &00,&01,&00
-.D7_CE5C
+
+; Three bytes indexed by Z_49 and stored in Z_93: 00, 02, 01.
+.MODE_BYTE_93
   EQUB &00,&02,&01
 
-.S7_CE5F
+; FARCALL bank 5 at 8168h. That routine advances Z_B7 when it is nonzero, otherwise walks the Z_69 slots.
+.UPDATE_PLAYERS
   FARCALL 5, S5_8168
   RTS
 
-.S7_CE66
+; If Z_B5 is positive, Z_B0 is 1, and the WRAM cell at 611Eh/615Ah matches 9Dh/9Eh,
+; set Z_B6 from 61D2h and Z_B5 from BLAST_TYPE_TAB indexed by the low nibble of 60E2h.
+; In: Y = index into those WRAM arrays.
+.NOTE_BLAST_TYPE
   LDA Z_B5
   BMI L7_CE93
   LDA Z_B0
@@ -1987,11 +2180,14 @@ ENDIF
   LDA X_60E2,Y
   AND #&0F
   TAY
-  LDA D7_CE94,Y
+  LDA BLAST_TYPE_TAB,Y
   STA Z_B5
 .L7_CE93
   RTS
-.D7_CE94
+
+; 16 bytes. NOTE_BLAST_TYPE stores entry [low nibble of X_60E2] into Z_B5.
+; Entries 9-15 are 00. ? what the 80h-83h values select.
+.BLAST_TYPE_TAB
   EQUB &82,&80,&80,&81,&81,&82,&82,&83,&83,&00,&00,&00,&00,&00,&00,&00
 .L7_CEA4
   LDA W_04E6
@@ -2007,7 +2203,7 @@ ENDIF
   LDA #&01
   STA Z_A5
   LDA #&04
-  JSR S7_C8F5
+  JSR AUDIO_CALL
 .L7_CEC3
   RTS
 .L7_CEC4
@@ -2024,15 +2220,17 @@ ENDIF
   LDA #&01
   STA Z_84
   LDA #&04
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   RTS
 
-.S7_CEE4
+; If Z_4E is set, increment Z_B7 and play sound 16h.
+; Otherwise mark every live slot (Z_69 set, Z_84 clear) with Z_81=8, Z_7E=0, Z_84=1 and play sound 04h if any slot changed.
+.KILL_PLAYERS
   ABS_LDA Z_4E
   BEQ L7_CEF1
   INC Z_B7
   LDA #&16
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   RTS
 .L7_CEF1
   LDX #&02
@@ -2055,15 +2253,19 @@ ENDIF
   TYA
   BEQ L7_CF15
   LDA #&04
-  JSR S7_C8F5
+  JSR AUDIO_CALL
 .L7_CF15
   RTS
 
-.S7_CF16
+; Add 2 to Y and fall into QUEUE_MAP_TILE. In: A = tile id, X = column, Y = row before the add.
+.QUEUE_TILE_Y2
   INY
   INY
 
-.S7_CF18
+; Queue the 2x2 tile A at column X, row Y.
+; Four tile bytes come from (62h) at A*4. The attribute nibble comes from (66h), one nibble per tile id.
+; Switches to bank 4 for the read, then calls QUEUE_TILE and restores the bank.
+.QUEUE_MAP_TILE
   STX W_04AB
   STY W_04AC
   TAY
@@ -2079,7 +2281,7 @@ ENDIF
   LDA Z_63
   ADC Z_21
   STA Z_21
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&04
   JSR BANK_SWITCH
@@ -2107,7 +2309,7 @@ ENDIF
   INY
   LDA (Z_20),Y
   STA W_04B4
-  JSR S7_C6BA
+  JSR QUEUE_TILE
   PLA
   TAX
   JSR BANK_SWITCH
@@ -2116,7 +2318,8 @@ ENDIF
   FARCALL 5, S5_8F6E
   RTS
 
-.S7_CF76
+; Zero 0518h and the 15 bytes at 04EBh.
+.CLEAR_BOMB_RAM
   LDA #&00
   STA W_0518
   LDX #&0E
@@ -2126,8 +2329,9 @@ ENDIF
   BPL L7_CF7D
   RTS
 
-.S7_CF84
-  LDA W_0100
+; Map bank 5 and call BA56h, which walks the 24 slots at X_6001 on alternate frames. Restores the bank.
+.UPDATE_BLASTS
+  LDA CUR_BANK
   PHA
   LDX #&05
   JSR BANK_SWITCH
@@ -2137,7 +2341,7 @@ ENDIF
   JSR BANK_SWITCH
   RTS
 .L7_CF96
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&05
   JSR BANK_SWITCH
@@ -2147,7 +2351,8 @@ ENDIF
   JSR BANK_SWITCH
   RTS
 
-.S7_CFA8
+; Zero 24 bytes at 6001h, 60 bytes at 60E2h, 32 bytes at 60C1h, and 60E1h, 6000h, 624Dh-624Fh.
+.CLEAR_BLAST_RAM
   LDX #&17
   LDA #&00
 .L7_CFAC
@@ -2172,7 +2377,7 @@ ENDIF
   STA X_624F
   RTS
 .L7_CFD4
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&05
   JSR BANK_SWITCH
@@ -2182,7 +2387,9 @@ ENDIF
   JSR BANK_SWITCH
   RTS
 
-.S7_CFE6
+; Search 24 slots at X_6001 for a flag that is positive and whose X_6019/X_6031 cell equals Z_28/Z_29.
+; Out: C=1 and Y=slot if found, C=0 if not.
+.FIND_BLAST
   LDY #&17
 .L7_CFE8
   LDA X_6001,Y
@@ -2203,7 +2410,8 @@ ENDIF
   SEC
   RTS
 
-.S7_D004
+; Zero X_60C1 at index X_60E1, then advance that index modulo 32.
+.FREE_RING_SLOT
   LDA #&00
   LDY X_60E1
   STA X_60C1,Y
@@ -2217,19 +2425,21 @@ ENDIF
   RTS
 .L7_D018
   STA Z_B8
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&05
   JSR BANK_SWITCH
   JSR S5_BC4F
   LDA #&27
-  JSR S7_C8F5
+  JSR AUDIO_CALL
   PLA
   TAX
   JSR BANK_SWITCH
   RTS
 
-.S7_D031
+; Search 60 slots at X_60E2 (index 3Bh down). Skip a flag of 0.
+; Out: Y = slot whose X_611E/X_615A cell equals Z_28/Z_29, or FFh if none.
+.FIND_ACTOR_CELL
   LDY #&3B
 .L7_D033
   LDA X_60E2,Y
@@ -2246,7 +2456,9 @@ ENDIF
   BPL L7_D033
   RTS
 
-.S7_D04B
+; Find a zero flag in the 15 bytes at 04EBh.
+; Out: C=1 and X=slot if one is free, C=0 if all 15 are in use.
+.FIND_FREE_BOMB
   LDX #&0E
 .L7_D04D
   LDA W_04EB,X
@@ -2259,7 +2471,9 @@ ENDIF
   SEC
   RTS
 
-.S7_D059
+; Search the 15 slots at 04EBh for a nonzero flag whose 04FAh/0509h cell equals Z_28/Z_29.
+; Out: C=1 and X=slot if found, C=0 if not.
+.FIND_BOMB_CELL
   LDX #&0E
 .L7_D05B
   LDA W_04EB,X
@@ -2278,15 +2492,18 @@ ENDIF
   CLC
   RTS
 
-.S7_D075
+; FARCALL bank 5 at A18Eh. That routine blanks the PPU, sets SCROLL_Y to 60h and SCROLL_NT to 1, and fills the nametable with tile 0 before drawing the rest of the screen.
+.SHOW_FRONT
   FARCALL 5, S5_A18E
   RTS
 
-.S7_D07C
+; FARCALL bank 5 at AA6Ah. Called when lives go negative. That routine draws a screen, sets Z_4A to 1, plays sound 19h and waits on its own NMI loop.
+.RUN_GAME_OVER
   FARCALL 5, S5_AA6A
   RTS
 
-.S7_D083
+; FARCALL bank 5 at A80Fh. That routine clears W_054E, W_054F and W_0550, fills the nametable with tile 13h, and zeros Z_49 and W_04C9 before its own input loop.
+.RUN_MODE_MENU
   FARCALL 5, S5_A80F
   ABS_LDA Z_49
   CMP #&03
@@ -2295,11 +2512,13 @@ ENDIF
 .L7_D093
   RTS
 
-.S7_D094
+; FARCALL bank 5 at AB65h. The caller points 20h at a record: column, row, count, then bytes written straight to the PPU.
+.DRAW_INLINE_STR
   FARCALL 5, S5_AB65
   RTS
 
-.S7_D09B
+; Zero the 10 bytes at X_6250 and set X_62DC and X_62DD to 1.
+.RESET_ENEMY_RAM
   LDX #&09
 .L7_D09D
   LDA #&00
@@ -2316,10 +2535,12 @@ ENDIF
   STA X_62E6
   RTS
 
-.S7_D0BC
+; If Z_49 is 0, map bank 0 and call 824Fh and 82FEh for each of the 10 X_6250 slots that is nonzero, then 83BEh, 8179h, 81A6h and 821Eh.
+; Always increments X_62DD. Restores the bank.
+.UPDATE_ENEMIES
   ABS_LDA Z_49
   BNE L7_D0F1
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&00
   JSR BANK_SWITCH
@@ -2345,11 +2566,13 @@ ENDIF
   INC X_62DD
   RTS
 
-.S7_D0F5
+; FARCALL bank 0 at 8000h. That routine walks a list and places entries when Z_4E and Z_49 are both 0.
+.LOAD_ENEMIES
   FARCALL 0, S0_8000
   RTS
 
-.S7_D0FC
+; FARCALL bank 0 at 8090h. That routine uses FRAME_CNT and steps an index in X_62E6.
+.STEP_ENEMY_GEN
   FARCALL 0, S0_8090
   RTS
 .L7_D103
@@ -2379,17 +2602,20 @@ ENDIF
 .L7_D137
   RTS
 
-.S7_D138
+; FARCALL bank 5 at 9254h, which fills 1A0h bytes at 62F3h with FFh.
+.FILL_MAP_FF
   FARCALL 5, S5_9254
   RTS
 
-.S7_D13F
+; Copy one layout byte into the live map. Returns if Y is 13 or more.
+; In: Y = map row, X = column, A = index along (64h). Switches to bank 4 for the read. Out: the byte is stored through the row pointer.
+.COPY_LAYOUT_CELL
   CPY #&0D
   BCS L7_D164
   STA X_6493
-  JSR S7_D165
+  JSR MAP_ROW_PTR
   STX X_6494
-  LDA W_0100
+  LDA CUR_BANK
   PHA
   LDX #&04
   JSR BANK_SWITCH
@@ -2403,19 +2629,25 @@ ENDIF
 .L7_D164
   RTS
 
-.S7_D165
-  LDA D7_D170,Y
+; Point 2Fh/30h at map row Y. Rows are 20h bytes apart starting at 62F3h. 13 rows.
+; In: Y = row 0-12. Out: 2Fh = address from MAP_ROW_LO/HI.
+.MAP_ROW_PTR
+  LDA MAP_ROW_LO,Y
   STA Z_2F
-  LDA D7_D17D,Y
+  LDA MAP_ROW_HI,Y
   STA Z_30
   RTS
-.D7_D170
+
+; 13 low bytes of the live map row addresses. High bytes are MAP_ROW_HI.
+; Rows are 62F3h, 6313h, ... 6473h (stride 20h). Not PRG pointers.
+.MAP_ROW_LO
   EQUB &F3,&13,&33,&53,&73,&93,&B3,&D3,&F3,&13,&33,&53,&73
-.D7_D17D
+.MAP_ROW_HI
   EQUB &62,&63,&63,&63,&63,&63,&63,&63,&63,&64,&64,&64,&64
 
-.S7_D18A
-  JSR S7_D165
+; Read one live map byte. In: X = column, Y = row. Out: A = byte at that cell. Uses MAP_ROW_PTR.
+.PEEK_MAP_BYTE
+  JSR MAP_ROW_PTR
   TXA
   TAY
   LDA (Z_2F),Y
@@ -2425,41 +2657,51 @@ ENDIF
   FARCALL 0, S0_AF4F
   RTS
 
-.S7_D19B
+; FARCALL bank 5 at ACE4h. That routine returns immediately unless the demo flag is clear, Z_49 and the stage are 0, and the area differs from Z_4D. It then shows a screen and plays sound 11h.
+.MAYBE_AREA_CARD
   FARCALL 5, S5_ACE4
   RTS
 
-.S7_D1A2
+; FARCALL bank 5 at B07Dh. Called when the area reaches 6. That routine blanks the PPU, forces area 6 stage 0 and calls LOAD_MODE_GFX.
+.RUN_ENDING
   FARCALL 5, S5_B07D
   RTS
 
-.S7_D1A9
+; FARCALL bank 5 at B186h. Called once from GAME_LOOP. Zeros Z_49, Z_4E and Z_B4, then sets area 6 stage 1 and calls into bank 0.
+.RUN_OPENING
   FARCALL 5, S5_B186
   RTS
 .L7_D1B0
   FARCALL 0, S0_B008
   RTS
 
-.S7_D1B7
+; FARCALL bank 5 at 9280h. Fills 9 bytes at 03DBh with FFh, sets 03EDh to 4Bh and 03EEh to 0.
+.RESET_MARKS
   FARCALL 5, S5_9280
   RTS
 .L7_D1BE
   FARCALL 5, S5_9295
   RTS
 
-.S7_D1C5
+; FARCALL bank 5 at 9562h. Stores a nonzero RNG nibble, the area, the stage and Z_90 into W_03E4 and the following bytes.
+.MIX_STAGE_BYTES
   FARCALL 5, S5_9562
   RTS
 
-.S7_D1CC
+; FARCALL bank 5 at B209h. Called from the versus round-end path. Sets Z_4A to 1 and plays sound 1Ch around a screen of its own.
+.SHOW_VS_RESULT
   FARCALL 5, S5_B209
   RTS
 
-.S7_D1D3
+; FARCALL bank 5 at B4F9h. If Z_49 is not 2, store 5 in W_0563. If Z_49 is 2, that routine draws a screen instead.
+.SET_WIN_COUNT
   FARCALL 5, S5_B4F9
   RTS
 
-.S7_D1DA
+; Dispatch the pre-stage screen by Z_49.
+; 0 calls bank 5 at B8F6h, 2 calls B5DAh, anything else calls B6F5h.
+; Each of those turns NMI off, calls LOAD_MODE_GFX, draws, and plays sound 1Dh.
+.SETUP_BY_MODE
   ABS_LDA Z_49
   BEQ L7_D1EA
   CMP #&02
@@ -2473,12 +2715,14 @@ ENDIF
   FARCALL 5, S5_B5DA
   RTS
 
-.S7_D1F8
-  LDA W_0100
+; Upload the mode CHR and palettes. Uses bank 1 for one CHR block and bank 4 for palettes selected by MODE_PAL_PTR[Z_49].
+; Then copies 16 more palette bytes from bank 4 at B129h and mirrors the background color.
+.LOAD_MODE_GFX
+  LDA CUR_BANK
   PHA
-  LDA #LO(D6_A486)
+  LDA #LO(UI_SPR_CHR)
   STA Z_20
-  LDA #HI(D6_A486)
+  LDA #HI(UI_SPR_CHR)
   STA Z_21
   LDA #&00
   STA Z_22
@@ -2486,10 +2730,10 @@ ENDIF
   STA Z_23
   LDX #&06
   LDY #&FF
-  JSR S7_C58A
-  LDA #LO(D1_95BA)
+  JSR UPLOAD_CHR_RLE
+  LDA #LO(CARD_BG_CHR)
   STA Z_20
-  LDA #HI(D1_95BA)
+  LDA #HI(CARD_BG_CHR)
   STA Z_21
   LDA #&00
   STA Z_22
@@ -2497,50 +2741,58 @@ ENDIF
   STA Z_23
   LDX #&01
   LDY #&FF
-  JSR S7_C58A
+  JSR UPLOAD_CHR_RLE
   LDX #&04
   JSR BANK_SWITCH
   ABS_LDA Z_49
   ASL A
   TAX
-  LDA D7_D25D,X
+  LDA MODE_PAL_PTR,X
   STA Z_16
   LDA D7_D25E,X
   STA Z_17
   LDA #&00
   LDX #&04
-  JSR S7_C4E8
+  JSR COPY_PAL_ROWS
   LDA #LO(D4_B129)
   STA Z_16
   LDA #HI(D4_B129)
   STA Z_17
   LDA #&04
   LDX #&04
-  JSR S7_C4E8
-  JSR S7_CB59
+  JSR COPY_PAL_ROWS
+  JSR MIRROR_BG_COLOR
   PLA
   TAX
   JSR BANK_SWITCH
   RTS
-.D7_D25D
+
+; Three pointers, indexed by Z_49, to 16-byte palette rows in bank 4.
+; Entry 0 is B139h. Entries 1 and 2 are both B119h. LOAD_MODE_GFX copies the selected row to PAL_BUF.
+.MODE_PAL_PTR
   EQUB LO(D4_B139)
 .D7_D25E
   EQUB HI(D4_B139)
   EQUW D4_B119
   EQUW D4_B119
 
-.S7_D263
+; Zero W_03F0, the demo record index.
+.RESET_DEMO_IDX
   LDA #&00
   STA W_03F0
   RTS
 
-.S7_D269
+; Zero W_03EF. STAGE_LOOP and STAGE_WON treat a nonzero value as a demo, and a negative value as "leave the demo".
+.CLEAR_DEMO_FLAG
   LDA #&00
   STA W_03EF
   RTS
 
-.S7_D26F
-  JSR S7_CE2C
+; Load demo record W_03F0 (0-3) and set the demo flag.
+; Each record is 8 bytes: area, stage, Z_90, Z_93, RNG_1, RNG_2, RNG_3, and one unused byte.
+; Also sets Z_4A, Z_AF and W_03EF to 1, clears Z_53 and FRAME_CNT, and advances the stored index modulo 4.
+.START_DEMO
+  JSR CLEAR_ROUND_FLAGS
   LDA W_03F0
   CLC
   ADC #&01
@@ -2560,67 +2812,80 @@ ENDIF
   ASL A
   ASL A
   TAX
-  LDA D7_D2D7,X
+  LDA DEMO_AREA,X
   ABS_STA Z_4B
-  LDA D7_D2D8,X
+  LDA DEMO_STAGE,X
   ABS_STA Z_4C
-  LDA D7_D2D9,X
+  LDA DEMO_BYTE_90,X
   ABS_STA Z_90
-  LDA D7_D2DA,X
+  LDA DEMO_BYTE_93,X
   ABS_STA Z_93
-  LDA D7_D2DB,X
-  STA W_03D8
-  LDA D7_D2DC,X
-  STA W_03D9
-  LDA D7_D2DD,X
-  STA W_03DA
+  LDA DEMO_RNG_1,X
+  STA RNG_1
+  LDA DEMO_RNG_2,X
+  STA RNG_2
+  LDA DEMO_RNG_3,X
+  STA RNG_3
   LDA #&01
   ABS_STA Z_4A
   ABS_STA Z_AF
   LDA #&00
-  STA Z_14
+  STA FRAME_CNT
   ABS_STA Z_53
   RTS
-.D7_D2D7
+
+; Four demo records of 8 bytes, indexed by W_03F0*8.
+; Bytes at this label and the next six labels are area, stage, Z_90, Z_93, RNG_1, RNG_2, RNG_3.
+; The eighth byte of each record is not read by START_DEMO.
+.DEMO_AREA
   EQUB &00
-.D7_D2D8
+.DEMO_STAGE
   EQUB &00
-.D7_D2D9
+.DEMO_BYTE_90
   EQUB &02
-.D7_D2DA
+.DEMO_BYTE_93
   EQUB &02
-.D7_D2DB
+.DEMO_RNG_1
   EQUB &00
-.D7_D2DC
+.DEMO_RNG_2
   EQUB &03
-.D7_D2DD
+.DEMO_RNG_3
   EQUB &06,&00,&01,&00,&02,&02,&12,&54,&D4,&00,&02,&00,&02,&02,&55,&56
   EQUB &A3,&00,&03,&00,&02,&02,&00,&00,&00,&00
-.D7_D2F7
+
+; One byte, value 01h. Bank 5 at 99EDh skips copying JOYPAD1 into the demo slots when this byte is nonzero.
+.DEMO_PAD_LOCK
   EQUB &01
 IF REGION_JP
   FILLTO &D800 + SHIFT
 ELSE
   FILLTO &D800 + SHIFT
 ENDIF
-.L7_D800
-  JMP L2_8000
 
-.S7_D803
-  JMP L2_806D
+; Fixed-bank entry. JMP SND_INIT with bank 2 mapped.
+.SND_RESET_ENTRY
+  JMP SND_INIT
 
-.S7_D806
-  JMP L2_80A7
-.L7_D809
+; Fixed-bank entry. JMP SND_REQUEST with bank 2 mapped.
+.SND_REQUEST_ENTRY
+  JMP SND_REQUEST
+
+; NMI entry. JMP SND_FRAME with bank 2 mapped.
+.SND_FRAME_ENTRY
+  JMP SND_FRAME
+
+; Shared RTS for an idle channel stream.
+.SND_STREAM_DONE
   RTS
 
-.S7_D80A
+; Fetch one stream event for channel W_0202. Maps the BGM bank in W_0204 around the read.
+.SND_TICK_CHANNEL
   LDX W_0204
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   JSR S7_D81F
   LDX #&02
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   RTS
 
@@ -2633,22 +2898,22 @@ ENDIF
   LDA #&00
   STA W_0295,X
   TXA
-  JSR S7_D90E
+  JSR SND_QUIET_CHANNEL
 .L7_D833
   LDA Z_00
   ORA Z_01
-  BEQ L7_D809
+  BEQ SND_STREAM_DONE
   LDY #&00
   LDA (Z_00),Y
   STA W_0203
-  JSR S7_D9A8
+  JSR SND_STREAM_ADVANCE
   CMP #&D0
   BCC L7_D84A
-  JMP L7_D93F
+  JMP SND_EXEC_CMD
 .L7_D84A
   LDA W_0203
   STA W_021D,X
-  JSR S7_DB6D
+  JSR SND_LOAD_DURATION
   LDA W_0203
   AND #&F0
   BNE L7_D85D
@@ -2658,10 +2923,10 @@ ENDIF
   BEQ L7_D8B4
   CPX #&04
   BEQ L7_D877
-  JSR S7_DC61
-  LDA D7_DC8A,Y
+  JSR SND_NOTE_PERIOD
+  LDA SND_PERIOD_LO,Y
   STA W_034C
-  LDA D7_DCEA,Y
+  LDA SND_PERIOD_HI,Y
   STA W_034D
   JMP L7_D8C8
 .L7_D877
@@ -2669,7 +2934,7 @@ ENDIF
   CMP #&08
   BCC L7_D8C8
   LDX #&02
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   LDA W_0203
   LSR A
@@ -2677,7 +2942,7 @@ ENDIF
   LSR A
   AND #&1E
   TAY
-  LDA D2_8EAC,Y
+  LDA SND_DMC_PTRS,Y
   STA Z_04
   LDA D2_8EAD,Y
   STA Z_05
@@ -2688,33 +2953,33 @@ ENDIF
   DEY
   BPL L7_D89B
   LDX W_0204
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   LDA #&01
   STA W_0342,X
   JMP L7_D8C8
 .L7_D8B4
   LDX #&02
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
-  JSR S2_83DA
+  JSR SND_START_NOISE
   LDX W_0204
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
 .L7_D8C8
   LDX #&02
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
-  JSR S2_85B2
+  JSR SND_COMMIT_NOTE
   LDX W_0204
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   LDA #&00
   STA W_0295,X
   JMP L7_D8E8
 .L7_D8E4
   TXA
-  JSR S7_D90E
+  JSR SND_QUIET_CHANNEL
 .L7_D8E8
   LDX W_0202
   LDA W_0231,X
@@ -2722,17 +2987,18 @@ ENDIF
   DEC W_0231,X
 .L7_D8F3
   LDX #&02
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
-  JSR S2_81F7
-  JSR S2_8564
+  JSR SND_UPDATE_VOLUME
+  JSR SND_APPLY_PITCH_MOD
   LDX W_0204
-  JSR S7_C000
+  JSR SWITCH_BANK
   LDX W_0202
   DEC W_022C,X
   RTS
 
-.S7_D90E
+; Force a silent period on channel A.
+.SND_QUIET_CHANNEL
   ASL A
   ASL A
   TAY
@@ -2758,48 +3024,56 @@ ENDIF
   ORA #&01
   STA W_0342,X
   RTS
-.L7_D93F
+
+; Dispatch a stream byte >= D0 through SND_STREAM_CMDS. Index is byte-D0.
+.SND_EXEC_CMD
   LDA W_0203
   SEC
   SBC #&D0
   ASL A
   TAY
-  LDA D7_D957,Y
+  LDA SND_STREAM_CMDS,Y
   STA Z_04
   LDA D7_D958,Y
   STA Z_05
-  JSR S7_DC84
+  JSR SND_JUMP_Z04
   JMP L7_D833
-.D7_D957
-  EQUB LO(L7_D98F)
+
+; Handlers for stream bytes D0-EB. Index is byte-D0. Below D0 is a note: high nibble pitch, low nibble length.
+.SND_STREAM_CMDS
+  EQUB LO(SND_CMD_END)
 .D7_D958
-  EQUB HI(L7_D98F)
-  EQUW L7_D999
-  EQUW L7_D99D
-  EQUW L7_D9A1
-  EQUW L7_D9AF
-  EQUW L7_D9B9
-  EQUW L7_D9C3
-  EQUW L7_D9C9
-  EQUW L7_D9F2
-  EQUB &23,&DA
-  EQUW L7_DA47
-  EQUW L7_DA51
-  EQUW L7_DA5B
-  EQUB &65,&DA,&6F,&DA
-  EQUW L7_DA7D
-  EQUW L7_DAB4
-  EQUB &D4,&DA,&DE,&DA
-  EQUW L7_DAE8
-  EQUW L7_DAF2
-  EQUW L7_DB00
-  EQUW L7_DB0E
-  EQUW L7_DB1C
-  EQUW L7_DB2A
-  EQUW L7_DB49
-  EQUW L7_DB54
-  EQUB &5F,&DB
-.L7_D98F
+  EQUB HI(SND_CMD_END)
+  EQUW SND_CMD_OCTAVE_UP
+  EQUW SND_CMD_OCTAVE_DOWN
+  EQUW SND_CMD_SET_OCTAVE
+  EQUW SND_CMD_SET_DURATION
+  EQUW SND_CMD_SET_TRANSPOSE
+  EQUW SND_CMD_REST
+  EQUW SND_CMD_LOOP_PUSH
+  EQUW SND_CMD_LOOP_POP
+  EQUW L7_DA23
+  EQUW SND_CMD_SET_DUTY
+  EQUW SND_CMD_SET_PITCH_ENV
+  EQUW SND_CMD_SET_TEMPO
+  EQUW L7_DA65
+  EQUW L7_DA6F
+  EQUW SND_CMD_CALL
+  EQUW SND_CMD_RETURN
+  EQUW L7_DAD4
+  EQUW L7_DADE
+  EQUW SND_CMD_SET_VOLUME
+  EQUW SND_CMD_SET_VIBRATO
+  EQUW SND_CMD_SET_VIB_LEN
+  EQUW SND_CMD_SET_DETUNE
+  EQUW SND_CMD_SET_DETUNE_TBL
+  EQUW SND_CMD_VOLUME_REL
+  EQUW SND_CMD_SET_LOOP
+  EQUW SND_CMD_GOTO_LOOP
+  EQUW L7_DB5F
+
+; Command D0. Set this channel stream pointer to 0000.
+.SND_CMD_END
   TXA
   ASL A
   TAY
@@ -2807,38 +3081,53 @@ ENDIF
   STA Z_00
   STA Z_01
   RTS
-.L7_D999
+
+; Command D1. Increment octave W_024A,X.
+.SND_CMD_OCTAVE_UP
   INC W_024A,X
   RTS
-.L7_D99D
+
+; Command D2. Decrement octave W_024A,X.
+.SND_CMD_OCTAVE_DOWN
   DEC W_024A,X
   RTS
-.L7_D9A1
+
+; Command D3. Set octave W_024A,X from the next byte.
+.SND_CMD_SET_OCTAVE
   LDY #&00
   LDA (Z_00),Y
   STA W_024A,X
 
-.S7_D9A8
+; Increment the stream pointer Z_00.
+.SND_STREAM_ADVANCE
   INC Z_00
   BNE L7_D9AE
   INC Z_01
 .L7_D9AE
   RTS
-.L7_D9AF
+
+; Command D4. Set duration unit W_0245,X from the next byte.
+.SND_CMD_SET_DURATION
   LDY #&00
   LDA (Z_00),Y
   STA W_0245,X
-  JMP S7_D9A8
-.L7_D9B9
+  JMP SND_STREAM_ADVANCE
+
+; Command D5. Set transpose W_024F,X from the next byte.
+.SND_CMD_SET_TRANSPOSE
   LDY #&00
   LDA (Z_00),Y
   STA W_024F,X
-  JMP S7_D9A8
-.L7_D9C3
+  JMP SND_STREAM_ADVANCE
+
+; Command D6. Set W_0295,X so the next note does not retrigger.
+.SND_CMD_REST
   LDA #&01
   STA W_0295,X
   RTS
-.L7_D9C9
+
+; Command D7. Push a loop count and the address that follows. Depth 4.
+.SND_CMD_LOOP_PUSH
   LDY #&00
   LDA (Z_00),Y
   PHA
@@ -2850,7 +3139,7 @@ ENDIF
   TAY
   PLA
   STA W_0281,Y
-  JSR S7_D9A8
+  JSR SND_STREAM_ADVANCE
   LDA Z_00
   STA W_0259,Y
   LDA Z_01
@@ -2861,7 +3150,9 @@ ENDIF
   AND #&03
   STA W_0254,X
   RTS
-.L7_D9F2
+
+; Command D8. Decrement the loop count and jump back, or drop the frame.
+.SND_CMD_LOOP_POP
   LDY W_0254,X
   DEY
   TYA
@@ -2891,6 +3182,7 @@ ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)
+.L7_DA23
   LDA W_020A
   SEC
   SBC #&0C
@@ -2912,27 +3204,35 @@ ENDIF
   LDA (Z_04),Y
   STA Z_01
   RTS
-.L7_DA47
+
+; Command DA. Set duty mask W_0236,X from the next byte.
+.SND_CMD_SET_DUTY
   LDY #&00
   LDA (Z_00),Y
   STA W_0236,X
-  JMP S7_D9A8
-.L7_DA51
+  JMP SND_STREAM_ADVANCE
+
+; Command DB. Select pitch envelope W_0240,X from SND_PITCH_ENVS.
+.SND_CMD_SET_PITCH_ENV
   LDY #&00
   LDA (Z_00),Y
   STA W_0240,X
-  JMP S7_D9A8
-.L7_DA5B
+  JMP SND_STREAM_ADVANCE
+
+; Command DC. Set the gate-time scale W_023B,X.
+.SND_CMD_SET_TEMPO
   LDY #&00
   LDA (Z_00),Y
   STA W_023B,X
-  JMP S7_D9A8
+  JMP SND_STREAM_ADVANCE
 
 ; (not seen executing during the coverage runs)
+.L7_DA65
   LDY #&00
   LDA (Z_00),Y
   STA W_020B
-  JMP S7_D9A8
+  JMP SND_STREAM_ADVANCE
+.L7_DA6F
   LDY #&00
   LDA (Z_00),Y
   PHA
@@ -2942,7 +3242,9 @@ ENDIF
   PLA
   STA Z_00
   RTS
-.L7_DA7D
+
+; Command DF. Push the return address and jump to the next word. Depth 4.
+.SND_CMD_CALL
   LDY #&00
   LDA (Z_00),Y
   PHA
@@ -2976,7 +3278,9 @@ ENDIF
   PLA
   STA Z_00
   RTS
-.L7_DAB4
+
+; Command E0. Return to the address pushed by command DF.
+.SND_CMD_RETURN
   LDY W_029A,X
   DEY
   TYA
@@ -2998,51 +3302,65 @@ ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)
+.L7_DAD4
   LDY #&00
   LDA (Z_00),Y
   STA W_0210
-  JMP S7_D9A8
+  JMP SND_STREAM_ADVANCE
+.L7_DADE
   LDY #&00
   LDA (Z_00),Y
   STA W_02C7,X
-  JMP S7_D9A8
-.L7_DAE8
+  JMP SND_STREAM_ADVANCE
+
+; Command E3. Set volume offset W_02CC,X (00-1F).
+.SND_CMD_SET_VOLUME
   LDY #&00
   LDA (Z_00),Y
   STA W_02CC,X
-  JMP S7_D9A8
-.L7_DAF2
+  JMP SND_STREAM_ADVANCE
+
+; Command E4. Select vibrato waveform W_02D6,X. Squares only.
+.SND_CMD_SET_VIBRATO
   CPX #&03
   BCS L7_DAFD
   LDY #&00
   LDA (Z_00),Y
   STA W_02D6,X
 .L7_DAFD
-  JMP S7_D9A8
-.L7_DB00
+  JMP SND_STREAM_ADVANCE
+
+; Command E5. Set vibrato restart count W_02D1,X. Squares only.
+.SND_CMD_SET_VIB_LEN
   CPX #&03
   BCS L7_DAFD
   LDY #&00
   LDA (Z_00),Y
   STA W_02D1,X
-  JMP S7_D9A8
-.L7_DB0E
+  JMP SND_STREAM_ADVANCE
+
+; Command E6. Set constant detune W_02E2,X. Squares only.
+.SND_CMD_SET_DETUNE
   CPX #&03
   BCS L7_DB19
   LDY #&00
   LDA (Z_00),Y
   STA W_02E2,X
 .L7_DB19
-  JMP S7_D9A8
-.L7_DB1C
+  JMP SND_STREAM_ADVANCE
+
+; Command E7. Select detune stream W_02E7,X. Squares only.
+.SND_CMD_SET_DETUNE_TBL
   CPX #&03
   BCS L7_DB27
   LDY #&00
   LDA (Z_00),Y
   STA W_02E7,X
 .L7_DB27
-  JMP S7_D9A8
-.L7_DB2A
+  JMP SND_STREAM_ADVANCE
+
+; Command E8. Add the negated next byte to W_02CC,X, clamped to 00-1F.
+.SND_CMD_VOLUME_REL
   LDY #&00
   LDA (Z_00),Y
   EOR #&FF
@@ -3060,14 +3378,18 @@ ENDIF
   LDA #&00
 .L7_DB43
   STA W_02CC,X
-  JMP S7_D9A8
-.L7_DB49
+  JMP SND_STREAM_ADVANCE
+
+; Command E9. Remember the stream pointer as this channel loop point.
+.SND_CMD_SET_LOOP
   LDA Z_00
   STA W_02F2,X
   LDA Z_01
   STA W_02F7,X
   RTS
-.L7_DB54
+
+; Command EA. Jump to the pointer stored by command E9.
+.SND_CMD_GOTO_LOOP
   LDA W_02F2,X
   STA Z_00
   LDA W_02F7,X
@@ -3075,24 +3397,26 @@ ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)
+.L7_DB5F
   LDY #&00
   LDA (Z_00),Y
   CLC
   ADC W_024F,X
   STA W_024F,X
-  JMP S7_D9A8
+  JMP SND_STREAM_ADVANCE
 
-.S7_DB6D
+; Read the note length for channel X. Low nibble, or the next byte when no unit is set. D6 ties lengths.
+.SND_LOAD_DURATION
   LDA W_0245,X
   BEQ L7_DB7D
   LDA W_0203
   AND #&0F
-  JSR S7_DC3F
+  JSR SND_MUL_DURATION
   JMP L7_DB84
 .L7_DB7D
   LDY #&00
   LDA (Z_00),Y
-  JSR S7_D9A8
+  JSR SND_STREAM_ADVANCE
 .L7_DB84
   STA W_022C,X
   STA W_0231,X
@@ -3106,7 +3430,8 @@ ENDIF
   BEQ L7_DBD8
   LDA W_022C,X
 
-.S7_DBA0
+; Scale a duration by W_023B,X into the gate counter W_0231,X.
+.SND_SCALE_GATE
   STA Z_05
   LDA #&00
   STA Z_06
@@ -3168,7 +3493,7 @@ ENDIF
   BEQ L7_DC07
   LDA Z_0C
   AND #&0F
-  JSR S7_DC3F
+  JSR SND_MUL_DURATION
   JMP L7_DC12
 .L7_DC07
   PLA
@@ -3195,7 +3520,7 @@ ENDIF
   PHA
   LDA Z_04
   PHA
-  JSR S7_DBA0
+  JSR SND_SCALE_GATE
   PLA
   SEC
   SBC W_0231,X
@@ -3207,7 +3532,8 @@ ENDIF
   STA W_0231,X
   RTS
 
-.S7_DC3F
+; Return A = W_0245,X * (A+1).
+.SND_MUL_DURATION
   STA Z_0C
   INC Z_0C
   LDA W_0245,X
@@ -3229,7 +3555,8 @@ ENDIF
   LDA Z_0D
   RTS
 
-.S7_DC61
+; Map the note nibble through octave W_024A,X and transpose W_024F,X. Y indexes the period tables.
+.SND_NOTE_PERIOD
   LDA W_0203
   LSR A
   LSR A
@@ -3239,42 +3566,54 @@ ENDIF
   DEC Z_0C
   LDY W_024A,X
   DEY
-  LDA D7_DC7C,Y
+  LDA SND_OCTAVE_BASE,Y
   CLC
   ADC Z_0C
   CLC
   ADC W_024F,X
   TAY
   RTS
-.D7_DC7C
+
+; Eight row bases into the period tables. Octave W_024A,X is 1-based.
+.SND_OCTAVE_BASE
   EQUB &00,&0C,&18,&24,&30,&3C,&48,&54
 
-.S7_DC84
+; Jump through the pointer in Z_04.
+.SND_JUMP_Z04
   JMP (Z_04)
 
-.S7_DC87
+; Jump through the pointer in Z_0A.
+.SND_JUMP_Z0A
   JMP (Z_0A)
-.D7_DC8A
+
+; APU timer low bytes. 96 entries, 8 octaves of 12 notes. Index comes from SND_NOTE_PERIOD.
+.SND_PERIOD_LO
   EQUB &F0,&F0,&F0,&F0,&F0,&F0,&F0,&F0,&F0,&F0,&7E,&12,&AE,&4E,&F3,&9F
   EQUB &4D,&01,&B9,&75,&35,&F8,&BF,&89,&57,&27,&F9,&CF,&A6,&80,&5C,&3A
   EQUB &1A,&FC,&DF,&C4,&AB,&93,&7C,&67,&53,&40,&2E,&1D,&0D,&FE,&EF,&E2
   EQUB &D5,&C9,&BE,&B3,&A9,&A0,&97,&8E,&86,&7F,&77,&71,&6A,&64,&5F,&59
   EQUB &54,&50,&4B,&47,&43,&3F,&3B,&38,&35,&32,&2F,&2D,&2A,&28,&25,&23
   EQUB &21,&1F,&1D,&1C,&1B,&19,&18,&16,&15,&14,&13,&12,&11,&10,&0F,&0E
-.D7_DCEA
+
+; APU timer high bytes, paired with SND_PERIOD_LO.
+.SND_PERIOD_HI
   EQUB &07,&07,&07,&07,&07,&07,&07,&07,&07,&07,&07,&07,&06,&06,&05,&05
   EQUB &05,&05,&04,&04,&04,&03,&03,&03,&03,&03,&02,&02,&02,&02,&02,&02
   EQUB &02,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
-.L7_DD4A
+
+; Clear the DMC-busy flag and queue silent DMC id 1E.
+.SND_DMC_IDLE
   LDA #&00
   STA W_034B
   LDA #&1E
   STA W_0207
   RTS
-.L7_DD55
+
+; Start DMC id W_0207 when bit 7 is clear. Id-1E indexes SND_DMC_PTRS and SND_DMC_FRAMES.
+.SND_DMC_SERVICE
   LDA W_0207
   BPL L7_DD6A
   LDA W_034B
@@ -3291,7 +3630,7 @@ ENDIF
   PHA
   ASL A
   TAX
-  LDA D2_8EAC,X
+  LDA SND_DMC_PTRS,X
   STA Z_04
   LDA D2_8EAD,X
   STA Z_05
@@ -3304,7 +3643,7 @@ ENDIF
   BCC L7_DD7C
   PLA
   TAX
-  LDA D7_DD9C,X
+  LDA SND_DMC_FRAMES,X
   STA W_034B
   LDA #&01
   STA W_0373
@@ -3312,9 +3651,14 @@ ENDIF
   ORA #&80
   STA W_0207
   RTS
-.D7_DD9C
+
+; 13 frame counts, DMC ids 1E-2A.
+.SND_DMC_FRAMES
   EQUB &00,&06,&01,&14,&14,&14,&14,&14,&28,&3C,&0A,&07,&0A
   FILLTO &E000                            ; DPCM samples must stay put
+
+; DPCM sample bits from E000 up to the vector area. Not code.
+.DPCM_SAMPLES
   EQUB &01,&FF,&FF,&FF,&FF,&FE,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&80
   EQUB &00,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&7F,&FF
   EQUB &FF,&FC,&60,&F8,&07,&FF,&FF,&E0,&00,&00,&0F,&FF,&C0,&00,&00,&00

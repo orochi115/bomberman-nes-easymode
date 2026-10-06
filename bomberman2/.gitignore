@@ -2,3 +2,4 @@ build/
 cov/
 __pycache__/
 harness/logs/
+*.lock

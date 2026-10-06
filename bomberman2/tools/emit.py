@@ -527,10 +527,26 @@ class Emitter:
             it.labels.append(self.name_of(key))
             it.sub = self.kinds[key] == "S"
         for kind, text in self.comments.get(self.ckey(key), []):
+            text = self.subst(text)
             if kind == ">":
                 it.block.append(text)
             else:
                 it.eol = text
+
+    PH_LABEL = re.compile(r"\bJ?([SLD])(\d)_([0-9A-F]{4})\b")
+    PH_RAM = re.compile(r"\b([ZWX])_([0-9A-F]{2,4})\b")
+
+    def subst(self, text):
+        """Comments may refer to placeholders (S5_8123, Z_4B); show current names."""
+        def lab(m):
+            if m.group(0).startswith("J"):
+                return m.group(0)
+            name = self.names.get((int(m.group(2)), int(m.group(3), 16)))
+            return name or m.group(0)
+
+        def ram(m):
+            return self.names.get(("ram", int(m.group(2), 16))) or m.group(0)
+        return self.PH_RAM.sub(ram, self.PH_LABEL.sub(lab, text))
 
     def own_key(self, k):
         """db key -> key in this region's address space (None: not ours).

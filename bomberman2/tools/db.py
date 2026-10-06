@@ -97,6 +97,15 @@ def own_shard(name):
 
 
 def write_rows(path, keep, new=None):
+    """Rewrite a shard, keeping rows where keep(row) and appending new.
+    Holds an exclusive lock so that parallel db.py calls do not lose rows."""
+    import fcntl
+    with open(path + ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        _write_rows(path, keep, new)
+
+
+def _write_rows(path, keep, new=None):
     lines = []
     if os.path.exists(path):
         for line in open(path, encoding="utf-8"):

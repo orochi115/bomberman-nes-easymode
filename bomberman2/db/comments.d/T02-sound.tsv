@@ -1,0 +1,126 @@
+2:8000	>	Silence the APU and clear sound work RAM. Called from SND_RESET_ENTRY.
+2:806D	>	Queue sound id A. 00-0B SFX, 0C-1D BGM, 1E-2A DMC, 80-8C commands. X is the command argument.
+2:80A7	>	One frame of sound. Guard W_0359. Runs BGM, SFX, the noise script, then the APU flush.
+2:80C2	>	Start or tick BGM W_0206. Bit 7 clear loads SND_BGM_TABLE[(id-0C)*3] and resets five channels.
+2:81C8	>	If channel X is not resting, start pitch envelope W_0240,X. Falls into SND_UPDATE_VOLUME.
+2:81F7	>	Write channel X volume into the APU shadow. W_0351 below 10 scales the level down.
+2:82EE	>	Add signed (Z_0C,Z_0D) to pitch W_0310/W_0315,X. Clamps at 0 and FC00.
+2:833B	>	One pitch-envelope event. Below F0: duration plus a 16-bit delta. F0-FE use SND_PENV_CMDS. FF ends.
+2:83AE	>	Add 2 to the envelope pointer in Z_08.
+2:83DA	>	Channel 3 note. W_024D >= 4 uses the note nibble as a noise period; else arm SND_NOISE_PTRS.
+2:841D	>	Step the noise script at W_020D. Event is duration plus three APU bytes. 00 ends the script.
+2:84C1	>	Next vibrato byte for square X. 80 reloads the pointer. Bytes >= 80 are negative.
+2:8501	>	Point square X at SND_DETUNE_PTRS[W_02E7,X].
+2:851F	>	Add the next detune byte into the vibrato offset of channel X.
+2:8564	>	Add vibrato and detune into the square period shadow of channel X.
+2:85B2	>	New note: load the pitch envelope and write period, duty and detune. Channel 4 is ignored.
+2:8621	>	Copy dirty shadows to 4000-4013. W_0342 is tone, W_036F is the SFX overlay, then DMC.
+2:86A7	>	Write four APU registers for tone channel X from W_032E+Y (Y=X*4).
+2:86E0	>	Write four APU registers for SFX overlay channel X from W_035B+Y.
+2:8719	>	Dispatch command 80-8C via SND_CMD_VECTORS. Handlers return a value in W_0353, restored to X.
+2:8760	>	Request silent BGM id 0C.
+2:8772	>	Request silent DMC id 1E.
+2:8766	>	Command 80: stop BGM, stop DMC, clear the SFX id.
+2:87A8	>	Command 85: store X in fade step W_0356. Returns the BGM id, or Z_FF if the id is 0C.
+2:882D	>	Run SFX id W_0205. SND_SFX_PROGS gives init and tick pointers. Bit 7 selects the tick.
+2:8B70	>	Copy SND_SFX_PATCH[A] (4 bytes) to the SFX shadow at X and mark that channel dirty.
+2:8BDC	>	Clear the four SFX volume-slope flags at W_0384.
+2:8BE8	>	Advance SFX volume slopes. Channel 2 is skipped.
+2:8C0A	>	Subtract SND_SLOPE_SUB from the slope timer and lower the SFX volume nibble.
+2:8CA0	>	Set all four register-dirty bits of channel X when X < 4.
+2:8CAA	>	Silence SFX channels whose flag W_0347,X is set.
+2:8CC2	>	Write a silent volume to hardware channel X.
+7:D800	>	Fixed-bank entry. JMP SND_INIT with bank 2 mapped.
+7:D803	>	Fixed-bank entry. JMP SND_REQUEST with bank 2 mapped.
+7:D806	>	NMI entry. JMP SND_FRAME with bank 2 mapped.
+7:D80A	>	Fetch one stream event for channel W_0202. Maps the BGM bank in W_0204 around the read.
+7:D90E	>	Force a silent period on channel A.
+7:D93F	>	Dispatch a stream byte >= D0 through SND_STREAM_CMDS. Index is byte-D0.
+7:D9A8	>	Increment the stream pointer Z_00.
+7:D98F	>	Command D0. Set this channel stream pointer to 0000.
+7:D999	>	Command D1. Increment octave W_024A,X.
+7:D99D	>	Command D2. Decrement octave W_024A,X.
+7:D9A1	>	Command D3. Set octave W_024A,X from the next byte.
+7:D9AF	>	Command D4. Set duration unit W_0245,X from the next byte.
+7:D9B9	>	Command D5. Set transpose W_024F,X from the next byte.
+7:D9C3	>	Command D6. Set W_0295,X so the next note does not retrigger.
+7:D9C9	>	Command D7. Push a loop count and the address that follows. Depth 4.
+7:D9F2	>	Command D8. Decrement the loop count and jump back, or drop the frame.
+7:DA47	>	Command DA. Set duty mask W_0236,X from the next byte.
+7:DA51	>	Command DB. Select pitch envelope W_0240,X from SND_PITCH_ENVS.
+7:DA5B	>	Command DC. Set the gate-time scale W_023B,X.
+7:DA7D	>	Command DF. Push the return address and jump to the next word. Depth 4.
+7:DAB4	>	Command E0. Return to the address pushed by command DF.
+7:DAE8	>	Command E3. Set volume offset W_02CC,X (00-1F).
+7:DAF2	>	Command E4. Select vibrato waveform W_02D6,X. Squares only.
+7:DB00	>	Command E5. Set vibrato restart count W_02D1,X. Squares only.
+7:DB0E	>	Command E6. Set constant detune W_02E2,X. Squares only.
+7:DB1C	>	Command E7. Select detune stream W_02E7,X. Squares only.
+7:DB2A	>	Command E8. Add the negated next byte to W_02CC,X, clamped to 00-1F.
+7:DB49	>	Command E9. Remember the stream pointer as this channel loop point.
+7:DB54	>	Command EA. Jump to the pointer stored by command E9.
+7:DB6D	>	Read the note length for channel X. Low nibble, or the next byte when no unit is set. D6 ties lengths.
+7:DBA0	>	Scale a duration by W_023B,X into the gate counter W_0231,X.
+7:DC3F	>	Return A = W_0245,X * (A+1).
+7:DC61	>	Map the note nibble through octave W_024A,X and transpose W_024F,X. Y indexes the period tables.
+7:DC84	>	Jump through the pointer in Z_04.
+7:DC87	>	Jump through the pointer in Z_0A.
+7:DD4A	>	Clear the DMC-busy flag and queue silent DMC id 1E.
+7:DD55	>	Start DMC id W_0207 when bit 7 is clear. Id-1E indexes SND_DMC_PTRS and SND_DMC_FRAMES.
+2:9002	>	18 records, ids 0C-1D. Each is PRG bank plus a pointer to a 5-channel header. Null channel pointers become SND_REST_STREAM.
+7:D957	>	Handlers for stream bytes D0-EB. Index is byte-D0. Below D0 is a note: high nibble pitch, low nibble length.
+2:8869	>	12 SFX programs, ids 00-0B. Each entry points at an init pointer and a tick pointer.
+2:8809	>	12 bytes, SFX ids 00-0B. A smaller value replaces the SFX that is playing. 00 is FF, 06 is 00.
+2:8CDB	>	Pointers to pitch envelopes, selected by stream command DB.
+2:8399	>	Envelope opcodes F0-FE. Index is (byte XOR FF)*2. The first word is the unused FF slot.
+2:8746	>	Commands 80-8C. 80 silence, 81 stop BGM, 82 stop DMC and SFX, 83 volume, 84 channel mask, 85 fade, 86-8B queries, 8C stop DMC.
+2:8EAC	>	13 pointers, DMC ids 1E-2A. Each target is four bytes for 4010-4013. Id 1E is silence. Id 27 is the title sample.
+7:DD9C	>	13 frame counts, DMC ids 1E-2A.
+7:DC8A	>	APU timer low bytes. 96 entries, 8 octaves of 12 notes. Index comes from SND_NOTE_PERIOD.
+7:DCEA	>	APU timer high bytes, paired with SND_PERIOD_LO.
+7:DC7C	>	Eight row bases into the period tables. Octave W_024A,X is 1-based.
+2:8EFA	>	Pointers to channel-3 noise scripts. A step is a duration and three APU bytes. 00 ends.
+2:8B90	>	18 four-byte APU images. Index is the argument to SND_LOAD_SFX_PATCH.
+2:9042	>	Stream substituted for a null channel pointer: one rest, then command D0.
+7:E000	>	DPCM sample bits from E000 up to the vector area. Not code.
+2:9038	>	BGM 0C. Five zero channel pointers.
+2:9048	>	BGM 0D. Played when the title scroll finishes.
+2:9410	>	BGM 0E. S7_CAEE uses it for area Z_4B 0, 2 and 4.
+2:9C3E	>	BGM 0F. Area Z_4B 1 or 3.
+2:9F3D	>	BGM 10. Area Z_4B 5.
+2:A445	>	BGM 11. Area-change card, requested by S5_ACE4.
+2:A515	>	BGM 12. Stage clear, when timer Z_A5 ends and Z_49 is 0.
+2:A58B	>	BGM 13. Title menu and the password screen. Channel streams are in bank 3.
+2:9406	>	BGM 14. Stage music when Z_49 is not 0.
+2:A595	>	BGM 15. Item pickup, except item type 0B. Five bank-3 pointers.
+2:A59F	>	BGM 16. Played when the exit flag Z_B7 is set. Bank 3.
+2:A5B3	>	BGM 17. Screen that stores 6 in Z_4B (S5_B07D). Bank 3.
+2:A5A9	>	BGM 18. Scrolling text in S0_B008. Bank 3.
+2:A5BD	>	BGM 19. Game-mode select, S5_AA6A. Bank 3.
+2:A5C7	>	BGM 1A. One player still standing, S5_9121. Bank 3.
+2:A5D1	>	BGM 1B. No player left standing, S5_9121. Bank 3.
+2:A5DB	>	BGM 1C. Picture screen S5_B209. Bank 3.
+2:A5E5	>	BGM 1D. Short sting used by S5_9F5E, S5_B595 and S5_B8F6. Bank 3.
+2:8881	>	SFX 00. Both the init and the tick slot are RTS.
+2:8A5F	>	SFX 01. Noise rumble while the title logo scrolls.
+2:8898	>	SFX 02. Short square blip. The password screen uses it when a glyph is placed.
+2:88C6	>	SFX 04. Multi-channel hit. Player death, enemy death, and a rejected menu choice.
+2:89F0	>	SFX 07. Two-square blip. Menu cursor movement.
+2:8AFE	>	SFX 0B. Descending square sweep. No direct LDA immediate 0B at a request site.
+2:88B6	>	SFX 03 init and tick. Item blip from S5_9064, not item type 0B.
+2:892D	>	SFX 05. Bomb-timer copy while Z_49 is 2, and item type 0B.
+2:897D	>	SFX 06. Pause open and close in S7_CC2A. Priority value 00.
+2:8A1D	>	SFX 08. Timer tick while the seconds digits are 0, S5_9895.
+2:8A92	>	SFX 09. Hurry warning while the stage timer is below 4, S5_872C.
+2:8AB9	>	SFX 0A. Player overlaps an actor with X_625A = 10, and W_04E5 increments.
+2:8885	>	SFX 00 init and tick. Returns immediately.
+2:8886	>	Clear SFX id W_0205 and the four SFX overlay flags W_0347-W_034A.
+7:D809	>	Shared RTS for an idle channel stream.
+2:82EA	>	Duty bits 00, 40, 80, C0. ORed into the square volume register.
+2:8E11	>	Pointers to vibrato byte streams. Byte 80 restarts the waveform.
+2:8A6D	>	SFX 01 tick. Lower the noise pitch until it ends, then SFX_STOP.
+2:88A8	>	SFX 02 tick. Release the channel and SFX_STOP when the counter hits 0.
+2:88CA	>	SFX 04 init. Patches on squares 0 and 1 and on noise.
+2:88EA	>	SFX 04 tick. Count down the three channels, then SFX_STOP.
+2:8A63	>	SFX 01 init. Set the noise counter W_034A to 90 and clear W_0378.
+2:889C	>	SFX 02 init. Eight-frame counter, patch 0 on square channel 1 (X=4).

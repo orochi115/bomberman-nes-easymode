@@ -3,7 +3,9 @@
 ; ---------------------------------------------------------------------------
 
   PAD SHIFT                               ; relocation test, see make.sh
-.L2_8000
+
+; Silence the APU and clear sound work RAM. Called from SND_RESET_ENTRY.
+.SND_INIT
   LDA #&0F
   STA APU_MASTERCTRL_REG
   STA W_0352
@@ -47,7 +49,9 @@
   LDA #&0C
   STA W_0206
   JMP L2_8815
-.L2_806D
+
+; Queue sound id A. 00-0B SFX, 0C-1D BGM, 1E-2A DMC, 80-8C commands. X is the command argument.
+.SND_REQUEST
   CMP #&80
   BCS L2_80A1
   CMP #&1E
@@ -60,19 +64,19 @@
   STA W_0207
   RTS
 .L2_8081
-  STA Z_10
+  STA PPU_ENABLED
   TXA
   PHA
-  LDX Z_10
-  LDA D2_8809,X
+  LDX PPU_ENABLED
+  LDA SND_SFX_PRIORITY,X
   STA Z_0F
   LDA W_0205
   AND #&7F
   TAX
-  LDA D2_8809,X
+  LDA SND_SFX_PRIORITY,X
   CMP Z_0F
   BCC L2_809E
-  LDA Z_10
+  LDA PPU_ENABLED
   STA W_0205
 .L2_809E
   PLA
@@ -80,21 +84,24 @@
   RTS
 .L2_80A1
   STA W_0208
-  JMP L2_8719
-.L2_80A7
+  JMP SND_RUN_CMD
+
+; One frame of sound. Guard W_0359. Runs BGM, SFX, the noise script, then the APU flush.
+.SND_FRAME
   LDA W_0359
   BNE L2_80C1
   INC W_0359
   INC W_035A
-  JSR S2_80C2
-  JSR S2_882D
-  JSR S2_841D
-  JSR S2_8621
+  JSR SND_RUN_BGM
+  JSR SND_RUN_SFX
+  JSR SND_UPDATE_NOISE
+  JSR SND_FLUSH_APU
   DEC W_0359
 .L2_80C1
   RTS
 
-.S2_80C2
+; Start or tick BGM W_0206. Bit 7 clear loads SND_BGM_TABLE[(id-0C)*3] and resets five channels.
+.SND_RUN_BGM
   LDA W_0206
   BPL L2_80CA
   JMP L2_815E
@@ -106,7 +113,7 @@
   CLC
   ADC Z_04
   TAX
-  LDA D2_9002,X
+  LDA SND_BGM_TABLE,X
   STA W_0204
   LDA D2_9003,X
   STA Z_04
@@ -123,9 +130,9 @@
   INY
   ORA W_0213,X
   BNE L2_8103
-  LDA #LO(D2_9042)
+  LDA #LO(SND_REST_STREAM)
   STA W_0213,X
-  LDA #HI(D2_9042)
+  LDA #HI(SND_REST_STREAM)
   STA W_0214,X
 .L2_8103
   INX
@@ -192,7 +199,7 @@
   PHA
   LSR A
   STA W_0202
-  JSR S7_D80A
+  JSR SND_TICK_CHANNEL
   PLA
   TAX
   LDA Z_00
@@ -224,13 +231,14 @@
 .L2_81C7
   RTS
 
-.S2_81C8
+; If channel X is not resting, start pitch envelope W_0240,X. Falls into SND_UPDATE_VOLUME.
+.SND_LOAD_PITCH_ENV
   LDA W_0295,X
-  BNE S2_81F7
+  BNE SND_UPDATE_VOLUME
   LDA W_0240,X
   ASL A
   TAY
-  LDA D2_8CDB,Y
+  LDA SND_PITCH_ENVS,Y
   STA W_031F,X
   LDA D2_8CDC,Y
   STA W_0324,X
@@ -242,9 +250,10 @@
   STA W_031A,X
   STA W_02FC,X
   STA W_0301,X
-  JSR S2_833B
+  JSR SND_STEP_PITCH_ENV
 
-.S2_81F7
+; Write channel X volume into the APU shadow. W_0351 below 10 scales the level down.
+.SND_UPDATE_VOLUME
   CPX #&04
   BEQ L2_8202
   LDA W_021D,X
@@ -308,7 +317,7 @@
   LDY W_0329,X
   BMI L2_8266
   LDA Z_0C
-  ORA D2_82EA,Y
+  ORA SND_DUTY_MASK,Y
   JMP L2_826B
 .L2_8266
   LDA Z_0C
@@ -355,7 +364,7 @@
   STA Z_0C
   LDA W_0301,X
   STA Z_0D
-  JSR S2_82EE
+  JSR SND_ADD_PITCH
   JMP L2_82DC
 .L2_82C4
   LDA #&00
@@ -367,19 +376,22 @@
   STA Z_0C
   LDA W_030B,X
   STA Z_0D
-  JSR S2_82EE
+  JSR SND_ADD_PITCH
 .L2_82DC
   LDA W_031A,X
   BEQ L2_82E9
   DEC W_031A,X
   BNE L2_82E9
-  JSR S2_833B
+  JSR SND_STEP_PITCH_ENV
 .L2_82E9
   RTS
-.D2_82EA
+
+; Duty bits 00, 40, 80, C0. ORed into the square volume register.
+.SND_DUTY_MASK
   EQUB &00,&40,&80,&C0
 
-.S2_82EE
+; Add signed (Z_0C,Z_0D) to pitch W_0310/W_0315,X. Clamps at 0 and FC00.
+.SND_ADD_PITCH
   LDA Z_0D
   BMI L2_8311
   LDA W_0310,X
@@ -419,7 +431,8 @@
   SEC
   RTS
 
-.S2_833B
+; One pitch-envelope event. Below F0: duration plus a 16-bit delta. F0-FE use SND_PENV_CMDS. FF ends.
+.SND_STEP_PITCH_ENV
   LDA W_031F,X
   STA Z_08
   LDA W_0324,X
@@ -440,11 +453,11 @@
   EOR #&FF
   ASL A
   TAY
-  LDA D2_8399,Y
+  LDA SND_PENV_CMDS,Y
   STA Z_04
   LDA D2_839A,Y
   STA Z_05
-  JSR S7_DC84
+  JSR SND_JUMP_Z04
   JMP L2_8345
 .L2_836D
   STA W_031A,X
@@ -454,7 +467,7 @@
   INY
   LDA (Z_08),Y
   STA W_030B,X
-  JSR S2_83AE
+  JSR SND_SKIP_ENV_WORD
 .L2_8380
   LDA Z_08
   STA W_031F,X
@@ -470,10 +483,12 @@
   DEC Z_09
 .L2_8396
   JMP L2_8380
-.D2_8399
-  EQUB &8B
+
+; Envelope opcodes F0-FE. Index is (byte XOR FF)*2. The first word is the unused FF slot.
+.SND_PENV_CMDS
+  EQUB LO(L2_838B)
 .D2_839A
-  EQUB &83
+  EQUB HI(L2_838B)
   EQUW L2_83BC
   EQUW L2_83A1
   EQUW L2_83CC
@@ -485,7 +500,8 @@
   LDA (Z_08),Y
   STA W_0301,X
 
-.S2_83AE
+; Add 2 to the envelope pointer in Z_08.
+.SND_SKIP_ENV_WORD
   LDA Z_08
   CLC
   ADC #&02
@@ -501,7 +517,7 @@
   INY
   LDA (Z_08),Y
   STA W_0315,X
-  JMP S2_83AE
+  JMP SND_SKIP_ENV_WORD
 .L2_83CC
   LDY #&00
   LDA (Z_08),Y
@@ -512,7 +528,8 @@
 .L2_83D9
   RTS
 
-.S2_83DA
+; Channel 3 note. W_024D >= 4 uses the note nibble as a noise period; else arm SND_NOISE_PTRS.
+.SND_START_NOISE
   LDA W_024D
   CMP #&04
   BCC L2_83FD
@@ -540,7 +557,7 @@
   LSR A
   AND #&1E
   TAY
-  LDA D2_8EFA,Y
+  LDA SND_NOISE_PTRS,Y
   STA W_020D
   LDA D2_8EFB,Y
   STA W_020E
@@ -548,7 +565,8 @@
   STA W_020F
   RTS
 
-.S2_841D
+; Step the noise script at W_020D. Event is duration plus three APU bytes. 00 ends the script.
+.SND_UPDATE_NOISE
   LDA W_020C
   BNE L2_8423
   RTS
@@ -617,7 +635,7 @@
   RTS
 .L2_84A1
   LDA W_0295,X
-  BNE S2_84C1
+  BNE SND_STEP_VIBRATO
   LDA W_02D1,X
   STA W_02DF,X
   DEC W_02DF,X
@@ -625,13 +643,14 @@
   LDA W_02D6,X
   ASL A
   TAY
-  LDA D2_8E11,Y
+  LDA SND_VIBRATO_PTRS,Y
   STA W_02D9,X
   LDA D2_8E12,Y
   STA W_02DC,X
   RTS
 
-.S2_84C1
+; Next vibrato byte for square X. 80 reloads the pointer. Bytes >= 80 are negative.
+.SND_STEP_VIBRATO
   LDA W_02D1,X
   BEQ L2_84A0
   LDA W_02DF,X
@@ -662,7 +681,8 @@
   STA W_02DC,X
   RTS
 
-.S2_8501
+; Point square X at SND_DETUNE_PTRS[W_02E7,X].
+.SND_LOAD_DETUNE
   CPX #&03
   BCC L2_8506
 .L2_8505
@@ -671,16 +691,17 @@
   LDA W_02E7,X
   BEQ L2_8505
   LDY W_0295,X
-  BNE S2_851F
+  BNE SND_STEP_DETUNE
   ASL A
   TAY
-  LDA D2_8E8D,Y
+  LDA SND_DETUNE_PTRS,Y
   STA W_02EC,X
   LDA D2_8E8E,Y
   STA W_02EF,X
   RTS
 
-.S2_851F
+; Add the next detune byte into the vibrato offset of channel X.
+.SND_STEP_DETUNE
   LDA W_02E7,X
   BEQ L2_8563
   LDA W_02EC,X
@@ -714,15 +735,16 @@
 .L2_8563
   RTS
 
-.S2_8564
+; Add vibrato and detune into the square period shadow of channel X.
+.SND_APPLY_PITCH_MOD
   CPX #&03
   BCS L2_85B1
   LDA #&00
   STA W_0350
   STA W_034E
   STA W_034F
-  JSR S2_84C1
-  JSR S2_851F
+  JSR SND_STEP_VIBRATO
+  JSR SND_STEP_DETUNE
   LDA W_0350
   BEQ L2_85B1
   TXA
@@ -750,7 +772,8 @@
 .L2_85B1
   RTS
 
-.S2_85B2
+; New note: load the pitch envelope and write period, duty and detune. Channel 4 is ignored.
+.SND_COMMIT_NOTE
   CPX #&04
   BEQ L2_85B1
   CPX #&03
@@ -758,7 +781,7 @@
   LDA W_020C
   BNE L2_8563
 .L2_85BF
-  JSR S2_81C8
+  JSR SND_LOAD_PITCH_ENV
   LDA W_0202
   CMP #&02
   BCS L2_85D7
@@ -797,19 +820,20 @@
   STA W_0222,X
   LDA W_0331,Y
   STA W_0227,X
-  JSR S2_8501
+  JSR SND_LOAD_DETUNE
   JMP L2_8497
 
-.S2_8621
+; Copy dirty shadows to 4000-4013. W_0342 is tone, W_036F is the SFX overlay, then DMC.
+.SND_FLUSH_APU
   LDX #&00
   LDY #&00
 .L2_8625
   LDA W_0347,X
   BNE L2_8630
-  JSR S2_86A7
+  JSR SND_FLUSH_TONE
   JMP L2_8633
 .L2_8630
-  JSR S2_86E0
+  JSR SND_FLUSH_SFX_HW
 .L2_8633
   INY
   INY
@@ -824,6 +848,7 @@
   BEQ L2_8696
   LDA W_0352
   STA APU_MASTERCTRL_REG
+.L2_864C
   LDY #&00
 .L2_864E
   LDA W_033E,Y
@@ -868,7 +893,8 @@
   STA W_0346
   RTS
 
-.S2_86A7
+; Write four APU registers for tone channel X from W_032E+Y (Y=X*4).
+.SND_FLUSH_TONE
   LDA W_0342,X
   AND #&0F
   BEQ L2_86DF
@@ -897,7 +923,8 @@
 .L2_86DF
   RTS
 
-.S2_86E0
+; Write four APU registers for SFX overlay channel X from W_035B+Y.
+.SND_FLUSH_SFX_HW
   LDA W_036F,X
   AND #&0F
   BEQ L2_8718
@@ -925,7 +952,9 @@
   STA W_036F,X
 .L2_8718
   RTS
-.L2_8719
+
+; Dispatch command 80-8C via SND_CMD_VECTORS. Handlers return a value in W_0353, restored to X.
+.SND_RUN_CMD
   STX W_0353
   STY W_0354
   LDA W_0208
@@ -938,43 +967,64 @@
   AND #&7F
   ASL A
   TAY
-  LDA D2_8746,Y
+  LDA SND_CMD_VECTORS,Y
   STA Z_0A
   LDA D2_8747,Y
   STA Z_0B
-  JSR S7_DC87
+  JSR SND_JUMP_Z0A
   LDA #&00
   STA W_0208
   LDX W_0353
   LDY W_0354
   RTS
-.D2_8746
-  EQUB LO(L2_8766)
-.D2_8747
-  EQUB HI(L2_8766)
-  EQUB &60,&87,&6C,&87,&78,&87,&97,&87
-  EQUW L2_87A8
-  EQUB &CD,&87,&D6,&87,&E8,&87,&F3,&87,&FE,&87,&DF,&87,&72,&87
 
-.S2_8760
+; Commands 80-8C. 80 silence, 81 stop BGM, 82 stop DMC and SFX, 83 volume, 84 channel mask, 85 fade, 86-8B queries, 8C stop DMC.
+.SND_CMD_VECTORS
+  EQUB LO(SND_CMD_SILENCE)
+.D2_8747
+  EQUB HI(SND_CMD_SILENCE)
+  EQUW SND_STOP_BGM
+  EQUW L2_876C
+  EQUW D2_8778
+  EQUW D2_8797
+  EQUW SND_SET_FADE
+  EQUW L2_87CD
+  EQUW L2_87D6
+  EQUW L2_87E8
+  EQUW L2_87F3
+  EQUW L2_87FE
+  EQUW L2_87DF
+  EQUW SND_STOP_DMC
+
+; Request silent BGM id 0C.
+.SND_STOP_BGM
   LDA #&0C
   STA W_0206
   RTS
-.L2_8766
-  JSR S2_8760
-  JSR S2_8772
+
+; Command 80: stop BGM, stop DMC, clear the SFX id.
+.SND_CMD_SILENCE
+  JSR SND_STOP_BGM
+  JSR SND_STOP_DMC
+.L2_876C
   LDA #&00
   STA W_0205
   RTS
 
-.S2_8772
+; Request silent DMC id 1E.
+.SND_STOP_DMC
   LDA #&1E
   STA W_0207
   RTS
+.D2_8778
   EQUB &AD,&53,&03,&30,&13,&C9,&11,&90,&02,&A9,&10,&AE,&51,&03,&8D,&51
-  EQUB &03,&8D,&57,&03,&8E,&53,&03,&60,&AD,&51,&03,&8D,&53,&03,&60,&AD
-  EQUB &53,&03,&30,&05,&29,&0F,&8D,&52,&03,&AD,&52,&03,&8D,&53,&03,&60
-.L2_87A8
+  EQUB &03,&8D,&57,&03,&8E,&53,&03,&60,&AD,&51,&03,&8D,&53,&03,&60
+.D2_8797
+  EQUB &AD,&53,&03,&30,&05,&29,&0F,&8D,&52,&03,&AD,&52,&03,&8D,&53,&03
+  EQUB &60
+
+; Command 85: store X in fade step W_0356. Returns the BGM id, or Z_FF if the id is 0C.
+.SND_SET_FADE
   LDA W_0206
   AND #&7F
   CMP #&0C
@@ -994,34 +1044,42 @@
   RTS
 
 ; (not seen executing during the coverage runs)
+.L2_87CD
   LDA W_0206
   AND #&7F
   STA W_0353
   RTS
+.L2_87D6
   LDA W_0205
   AND #&7F
   STA W_0353
   RTS
+.L2_87DF
   LDA W_0207
   AND #&7F
   STA W_0353
   RTS
+.L2_87E8
   LDA #&0C
   STA W_0353
   LDA #&1D
   STA W_0354
   RTS
+.L2_87F3
   LDA #&00
   STA W_0353
   LDA #&0B
   STA W_0354
   RTS
+.L2_87FE
   LDA #&1E
   STA W_0353
   LDA #&2A
   STA W_0354
   RTS
-.D2_8809
+
+; 12 bytes, SFX ids 00-0B. A smaller value replaces the SFX that is playing. 00 is FF, 06 is 00.
+.SND_SFX_PRIORITY
   EQUB &FF,&10,&10,&10,&10,&10,&00,&10,&01,&02,&02,&10
 .L2_8815
   LDA #&00
@@ -1035,19 +1093,20 @@
   STA W_036F,X
   DEX
   BPL L2_8821
-  JSR S2_8BDC
-  JMP L7_DD4A
+  JSR SND_CLEAR_SFX_SLOPE
+  JMP SND_DMC_IDLE
 
-.S2_882D
+; Run SFX id W_0205. SND_SFX_PROGS gives init and tick pointers. Bit 7 selects the tick.
+.SND_RUN_SFX
   LDA W_0205
   BMI L2_8835
-  JSR S2_8CAA
+  JSR SND_STOP_SFX_HW
 .L2_8835
   LDA W_0205
   AND #&7F
   ASL A
   TAY
-  LDA D2_8869,Y
+  LDA SND_SFX_PROGS,Y
   STA Z_06
   LDA D2_886A,Y
   STA Z_07
@@ -1062,30 +1121,41 @@
   INY
   LDA (Z_06),Y
   STA Z_05
-  JSR S7_DC84
-  JSR S2_8BE8
+  JSR SND_JUMP_Z04
+  JSR SND_UPDATE_SFX_SLOPE
   LDA W_0205
   ORA #&80
   STA W_0205
-  JMP L7_DD55
-.D2_8869
-  EQUB LO(D2_8881)
+  JMP SND_DMC_SERVICE
+
+; 12 SFX programs, ids 00-0B. Each entry points at an init pointer and a tick pointer.
+.SND_SFX_PROGS
+  EQUB LO(SFX00_PROG)
 .D2_886A
-  EQUB HI(D2_8881)
-  EQUW D2_8A5F
-  EQUW D2_8898
-  EQUB &B6,&88
-  EQUW D2_88C6
-  EQUB &2D,&89,&7D,&89
-  EQUW D2_89F0
-  EQUB &1D,&8A,&92,&8A,&B9,&8A
-  EQUW D2_8AFE
-.D2_8881
-  EQUW L2_8885
-  EQUW L2_8885
-.L2_8885
+  EQUB HI(SFX00_PROG)
+  EQUW SFX01_PROG
+  EQUW SFX02_PROG
+  EQUW SFX03_PROG
+  EQUW SFX04_PROG
+  EQUW SFX05_PROG
+  EQUW SFX06_PROG
+  EQUW SFX07_PROG
+  EQUW SFX08_PROG
+  EQUW SFX09_PROG
+  EQUW SFX0A_PROG
+  EQUW SFX0B_PROG
+
+; SFX 00. Both the init and the tick slot are RTS.
+.SFX00_PROG
+  EQUW SFX_NOP
+  EQUW SFX_NOP
+
+; SFX 00 init and tick. Returns immediately.
+.SFX_NOP
   RTS
-.L2_8886
+
+; Clear SFX id W_0205 and the four SFX overlay flags W_0347-W_034A.
+.SFX_STOP
   LDA #&00
   STA W_0205
   STA W_0347
@@ -1093,25 +1163,34 @@
   STA W_0349
   STA W_034A
   RTS
-.D2_8898
-  EQUW L2_889C
-  EQUW L2_88A8
-.L2_889C
+
+; SFX 02. Short square blip. The password screen uses it when a glyph is placed.
+.SFX02_PROG
+  EQUW SFX02_ON
+  EQUW SFX02_TICK
+
+; SFX 02 init. Eight-frame counter, patch 0 on square channel 1 (X=4).
+.SFX02_ON
   LDA #&08
   STA W_0348
   LDA #&00
   LDX #&04
-  JSR S2_8B70
-.L2_88A8
+  JSR SND_LOAD_SFX_PATCH
+
+; SFX 02 tick. Release the channel and SFX_STOP when the counter hits 0.
+.SFX02_TICK
   DEC W_0348
   BNE L2_88B5
   LDX #&01
-  JSR S2_8CA0
-  JMP L2_8886
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
 .L2_88B5
   RTS
 
 ; (not seen executing during the coverage runs)
+
+; SFX 03 init and tick. Item blip from S5_9064, not item type 0B.
+.SFX03_PROG
   TSX
   DEY
   TAY
@@ -1120,25 +1199,31 @@
   STA W_0348
   LDA #&01
   LDX #&04
-  JMP S2_8B70
-.D2_88C6
-  EQUW L2_88CA
-  EQUW L2_88EA
-.L2_88CA
+  JMP SND_LOAD_SFX_PATCH
+
+; SFX 04. Multi-channel hit. Player death, enemy death, and a rejected menu choice.
+.SFX04_PROG
+  EQUW SFX04_ON
+  EQUW SFX04_TICK
+
+; SFX 04 init. Patches on squares 0 and 1 and on noise.
+.SFX04_ON
   LDA #&28
   STA W_0347
   STA W_0348
   STA W_034A
   LDA #&02
   LDX #&00
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   LDA #&02
   LDX #&04
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   LDA #&04
   LDX #&0C
-  JMP S2_8B70
-.L2_88EA
+  JMP SND_LOAD_SFX_PATCH
+
+; SFX 04 tick. Count down the three channels, then SFX_STOP.
+.SFX04_TICK
   LDA W_0347
   BMI L2_890E
   DEC W_0347
@@ -1152,10 +1237,10 @@
   DEC W_0347
   LDA #&03
   LDX #&00
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   LDA #&03
   LDX #&04
-  JMP S2_8B70
+  JMP SND_LOAD_SFX_PATCH
 .L2_890E
   DEC W_0348
   BNE L2_88F7
@@ -1163,68 +1248,110 @@
   STA W_0347
   STA W_034A
   LDX #&00
-  JSR S2_8CA0
+  JSR SND_MARK_CHANNEL_DIRTY
   LDX #&01
-  JSR S2_8CA0
+  JSR SND_MARK_CHANNEL_DIRTY
   LDX #&03
-  JSR S2_8CA0
-  JMP L2_8886
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
+
+; SFX 05. Bomb-timer copy while Z_49 is 2, and item type 0B.
+.SFX05_PROG
   EQUB &31,&89,&47,&89,&A9,&A0,&8D,&48,&03,&8D,&47,&03,&A9,&05,&A2,&00
-  EQUB &20,&70,&8B,&A9,&05,&A2,&04,&4C,&70,&8B,&AD,&48,&03,&10,&1F,&CE
-  EQUB &48,&03,&30,&19,&A9,&95,&8D,&5C,&03,&A9,&02,&8D,&6F,&03,&A9,&95
-  EQUB &8D,&60,&03,&A9,&02,&8D,&70,&03,&A9,&10,&8D,&48,&03,&60,&CE,&48
-  EQUB &03,&D0,&FA,&A2,&00,&20,&A0,&8C,&A2,&01,&20,&A0,&8C,&4C,&86,&88
+  EQUB &20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &A9,&05,&A2,&04,&4C
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &AD,&48,&03,&10,&1F,&CE,&48,&03,&30,&19,&A9,&95,&8D,&5C,&03,&A9
+  EQUB &02,&8D,&6F,&03,&A9,&95,&8D,&60,&03,&A9,&02,&8D,&70,&03,&A9,&10
+  EQUB &8D,&48,&03,&60,&CE,&48,&03,&D0,&FA,&A2,&00,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUB &A2,&01,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUW L2_864C
+  EQUB &88
+
+; SFX 06. Pause open and close in UPDATE_PAUSE. Priority value 00.
+.SFX06_PROG
   EQUB &81,&89,&8B,&89,&A9,&1D,&8D,&48,&03,&A9,&01,&8D,&47,&03,&AE,&47
   EQUB &03,&CA,&D0,&48,&CE,&48,&03,&F0,&3B,&AD,&48,&03,&29,&03,&D0,&33
   EQUB &AD,&48,&03,&4A,&4A,&29,&01,&AA,&BD,&EC,&89,&8D,&5D,&03,&BD,&EE
   EQUB &89,&8D,&61,&03,&A9,&08,&8D,&5B,&03,&8D,&5F,&03,&8D,&5C,&03,&8D
   EQUB &60,&03,&8D,&5E,&03,&8D,&62,&03,&A9,&0F,&8D,&6F,&03,&8D,&70,&03
-  EQUB &20,&4B,&8C,&60,&A9,&10,&8D,&48,&03,&EE,&47,&03,&CE,&48,&03,&F0
-  EQUB &01,&60,&A2,&00,&20,&A0,&8C,&A2,&01,&20,&A0,&8C,&4C,&86,&88,&A9
-  EQUB &A0,&6A,&64
-.D2_89F0
-  EQUW L2_89F4
-  EQUW L2_8A0A
-.L2_89F4
+  EQUB &20
+  EQUW L2_8C4B
+  EQUB &60,&A9,&10,&8D,&48,&03,&EE,&47,&03,&CE,&48,&03,&F0,&01,&60,&A2
+  EQUB &00,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUB &A2,&01,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUW L2_864C
+  EQUB &88,&A9,&A0,&6A,&64
+
+; SFX 07. Two-square blip. Menu cursor movement.
+.SFX07_PROG
+  EQUW SFX07_ON
+  EQUW SFX07_TICK
+.SFX07_ON
   LDA #&04
   STA W_0347
   STA W_0348
   LDA #&06
   LDX #&00
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   LDA #&06
   LDX #&04
-  JMP S2_8B70
-.L2_8A0A
+  JMP SND_LOAD_SFX_PATCH
+.SFX07_TICK
   DEC W_0348
   BEQ L2_8A10
   RTS
 .L2_8A10
   LDX #&00
-  JSR S2_8CA0
+  JSR SND_MARK_CHANNEL_DIRTY
   LDX #&01
-  JSR S2_8CA0
-  JMP L2_8886
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
+
+; SFX 08. Timer tick while the seconds digits are 0, S5_9895.
+.SFX08_PROG
   EQUB &21,&8A,&37,&8A,&A9,&18,&8D,&48,&03,&8D,&47,&03,&A9,&07,&A2,&00
-  EQUB &20,&70,&8B,&A9,&08,&A2,&04,&4C,&70,&8B,&CE,&48,&03,&F0,&16,&AD
-  EQUB &48,&03,&C9,&10,&F0,&01,&60,&A9,&09,&A2,&00,&20,&70,&8B,&A9,&0A
-  EQUB &A2,&04,&4C,&70,&8B,&A2,&00,&20,&A0,&8C,&A2,&01,&20,&A0,&8C,&4C
-  EQUB &86,&88
-.D2_8A5F
-  EQUW L2_8A63
-  EQUW L2_8A6D
-.L2_8A63
+  EQUB &20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &A9,&08,&A2,&04,&4C
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &CE,&48,&03,&F0,&16,&AD,&48,&03,&C9,&10,&F0,&01,&60,&A9,&09,&A2
+  EQUB &00,&20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &A9,&0A,&A2,&04,&4C
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &A2,&00,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUB &A2,&01,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUW L2_864C
+  EQUB &88
+
+; SFX 01. Noise rumble while the title logo scrolls.
+.SFX01_PROG
+  EQUW SFX01_ON
+  EQUW SFX01_TICK
+
+; SFX 01 init. Set the noise counter W_034A to 90 and clear W_0378.
+.SFX01_ON
   LDA #&90
   STA W_034A
   LDA #&00
   STA W_0378
-.L2_8A6D
+
+; SFX 01 tick. Lower the noise pitch until it ends, then SFX_STOP.
+.SFX01_TICK
   LDA W_0378
   AND #&07
   BNE L2_8A7B
   LDA #&0B
   LDX #&0C
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
 .L2_8A7B
   INC W_0378
   LDA W_0378
@@ -1236,19 +1363,37 @@
   RTS
 .L2_8A8A
   LDA #&03
-  JSR S2_8CA0
-  JMP L2_8886
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
+
+; SFX 09. Hurry warning while the stage timer is below 4, S5_872C.
+.SFX09_PROG
   EQUB &96,&8A,&9B,&8A,&A9,&20,&8D,&48,&03,&AD,&48,&03,&4A,&B0,&0A,&29
-  EQUB &01,&18,&69,&0C,&A2,&04,&20,&70,&8B,&CE,&48,&03,&F0,&01,&60,&A9
-  EQUB &01,&20,&A0,&8C,&4C,&86,&88,&BD,&8A,&C5,&8A,&A9,&24,&8D,&48,&03
-  EQUB &8D,&47,&03,&AD,&48,&03,&29,&03,&D0,&1A,&AD,&48,&03,&4A,&4A,&AA
-  EQUB &BD,&F4,&8A,&F0,&0F,&48,&A2,&04,&20,&70,&8B,&68,&A2,&00,&20,&70
-  EQUB &8B,&CE,&5D,&03,&CE,&48,&03,&F0,&01,&60,&A9,&01,&20,&A0,&8C,&4C
-  EQUB &86,&88,&00,&00,&00,&00,&00,&10,&0E,&0F,&00,&0E
-.D2_8AFE
-  EQUW L2_8B02
-  EQUW L2_8B31
-.L2_8B02
+  EQUB &01,&18,&69,&0C,&A2,&04,&20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &CE,&48,&03,&F0,&01,&60,&A9,&01,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUW L2_864C
+  EQUB &88
+
+; SFX 0A. Player overlaps an actor with X_625A = 10, and W_04E5 increments.
+.SFX0A_PROG
+  EQUB &BD,&8A,&C5,&8A,&A9,&24,&8D,&48,&03,&8D,&47,&03,&AD,&48,&03,&29
+  EQUB &03,&D0,&1A,&AD,&48,&03,&4A,&4A,&AA,&BD,&F4,&8A,&F0,&0F,&48,&A2
+  EQUB &04,&20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &68,&A2,&00,&20
+  EQUW SND_LOAD_SFX_PATCH
+  EQUB &CE,&5D,&03,&CE,&48,&03,&F0,&01,&60,&A9,&01,&20
+  EQUW SND_MARK_CHANNEL_DIRTY
+  EQUW L2_864C
+  EQUB &88,&00,&00,&00,&00,&00,&10,&0E,&0F,&00,&0E
+
+; SFX 0B. Descending square sweep. No direct LDA immediate 0B at a request site.
+.SFX0B_PROG
+  EQUW SFX0B_ON
+  EQUW SFX0B_TICK
+.SFX0B_ON
   LDA #&10
   STA W_0347
 .L2_8B07
@@ -1256,22 +1401,22 @@
   STA W_0348
   LDA #&11
   LDX #&04
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   STA W_0348
   LDA #&11
   LDX #&00
-  JSR S2_8B70
+  JSR SND_LOAD_SFX_PATCH
   LDA #&10
   SEC
   SBC W_0347
   TAX
-  LDA D2_8B60,X
+  LDA SFX0B_VOL,X
   SEC
   SBC #&02
   STA W_035B
   STA W_035F
   RTS
-.L2_8B31
+.SFX0B_TICK
   DEC W_0348
   BEQ L2_8B4E
   LDA W_0348
@@ -1289,21 +1434,22 @@
   DEC W_0347
   BNE L2_8B07
   LDA #&00
-  JSR S2_8CA0
+  JSR SND_MARK_CHANNEL_DIRTY
   LDA #&01
-  JSR S2_8CA0
-  JMP L2_8886
-.D2_8B60
+  JSR SND_MARK_CHANNEL_DIRTY
+  JMP SFX_STOP
+.SFX0B_VOL
   EQUB &94,&94,&95,&95,&96,&96,&97,&97,&98,&98,&99,&99,&9A,&9A,&9A,&86
 
-.S2_8B70
+; Copy SND_SFX_PATCH[A] (4 bytes) to the SFX shadow at X and mark that channel dirty.
+.SND_LOAD_SFX_PATCH
   ASL A
   ASL A
   TAY
   LDA #&03
   STA Z_0C
 .L2_8B77
-  LDA D2_8B90,Y
+  LDA SND_SFX_PATCH,Y
   STA W_035B,X
   INX
   INY
@@ -1317,14 +1463,17 @@
   LDA #&0F
   STA W_036F,X
   JMP L2_8C4B
-.D2_8B90
+
+; 18 four-byte APU images. Index is the argument to SND_LOAD_SFX_PATCH.
+.SND_SFX_PATCH
   EQUB &9A,&83,&90,&89,&83,&9B,&F0,&F8,&5A,&9E,&00,&32,&44,&92,&D5,&88
   EQUB &02,&00,&04,&30,&1A,&9E,&AE,&B6,&80,&9F,&FE,&48,&02,&08,&71,&F8
   EQUB &82,&08,&5F,&F8,&02,&08,&A0,&F8,&82,&08,&8E,&F8,&1C,&00,&0E,&F8
   EQUB &98,&08,&FE,&48,&98,&08,&53,&49,&83,&08,&FE,&00,&82,&08,&71,&00
   EQUB &83,&08,&7F,&D0,&9F,&9C,&FE,&20,&5F,&9C,&FE,&20
 
-.S2_8BDC
+; Clear the four SFX volume-slope flags at W_0384.
+.SND_CLEAR_SFX_SLOPE
   LDX #&00
   TXA
 .L2_8BDF
@@ -1334,7 +1483,8 @@
   BCC L2_8BDF
   RTS
 
-.S2_8BE8
+; Advance SFX volume slopes. Channel 2 is skipped.
+.SND_UPDATE_SFX_SLOPE
   LDX #&00
 .L2_8BEA
   CPX #&02
@@ -1348,24 +1498,25 @@
   STA W_0388,X
   BCC L2_8C04
 .L2_8C01
-  JSR S2_8C0A
+  JSR SND_STEP_SFX_SLOPE
 .L2_8C04
   INX
   CPX #&04
   BCC L2_8BEA
   RTS
 
-.S2_8C0A
+; Subtract SND_SLOPE_SUB from the slope timer and lower the SFX volume nibble.
+.SND_STEP_SFX_SLOPE
   TXA
   ASL A
   ASL A
   TAY
   LDA W_037C,X
   SEC
-  SBC D2_8C9E
+  SBC SND_SLOPE_SUB_LO
   STA W_037C,X
   LDA W_0380,X
-  SBC D2_8C9F
+  SBC SND_SLOPE_SUB_HI
   STA W_0380,X
   AND #&0F
   STA Z_0C
@@ -1401,36 +1552,37 @@
   LDA W_035B,Y
   AND #&0F
   TAY
-  LDA D2_8C8C,Y
+  LDA SND_SLOPE_RATE,Y
   STA W_038C,X
   PLA
   TAY
   LDA #&00
   STA W_0388,X
-  LDA D2_8C9C
+  LDA SND_SLOPE_LO
   STA W_037C,X
-  LDA D2_8C9D
+  LDA SND_SLOPE_HI
   STA W_0380,X
   LDA W_035B,Y
   AND #&F0
-  ORA D2_8C9D
+  ORA SND_SLOPE_HI
   ORA #&10
   STA W_035B,Y
   STA W_0384,X
 .L2_8C8B
   RTS
-.D2_8C8C
+.SND_SLOPE_RATE
   EQUB &00,&00,&AA,&80,&66,&55,&49,&40,&38,&33,&2F,&2B,&27,&25,&22,&20
-.D2_8C9C
+.SND_SLOPE_LO
   EQUB &00
-.D2_8C9D
+.SND_SLOPE_HI
   EQUB &0A
-.D2_8C9E
+.SND_SLOPE_SUB_LO
   EQUB &C0
-.D2_8C9F
+.SND_SLOPE_SUB_HI
   EQUB &00
 
-.S2_8CA0
+; Set all four register-dirty bits of channel X when X < 4.
+.SND_MARK_CHANNEL_DIRTY
   CPX #&04
   BCS L2_8CA9
   LDA #&0F
@@ -1438,13 +1590,14 @@
 .L2_8CA9
   RTS
 
-.S2_8CAA
-  JSR S2_8BDC
+; Silence SFX channels whose flag W_0347,X is set.
+.SND_STOP_SFX_HW
+  JSR SND_CLEAR_SFX_SLOPE
   LDX #&00
 .L2_8CAF
   LDA W_0347,X
   BEQ L2_8CBC
-  JSR S2_8CC2
+  JSR SND_SILENCE_SFX_CH
   LDA #&00
   STA W_0347,X
 .L2_8CBC
@@ -1453,7 +1606,8 @@
   BCC L2_8CAF
   RTS
 
-.S2_8CC2
+; Write a silent volume to hardware channel X.
+.SND_SILENCE_SFX_CH
   TXA
   PHA
   ASL A
@@ -1471,7 +1625,9 @@
   LDA #&00
   STA APU_TRIANGLE_REG
   JMP L2_8CD0
-.D2_8CDB
+
+; Pointers to pitch envelopes, selected by stream command DB.
+.SND_PITCH_ENVS
   EQUB LO(D2_8D07)
 .D2_8CDC
   EQUB HI(D2_8D07)
@@ -1488,10 +1644,13 @@
   EQUW D2_8D8C
   EQUW D2_8D93
   EQUW D2_8D9D
-  EQUB &AA,&8D,&BA,&8D,&F6,&8D
+  EQUW D2_8DAA
+  EQUW D2_8DBA
+  EQUB &F6,&8D
   EQUW D2_8DD5
   EQUW D2_8DE2
-  EQUB &EC,&8D,&F6,&8D
+  EQUW D2_8DEC
+  EQUB &F6,&8D
   EQUW D2_8E00
 .D2_8D07
   EQUB &FE,&00,&7C,&FF
@@ -1519,78 +1678,113 @@
 .D2_8D93
   EQUB &FE,&00,&58,&04,&00,&0B,&00,&F0,&FF,&FF
 .D2_8D9D
-  EQUB &FD,&00,&00,&FE,&00,&64,&08,&00,&04,&00,&C0,&FF,&FF,&FD,&00,&FC
-  EQUB &FE,&00,&7C,&01,&00,&EC,&FE,&00,&70,&00,&00,&F8,&FF,&FD,&00,&FB
-  EQUB &FE,&00,&74,&02,&00,&04,&00,&C0,&FF,&FF,&FE,&00,&70,&FC,&03,&02
-  EQUB &00,&FE,&FC,&02,&00,&00,&F8,&FF
+  EQUB &FD,&00,&00,&FE,&00,&64,&08,&00,&04,&00,&C0,&FF,&FF
+.D2_8DAA
+  EQUB &FD,&00,&FC,&FE,&00,&7C,&01,&00,&EC,&FE,&00,&70,&00,&00,&F8,&FF
+.D2_8DBA
+  EQUB &FD,&00,&FB,&FE,&00,&74,&02,&00,&04,&00,&C0,&FF,&FF,&FE,&00,&70
+  EQUB &FC,&03,&02,&00,&FE,&FC,&02,&00,&00,&F8,&FF
 .D2_8DD5
   EQUB &FD,&00,&00,&FE,&00,&7C,&04,&00,&FE,&00,&70,&FF,&FF
 .D2_8DE2
-  EQUB &FE,&00,&7C,&04,&00,&00,&00,&00,&F1,&FF,&FE,&00,&7C,&04,&00,&FF
-  EQUB &00,&F0,&FF,&FF,&FE,&00,&7C,&04,&00,&FF,&00,&40,&FF,&FF
+  EQUB &FE,&00,&7C,&04,&00,&00,&00,&00,&F1,&FF
+.D2_8DEC
+  EQUB &FE,&00,&7C,&04,&00,&FF,&00,&F0,&FF,&FF,&FE,&00,&7C,&04,&00,&FF
+  EQUB &00,&40,&FF,&FF
 .D2_8E00
   EQUB &FE,&00,&7C,&00,&80,&FD,&FF,&FE,&00,&7C,&02,&00,&F4,&00,&80,&FE
   EQUB &FF
-.D2_8E11
+
+; Pointers to vibrato byte streams. Byte 80 restarts the waveform.
+.SND_VIBRATO_PTRS
   EQUB &19
 .D2_8E12
   EQUB &8E
   EQUW D2_8E1B
-  EQUB &27,&8E,&2C,&8E,&00,&80
+  EQUW D2_8E27
+  EQUW D2_8E2C
+  EQUB &00,&80
 .D2_8E1B
-  EQUB &00,&00,&00,&01,&01,&01,&FE,&FF,&01,&01,&01,&80,&FF,&00,&01,&00
-  EQUB &80,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00
-  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&01,&01,&01,&01,&01,&01,&01
-  EQUB &01,&01,&01,&01,&01,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&00,&00
-  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&01,&01,&01
+  EQUB &00,&00,&00,&01,&01,&01,&FE,&FF,&01,&01,&01,&80
+.D2_8E27
+  EQUB &FF,&00,&01,&00,&80
+.D2_8E2C
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&01,&01,&01,&01,&01,&01,&01,&01
+  EQUB &01,&01,&01,&01,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&00,&00,&00
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&01,&01,&01,&01
   EQUB &01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01,&01
-  EQUB &01,&80
-.D2_8E8D
+  EQUB &80
+.SND_DETUNE_PTRS
   EQUB &93
 .D2_8E8E
   EQUB &8E
   EQUW D2_8E94
-  EQUB &98,&8E,&80
+  EQUW D2_8E98
+  EQUB &80
 .D2_8E94
-  EQUB &02,&01,&00,&80,&00,&01,&05,&0A,&0F,&14,&19,&1E,&23,&28,&2A,&2C
-  EQUB &2E,&30,&32,&34,&36,&38,&3A,&80
-.D2_8EAC
-  EQUB LO(D2_8EC6)
+  EQUB &02,&01,&00,&80
+.D2_8E98
+  EQUB &00,&01,&05,&0A,&0F,&14,&19,&1E,&23,&28,&2A,&2C,&2E,&30,&32,&34
+  EQUB &36,&38,&3A,&80
+
+; 13 pointers, DMC ids 1E-2A. Each target is four bytes for 4010-4013. Id 1E is silence. Id 27 is the title sample.
+.SND_DMC_PTRS
+  EQUB LO(DMC_SILENCE)
 .D2_8EAD
-  EQUB HI(D2_8EC6)
+  EQUB HI(DMC_SILENCE)
   EQUW D2_8ECE
-  EQUB &E6,&8E
+  EQUW D2_8EE6
   EQUW D2_8ED6
-  EQUB &D2,&8E,&DA,&8E,&DE,&8E,&E2,&8E
+  EQUW D2_8ED2
+  EQUW D2_8EDA
+  EQUW D2_8EDE
+  EQUW D2_8EE2
   EQUW D2_8EEE
   EQUW D2_8ECA
-  EQUB &F2,&8E
+  EQUW D2_8EF2
   EQUW D2_8EEA
-  EQUB &F6,&8E
-.D2_8EC6
+  EQUW D2_8EF6
+.DMC_SILENCE
   EQUB &40,&00,&80,&00
 .D2_8ECA
   EQUB &0E,&25,&80,&AE
 .D2_8ECE
-  EQUB &0F,&48,&AB,&0E,&0F,&22,&AF,&18
+  EQUB &0F,&48,&AB,&0E
+.D2_8ED2
+  EQUB &0F,&22,&AF,&18
 .D2_8ED6
-  EQUB &0F,&19,&B5,&13,&0F,&3C,&BE,&0F,&0E,&3C,&BE,&0F,&0D,&3C,&BE,&0F
+  EQUB &0F,&19,&B5,&13
+.D2_8EDA
+  EQUB &0F,&3C,&BE,&0F
+.D2_8EDE
+  EQUB &0E,&3C,&BE,&0F
+.D2_8EE2
+  EQUB &0D,&3C,&BE,&0F
+.D2_8EE6
   EQUB &0F,&FF,&BA,&10
 .D2_8EEA
   EQUB &0F,&0E,&C2,&13
 .D2_8EEE
-  EQUB &0E,&17,&C6,&40,&0F,&17,&C6,&40,&4D,&0F,&D7,&9A
-.D2_8EFA
+  EQUB &0E,&17,&C6,&40
+.D2_8EF2
+  EQUB &0F,&17,&C6,&40
+.D2_8EF6
+  EQUB &4D,&0F,&D7,&9A
+
+; Pointers to channel-3 noise scripts. A step is a duration and three APU bytes. 00 ends.
+.SND_NOISE_PTRS
   EQUB &14
 .D2_8EFB
   EQUB &8F
   EQUW D2_8F19
   EQUW D2_8F1E
   EQUW D2_8F23
-  EQUB &34,&8F
   EQUW D2_8F34
-  EQUB &34,&8F,&FD,&8F
+  EQUW D2_8F34
+  EQUW D2_8F34
+  EQUW D2_8FFD
   EQUW D2_8F6F
   EQUW D2_8FC9
   EQUW D2_8FD6
@@ -1623,47 +1817,62 @@
 .D2_8FE3
   EQUB &01,&12,&02,&08,&01,&12,&02,&08,&01,&11,&00,&08,&00
 .D2_8FF0
-  EQUB &01,&11,&02,&08,&01,&11,&02,&08,&01,&11,&00,&08,&00,&01,&1B,&01
-  EQUB &08,&00
-.D2_9002
+  EQUB &01,&11,&02,&08,&01,&11,&02,&08,&01,&11,&00,&08,&00
+.D2_8FFD
+  EQUB &01,&1B,&01,&08,&00
+
+; 18 records, ids 0C-1D. Each is PRG bank plus a pointer to a 5-channel header. Null channel pointers become SND_REST_STREAM.
+.SND_BGM_TABLE
   EQUB &02
 .D2_9003
-  EQUB LO(D2_9038)
+  EQUB LO(BGM_SILENCE_HDR)
 .D2_9004
-  EQUB HI(D2_9038)
+  EQUB HI(BGM_SILENCE_HDR)
   EQUB &02
-  EQUW D2_9048
+  EQUW BGM_INTRO_HDR
   EQUB &02
-  EQUW D2_9410
+  EQUW BGM_AREA_A_HDR
   EQUB &02
-  EQUW D2_9C3E
+  EQUW BGM_AREA_B_HDR
   EQUB &02
-  EQUW D2_9F3D
+  EQUW BGM_AREA_C_HDR
   EQUB &02
-  EQUW D2_A445
+  EQUW BGM_CARD_HDR
   EQUB &02
-  EQUW D2_A515
+  EQUW BGM_CLEAR_HDR
   EQUB &03
-  EQUW D2_A58B
+  EQUW BGM_TITLE_HDR
   EQUB &03
-  EQUW D2_9406
-  EQUB &03,&95,&A5,&03
-  EQUW D2_A59F
-  EQUB &03,&B3,&A5,&03,&A9,&A5,&03
-  EQUW D2_A5BD
+  EQUW BGM_BATTLE_HDR
   EQUB &03
-  EQUW D2_A5C7
+  EQUW BGM_ITEM_HDR
   EQUB &03
-  EQUW D2_A5D1
+  EQUW BGM_EXIT_HDR
   EQUB &03
-  EQUW D2_A5DB
+  EQUW BGM_AREA6_HDR
   EQUB &03
-  EQUW D2_A5E5
-.D2_9038
+  EQUW BGM_CREDITS_HDR
+  EQUB &03
+  EQUW BGM_MODE_HDR
+  EQUB &03
+  EQUW BGM_WIN_HDR
+  EQUB &03
+  EQUW BGM_LOSE_HDR
+  EQUB &03
+  EQUW BGM_SCENE_HDR
+  EQUB &03
+  EQUW BGM_STING_HDR
+
+; BGM 0C. Five zero channel pointers.
+.BGM_SILENCE_HDR
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00
-.D2_9042
+
+; Stream substituted for a null channel pointer: one rest, then command D0.
+.SND_REST_STREAM
   EQUB &D4,&04,&DC,&01,&00,&D0
-.D2_9048
+
+; BGM 0D. Played when the title scroll finishes.
+.BGM_INTRO_HDR
   EQUW D2_9052
   EQUW D2_9171
   EQUW D2_92CD
@@ -1750,13 +1959,17 @@
 .D2_93F5
   EQUB &18,&06,&08,&16,&38,&06,&18,&06,&08,&06,&18,&06,&88,&06,&08,&06
   EQUB &E0
-.D2_9406
+
+; BGM 14. Stage music when Z_49 is not 0.
+.BGM_BATTLE_HDR
   EQUW D3_8000
   EQUW D3_834F
   EQUW D3_8577
   EQUW D3_86EE
   EQUW D3_8796
-.D2_9410
+
+; BGM 0E. PLAY_AREA_BGM uses it for area Z_4B 0, 2 and 4.
+.BGM_AREA_A_HDR
   EQUW D2_941A
   EQUW D2_9806
   EQUW D2_99BA
@@ -1900,7 +2113,9 @@
 .D2_9C26
   EQUB &D4,&09,&D3,&01,&D7,&04,&0F,&D8,&E9,&D7,&0F,&13,&33,&13,&33,&D8
   EQUB &0F,&D7,&0F,&0F,&D8,&0F,&EA,&D0
-.D2_9C3E
+
+; BGM 0F. Area Z_4B 1 or 3.
+.BGM_AREA_B_HDR
   EQUW D2_9C48
   EQUW D2_9CD0
   EQUW D2_9DC3
@@ -1975,7 +2190,9 @@
   EQUB &10,&00,&10,&00,&00,&10,&30,&30,&10,&00,&D8,&10,&00,&00,&10,&30
   EQUB &00,&10,&00,&00,&00,&10,&00,&30,&00,&00,&00,&10,&00,&00,&10,&30
   EQUB &00,&10,&00,&10,&00,&00,&10,&30,&30,&10,&00,&D8,&EA,&D0
-.D2_9F3D
+
+; BGM 10. Area Z_4B 5.
+.BGM_AREA_C_HDR
   EQUW D2_9F47
   EQUW D2_A028
   EQUW D2_A1E5
@@ -1986,16 +2203,17 @@
   EQUB &80,&D7,&03,&D3,&04,&DF
   EQUW D2_A001
   EQUB &53,&D1,&13,&D2,&85,&60,&80,&60,&00,&60,&50,&30,&00,&10,&00,&D2
-  EQUB &C5,&01,&D8,&D3,&04,&DF,&01,&A0,&53,&D1,&13,&D2,&85,&60,&80,&60
-  EQUB &00,&60,&50,&30,&00,&10,&00,&D2,&C3,&03,&E3,&19,&DA,&40,&DB,&07
-  EQUB &D3,&04,&DF,&13,&A0,&A1,&C0,&D1,&10,&D2,&C0,&00,&80,&00,&DB,&0C
-  EQUB &32,&A0,&33,&DB,&07,&DF,&13,&A0,&A1,&C0,&D1,&50,&D2,&C0,&00,&80
-  EQUB &00,&DB,&0C,&A1,&C0,&D1,&10,&30,&10,&D2,&C1,&DB,&07,&DA,&00,&DB
-  EQUB &07,&DF,&13,&A0,&A1,&C0,&D1,&10,&D2,&C0,&00,&30,&00,&DB,&0C,&C2
-  EQUB &D1,&30,&83,&D2,&DB,&07,&DF,&13,&A0,&D3,&05,&A0,&50,&30,&50,&20
-  EQUB &D2,&A0,&50,&30,&D2,&D4,&01,&DB,&00,&E8,&03,&A4,&00,&D1,&23,&00
-  EQUB &53,&00,&A4,&00,&D1,&23,&00,&53,&00,&E8,&FD,&D4,&08,&DB,&00,&A3
-  EQUB &EA,&D0
+  EQUB &C5,&01,&D8,&D3,&04,&DF
+  EQUW D2_A001
+  EQUB &53,&D1,&13,&D2,&85,&60,&80,&60,&00,&60,&50,&30,&00,&10,&00,&D2
+  EQUB &C3,&03,&E3,&19,&DA,&40,&DB,&07,&D3,&04,&DF,&13,&A0,&A1,&C0,&D1
+  EQUB &10,&D2,&C0,&00,&80,&00,&DB,&0C,&32,&A0,&33,&DB,&07,&DF,&13,&A0
+  EQUB &A1,&C0,&D1,&50,&D2,&C0,&00,&80,&00,&DB,&0C,&A1,&C0,&D1,&10,&30
+  EQUB &10,&D2,&C1,&DB,&07,&DA,&00,&DB,&07,&DF,&13,&A0,&A1,&C0,&D1,&10
+  EQUB &D2,&C0,&00,&30,&00,&DB,&0C,&C2,&D1,&30,&83,&D2,&DB,&07,&DF,&13
+  EQUB &A0,&D3,&05,&A0,&50,&30,&50,&20,&D2,&A0,&50,&30,&D2,&D4,&01,&DB
+  EQUB &00,&E8,&03,&A4,&00,&D1,&23,&00,&53,&00,&A4,&00,&D1,&23,&00,&53
+  EQUB &00,&E8,&FD,&D4,&08,&DB,&00,&A3,&EA,&D0
 .D2_A001
   EQUB &63,&D1,&53,&15,&30,&50,&30,&00,&30,&10,&D2,&C0,&00,&80,&00,&A3
   EQUB &63,&E0,&60,&60,&D1,&50,&D2,&60,&A0,&00,&D1,&10,&30,&50,&00,&50
@@ -2005,21 +2223,22 @@
   EQUW D2_A121
   EQUB &D8,&DF
   EQUW D2_A13F
-  EQUB &D7,&07,&DF,&21,&A1,&D8,&DF,&5D,&A1,&DF,&7B,&A1,&D3,&04,&DA,&00
-  EQUB &DB,&0B,&E3,&16,&70,&30,&DB,&00,&DA,&80,&D3,&06,&E3,&1D,&D4,&01
-  EQUB &C3,&03,&D4,&08,&D3,&04,&DA,&00,&DB,&0B,&E3,&16,&30,&70,&30,&DB
-  EQUB &00,&DA,&80,&D3,&06,&E3,&1D,&D4,&01,&C2,&02,&D1,&32,&01,&72,&01
-  EQUB &D4,&08,&DF,&7B,&A1,&D3,&04,&DA,&00,&DB,&0B,&E3,&16,&70,&30,&DB
-  EQUB &00,&DA,&80,&D3,&06,&E3,&1D,&D4,&01,&83,&03,&D4,&08,&D3,&04,&DA
-  EQUB &00,&DB,&0B,&E3,&16,&30,&70,&02,&DB,&07,&DA,&80,&D3,&05,&E6,&FF
-  EQUB &DF,&B5,&A1,&A1,&C0,&D1,&10,&D2,&C0,&00,&80,&00,&DB,&0C,&32,&A0
-  EQUB &33,&DB,&07,&DF,&B5,&A1,&A1,&C0,&D1,&50,&D2,&C0,&00,&80,&00,&DB
-  EQUB &0C,&A1,&C0,&D1,&10,&30,&10,&D2,&C1,&DB,&07,&DA,&00,&D3,&04,&E6
-  EQUB &00,&DF,&CC,&A1,&61,&80,&A0,&80,&00,&D2,&C0,&D1,&00,&DB,&0C,&82
-  EQUB &C0,&D1,&33,&DB,&07,&DF,&CC,&A1,&D3,&05,&50,&20,&D2,&C0,&D1,&20
-  EQUB &D2,&A0,&50,&20,&D2,&C0,&E8,&03,&D4,&01,&DB,&00,&24,&00,&53,&00
-  EQUB &A3,&00,&D1,&24,&00,&53,&00,&A3,&00,&E8,&FD,&D4,&08,&D1,&DB,&00
-  EQUB &23,&EA,&D0
+  EQUB &D7,&07,&DF
+  EQUW D2_A121
+  EQUB &D8,&DF,&5D,&A1,&DF,&7B,&A1,&D3,&04,&DA,&00,&DB,&0B,&E3,&16,&70
+  EQUB &30,&DB,&00,&DA,&80,&D3,&06,&E3,&1D,&D4,&01,&C3,&03,&D4,&08,&D3
+  EQUB &04,&DA,&00,&DB,&0B,&E3,&16,&30,&70,&30,&DB,&00,&DA,&80,&D3,&06
+  EQUB &E3,&1D,&D4,&01,&C2,&02,&D1,&32,&01,&72,&01,&D4,&08,&DF,&7B,&A1
+  EQUB &D3,&04,&DA,&00,&DB,&0B,&E3,&16,&70,&30,&DB,&00,&DA,&80,&D3,&06
+  EQUB &E3,&1D,&D4,&01,&83,&03,&D4,&08,&D3,&04,&DA,&00,&DB,&0B,&E3,&16
+  EQUB &30,&70,&02,&DB,&07,&DA,&80,&D3,&05,&E6,&FF,&DF,&B5,&A1,&A1,&C0
+  EQUB &D1,&10,&D2,&C0,&00,&80,&00,&DB,&0C,&32,&A0,&33,&DB,&07,&DF,&B5
+  EQUB &A1,&A1,&C0,&D1,&50,&D2,&C0,&00,&80,&00,&DB,&0C,&A1,&C0,&D1,&10
+  EQUB &30,&10,&D2,&C1,&DB,&07,&DA,&00,&D3,&04,&E6,&00,&DF,&CC,&A1,&61
+  EQUB &80,&A0,&80,&00,&D2,&C0,&D1,&00,&DB,&0C,&82,&C0,&D1,&33,&DB,&07
+  EQUB &DF,&CC,&A1,&D3,&05,&50,&20,&D2,&C0,&D1,&20,&D2,&A0,&50,&20,&D2
+  EQUB &C0,&E8,&03,&D4,&01,&DB,&00,&24,&00,&53,&00,&A3,&00,&D1,&24,&00
+  EQUB &53,&00,&A3,&00,&E8,&FD,&D4,&08,&D1,&DB,&00,&23,&EA,&D0
 .D2_A121
   EQUB &DB,&00,&DA,&80,&D3,&06,&E3,&1D,&D4,&08,&01,&D4,&01,&A3,&03,&D4
   EQUB &08,&02,&D4,&01,&A2,&02,&D1,&12,&01,&52,&01,&D4,&08,&E0
@@ -2039,17 +2258,21 @@
   EQUB &D4,&08,&DC,&07,&DC,&07,&D7,&03,&D3,&04,&DF
   EQUW D2_A2A8
   EQUB &D8,&D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00,&C0,&00,&C0,&C0,&70
-  EQUB &30,&D2,&C1,&D7,&03,&D3,&04,&DF,&A8,&A2,&D8,&D1,&30,&00,&30,&30
-  EQUB &D2,&A0,&00,&60,&00,&80,&00,&80,&80,&D1,&80,&30,&D2,&81,&D7,&03
-  EQUB &D3,&04,&DF,&A8,&A2,&D8,&D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00
-  EQUB &C0,&00,&C0,&C0,&70,&30,&D2,&C1,&D7,&03,&D3,&04,&DF,&A8,&A2,&D8
-  EQUB &D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00,&80,&00,&80,&80,&D1,&80
-  EQUB &02,&DF,&B7,&A2,&D2,&60,&60,&D1,&60,&60,&10,&00,&60,&60,&D2,&30
-  EQUB &30,&D1,&30,&30,&D2,&A0,&A0,&70,&A0,&D7,&02,&DF,&B7,&A2,&DF,&CB
-  EQUB &A2,&D8,&60,&60,&60,&60,&D1,&60,&60,&10,&D2,&60,&80,&80,&80,&80
-  EQUB &D1,&80,&80,&30,&D2,&80,&D3,&05,&20,&D2,&A0,&50,&A0,&50,&20,&D2
-  EQUB &A0,&D1,&50,&D4,&01,&55,&A4,&D1,&24,&55,&A4,&D1,&24,&D2,&D2,&D4
-  EQUB &08,&DC,&00,&A3,&EA,&D0
+  EQUB &30,&D2,&C1,&D7,&03,&D3,&04,&DF
+  EQUW D2_A2A8
+  EQUB &D8,&D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00,&80,&00,&80,&80,&D1
+  EQUB &80,&30,&D2,&81,&D7,&03,&D3,&04,&DF
+  EQUW D2_A2A8
+  EQUB &D8,&D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00,&C0,&00,&C0,&C0,&70
+  EQUB &30,&D2,&C1,&D7,&03,&D3,&04,&DF
+  EQUW D2_A2A8
+  EQUB &D8,&D1,&30,&00,&30,&30,&D2,&A0,&00,&60,&00,&80,&00,&80,&80,&D1
+  EQUB &80,&02,&DF,&B7,&A2,&D2,&60,&60,&D1,&60,&60,&10,&00,&60,&60,&D2
+  EQUB &30,&30,&D1,&30,&30,&D2,&A0,&A0,&70,&A0,&D7,&02,&DF,&B7,&A2,&DF
+  EQUB &CB,&A2,&D8,&60,&60,&60,&60,&D1,&60,&60,&10,&D2,&60,&80,&80,&80
+  EQUB &80,&D1,&80,&80,&30,&D2,&80,&D3,&05,&20,&D2,&A0,&50,&A0,&50,&20
+  EQUB &D2,&A0,&D1,&50,&D4,&01,&55,&A4,&D1,&24,&55,&A4,&D1,&24,&D2,&D2
+  EQUB &D4,&08,&DC,&00,&A3,&EA,&D0
 .D2_A2A8
   EQUB &30,&01,&30,&D2,&A0,&00,&60,&00,&30,&02,&30,&00,&60,&A0,&E0,&60
   EQUB &60,&D1,&60,&60,&10,&00,&60,&60,&D2,&60,&60,&D1,&60,&60,&10,&00
@@ -2060,16 +2283,18 @@
   EQUW D2_A38F
   EQUB &11,&20,&10,&31,&20,&30,&10,&20,&10,&10,&31,&20,&30,&DF
   EQUW D2_A38F
-  EQUB &11,&20,&10,&31,&20,&30,&10,&30,&10,&10,&31,&20,&30,&D8,&DF,&8F
-  EQUB &A3,&11,&20,&10,&31,&20,&30,&10,&20,&10,&10,&31,&20,&30,&DF,&8F
-  EQUB &A3,&11,&20,&10,&31,&20,&30,&10,&30,&10,&10,&31,&00,&D4,&01,&32
-  EQUB &32,&31,&D4,&08,&D7,&03,&30,&30,&30,&30,&30,&00,&30,&30,&30,&00
-  EQUB &30,&00,&D4,&01,&35,&34,&34,&D4,&08,&30,&30,&30,&00,&30,&30,&30
-  EQUB &00,&30,&00,&D4,&01,&35,&34,&34,&D4,&08,&30,&30,&30,&30,&30,&00
-  EQUB &D8,&30,&30,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&35
-  EQUB &34,&34,&D4,&08,&30,&30,&30,&30,&30,&30,&30,&30,&30,&30,&D4,&01
-  EQUB &35,&34,&34,&35,&34,&34,&D4,&04,&60,&60,&60,&60,&60,&60,&60,&60
-  EQUB &D4,&08,&EA,&D0
+  EQUB &11,&20,&10,&31,&20,&30,&10,&30,&10,&10,&31,&20,&30,&D8,&DF
+  EQUW D2_A38F
+  EQUB &11,&20,&10,&31,&20,&30,&10,&20,&10,&10,&31,&20,&30,&DF
+  EQUW D2_A38F
+  EQUB &11,&20,&10,&31,&20,&30,&10,&30,&10,&10,&31,&00,&D4,&01,&32,&32
+  EQUB &31,&D4,&08,&D7,&03,&30,&30,&30,&30,&30,&00,&30,&30,&30,&00,&30
+  EQUB &00,&D4,&01,&35,&34,&34,&D4,&08,&30,&30,&30,&00,&30,&30,&30,&00
+  EQUB &30,&00,&D4,&01,&35,&34,&34,&D4,&08,&30,&30,&30,&30,&30,&00,&D8
+  EQUB &30,&30,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&35,&34
+  EQUB &34,&D4,&08,&30,&30,&30,&30,&30,&30,&30,&30,&30,&30,&D4,&01,&35
+  EQUB &34,&34,&35,&34,&34,&D4,&04,&60,&60,&60,&60,&60,&60,&60,&60,&D4
+  EQUB &08,&EA,&D0
 .D2_A38F
   EQUB &11,&21,&31,&20,&10,&11,&11,&31,&20,&10,&E0
 .D2_A39A
@@ -2077,18 +2302,22 @@
   EQUW D2_A43A
   EQUB &11,&00,&10,&31,&00,&30,&10,&00,&10,&10,&31,&00,&30,&DF
   EQUW D2_A43A
-  EQUB &11,&00,&10,&31,&00,&30,&10,&30,&10,&10,&31,&00,&30,&D8,&DF,&3A
-  EQUB &A4,&11,&00,&10,&31,&00,&30,&10,&00,&10,&10,&31,&00,&30,&DF,&3A
-  EQUB &A4,&11,&00,&10,&31,&00,&30,&10,&30,&10,&10,&31,&01,&D4,&08,&D7
-  EQUB &03,&30,&30,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&45
-  EQUB &44,&44,&D4,&08,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01
-  EQUB &45,&44,&44,&D4,&08,&30,&30,&30,&30,&30,&00,&D8,&30,&30,&30,&30
-  EQUB &30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&45,&44,&44,&D4,&08,&30
-  EQUB &30,&30,&30,&30,&30,&30,&30,&30,&30,&D4,&01,&45,&44,&44,&45,&44
-  EQUB &44,&D4,&08,&03,&EA,&D0
+  EQUB &11,&00,&10,&31,&00,&30,&10,&30,&10,&10,&31,&00,&30,&D8,&DF
+  EQUW D2_A43A
+  EQUB &11,&00,&10,&31,&00,&30,&10,&00,&10,&10,&31,&00,&30,&DF
+  EQUW D2_A43A
+  EQUB &11,&00,&10,&31,&00,&30,&10,&30,&10,&10,&31,&01,&D4,&08,&D7,&03
+  EQUB &30,&30,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&45,&44
+  EQUB &44,&D4,&08,&30,&30,&30,&00,&30,&30,&30,&00,&30,&00,&D4,&01,&45
+  EQUB &44,&44,&D4,&08,&30,&30,&30,&30,&30,&00,&D8,&30,&30,&30,&30,&30
+  EQUB &00,&30,&30,&30,&00,&30,&00,&D4,&01,&45,&44,&44,&D4,&08,&30,&30
+  EQUB &30,&30,&30,&30,&30,&30,&30,&30,&D4,&01,&45,&44,&44,&45,&44,&44
+  EQUB &D4,&08,&03,&EA,&D0
 .D2_A43A
   EQUB &11,&01,&31,&00,&10,&11,&11,&31,&00,&10,&E0
-.D2_A445
+
+; BGM 11. Area-change card, requested by S5_ACE4.
+.BGM_CARD_HDR
   EQUW D2_A44F
   EQUW D2_A48E
   EQUW D2_A4C9
@@ -2122,7 +2351,9 @@
   EQUB &D2,&30,&30,&D1,&30,&D2,&30,&70,&30,&A0,&C0,&D1,&10,&D2,&30,&E0
 .D2_A506
   EQUB &40,&40,&D1,&40,&D2,&40,&80,&40,&B0,&D1,&10,&20,&D2,&40,&E0
-.D2_A515
+
+; BGM 12. Stage clear, when timer Z_A5 ends and Z_49 is 0.
+.BGM_CLEAR_HDR
   EQUW D2_A51F
   EQUW D2_A53F
   EQUW D2_A563
@@ -2142,46 +2373,81 @@
   EQUB &D4,&07,&D7,&04,&20,&D8,&21,&21,&01,&03,&D0
 .D2_A583
   EQUB &D4,&07,&D3,&01,&09,&B1,&B1,&D0
-.D2_A58B
+
+; BGM 13. Title menu and the password screen. Channel streams are in bank 3.
+.BGM_TITLE_HDR
   EQUW D3_8840
   EQUW D3_8886
   EQUW D3_88C6
   EQUW D3_891A
   EQUW D3_893D
-  EQUB &40,&89,&29,&8A,&12,&8B,&19,&8C,&A2,&8C
-.D2_A59F
+
+; BGM 15. Item pickup, except item type 0B. Five bank-3 pointers.
+.BGM_ITEM_HDR
+  EQUW D3_8940
+  EQUW D3_8A29
+  EQUW D3_8B12
+  EQUW D3_8C19
+  EQUW D3_8CA2
+
+; BGM 16. Played when the exit flag Z_B7 is set. Bank 3.
+.BGM_EXIT_HDR
   EQUW D3_8D17
   EQUW D3_8D5D
   EQUW D3_8DA2
   EQUW D3_8DE3
   EQUW D3_8DFE
-  EQUB &1C,&8E,&59,&8F,&EB,&91,&B1,&92,&B5,&93,&A2,&94,&2D,&95,&E6,&95
-  EQUB &AB,&96,&EB,&96
-.D2_A5BD
+
+; BGM 18. Scrolling text in S0_B008. Bank 3.
+.BGM_CREDITS_HDR
+  EQUW D3_8E1C
+  EQUW D3_8F59
+  EQUW D3_91EB
+  EQUW D3_92B1
+  EQUW D3_93B5
+
+; BGM 17. Screen that stores 6 in Z_4B (S5_B07D). Bank 3.
+.BGM_AREA6_HDR
+  EQUW D3_94A2
+  EQUW D3_952D
+  EQUW D3_95E6
+  EQUW D3_96AB
+  EQUW D3_96EB
+
+; BGM 19. Game-mode select, S5_AA6A. Bank 3.
+.BGM_MODE_HDR
   EQUW D3_9745
   EQUW D3_977E
   EQUW D3_97B9
   EQUW D3_97FA
   EQUW D3_981A
-.D2_A5C7
+
+; BGM 1A. One player still standing, S5_9121. Bank 3.
+.BGM_WIN_HDR
   EQUW D3_983C
   EQUW D3_9873
   EQUW D3_98A4
   EQUW D3_98C1
   EQUW D3_98E5
-.D2_A5D1
+
+; BGM 1B. No player left standing, S5_9121. Bank 3.
+.BGM_LOSE_HDR
   EQUW D3_990C
   EQUW D3_994A
   EQUW D3_997A
   EQUW D3_999A
   EQUW D3_99C4
-.D2_A5DB
+
+; BGM 1C. Picture screen S5_B209. Bank 3.
+.BGM_SCENE_HDR
   EQUW D3_99CA
   EQUW D3_9AAF
   EQUW D3_9BD2
   EQUW D3_9C9A
   EQUW D3_9CE3
-.D2_A5E5
+
+; BGM 1D. Short sting used by S5_9F5E, S5_B595 and S5_B8F6. Bank 3.
+.BGM_STING_HDR
   EQUW D3_9D2C
   EQUW D3_9D64
   EQUW D3_9DA3
