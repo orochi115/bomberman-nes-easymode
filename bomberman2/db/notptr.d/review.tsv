@@ -1,1 +1,3 @@
 jp:5:AE46	JP INTRO_SPR_XY: interleaved sprite X/Y per area (same bytes as US 5:AEAA), not pointers
+jp:7:FFF0	cartridge ID trailer after the title string, not a pointer
+4:8653	metatile tile numbers (A1 A2 B1 B2 ...), not a pointer

@@ -1,1 +1,20 @@
 7:D81F	SND_STEP_STREAM
+7:DA23	SND_CMD_RESTART
+7:DA65	SND_CMD_DD
+7:DA6F	SND_CMD_JUMP
+7:DAD4	SND_CMD_E1
+7:DADE	SND_CMD_E2
+7:DB5F	SND_CMD_TRANSPOSE_REL
+ram:0006	SND_TMP0	Sound driver scratch (volume, detune, SFX).
+ram:0007	SND_TMP1	Sound driver scratch (volume, detune, SFX).
+ram:0008	SND_ENV_PTR	Pitch envelope read pointer (SND_STEP_PITCH_ENV).
+ram:0009	SND_ENV_PTR_HI	High byte of SND_ENV_PTR.
+ram:000A	SND_VECTOR	Jump vector for SND_RUN_CMD handlers (JMP (SND_VECTOR)).
+ram:000B	SND_VECTOR_HI	High byte of SND_VECTOR.
+ram:000C	SND_ARG	Sound driver 16-bit argument: signed pitch delta, multiply operand.
+ram:000D	SND_ARG_HI	High byte of SND_ARG.
+ram:000E	SND_TMP2	Sound driver scratch (SND_MUL_DURATION).
+ram:000F	SND_TMP3	Sound driver scratch (SFX priority in SND_REQUEST).
+ram:002A	TEMP4	Scratch counter: area intro countdown, soft block quota, fixed spawn index, flame steps.
+ram:002B	TEMP5	Scratch byte (SHOW_AREA_INTRO).
+ram:002C	TEMP6	Scratch byte (PLACE_BOMB).

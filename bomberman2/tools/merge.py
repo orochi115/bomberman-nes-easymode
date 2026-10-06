@@ -109,6 +109,9 @@ class Merger:
                 jp.kinds[jk] = kind
                 changed = True
         jp.alias = lambda key: us.name_of(self.amap[key]) if key in self.amap else None
+        # db entries keyed by US address also apply to JP through the full map
+        # (tables whose values moved); emit.py validates the bytes and skips
+        # entries that do not fit, with a note
         jp.alias_key = lambda uk: self.rmap.get(uk)
         return changed
 
@@ -270,8 +273,12 @@ def main():
     print("IF REGION_JP blocks %d" % m.ndiff)
     bad = 0
     for e in (m.us, m.jp):
-        for w in sorted(set(e.warnings)):
-            print("  note: " + w)
+        notes = sorted(set(e.warnings))
+        if notes and "--notes" in sys.argv:
+            for w in notes:
+                print("  note: " + w)
+        elif notes:
+            print("  %d US db entries have no JP counterpart (merge.py --notes lists them)" % len(notes))
         if e.conflicts or e.unresolved:
             print("%s: %d conflicts, %d unresolved" % (e.region, len(e.conflicts), len(set(e.unresolved))))
             for c in (e.conflicts + sorted(set(e.unresolved)))[:40]:

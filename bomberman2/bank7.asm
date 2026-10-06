@@ -2073,7 +2073,7 @@ ENDIF
   FARCALL 4, LOAD_AREA_LAYOUT
   RTS
 
-; FARCALL bank 4 at PLACE_SOFT_AND_BOMBS. That routine loads a per-stage byte into Z_2A and 04E2h (32h if GAME_MODE is not 0) and then scatters objects with NEXT_RNG.
+; FARCALL bank 4 at PLACE_SOFT_AND_BOMBS. That routine loads a per-stage byte into TEMP4 and 04E2h (32h if GAME_MODE is not 0) and then scatters objects with NEXT_RNG.
 .LOAD_STAGE_META
   FARCALL 4, PLACE_SOFT_AND_BOMBS
   RTS
@@ -3140,16 +3140,16 @@ ENDIF
   EQUW SND_CMD_REST
   EQUW SND_CMD_LOOP_PUSH
   EQUW SND_CMD_LOOP_POP
-  EQUW L7_DA23
+  EQUW SND_CMD_RESTART
   EQUW SND_CMD_SET_DUTY
   EQUW SND_CMD_SET_PITCH_ENV
   EQUW SND_CMD_SET_TEMPO
-  EQUW L7_DA65
-  EQUW L7_DA6F
+  EQUW SND_CMD_DD
+  EQUW SND_CMD_JUMP
   EQUW SND_CMD_CALL
   EQUW SND_CMD_RETURN
-  EQUW L7_DAD4
-  EQUW L7_DADE
+  EQUW SND_CMD_E1
+  EQUW SND_CMD_E2
   EQUW SND_CMD_SET_VOLUME
   EQUW SND_CMD_SET_VIBRATO
   EQUW SND_CMD_SET_VIB_LEN
@@ -3158,7 +3158,7 @@ ENDIF
   EQUW SND_CMD_VOLUME_REL
   EQUW SND_CMD_SET_LOOP
   EQUW SND_CMD_GOTO_LOOP
-  EQUW L7_DB5F
+  EQUW SND_CMD_TRANSPOSE_REL
 
 ; Command D0. Set this channel stream pointer to 0000.
 .SND_CMD_END
@@ -3245,12 +3245,12 @@ ENDIF
   DEY
   TYA
   AND #&03
-  STA Z_0C
+  STA SND_ARG
   TXA
   ASL A
   ASL A
   CLC
-  ADC Z_0C
+  ADC SND_ARG
   TAY
   LDX W_0281,Y
   DEX
@@ -3265,12 +3265,14 @@ ENDIF
   RTS
 .L7_DA1A
   LDX SND_CH
-  LDA Z_0C
+  LDA SND_ARG
   STA W_0254,X
   RTS
 
 ; (not seen executing during the coverage runs)
-.L7_DA23
+
+; Command D9. Reload the stream pointer of channel X from the channel table of the current BGM (SND_BGM_TABLE entry SND_BGM_LATCH-0C), i.e. restart the track.
+.SND_CMD_RESTART
   LDA SND_BGM_LATCH
   SEC
   SBC #&0C
@@ -3315,12 +3317,16 @@ ENDIF
   JMP SND_STREAM_ADVANCE
 
 ; (not seen executing during the coverage runs)
-.L7_DA65
+
+; Command DD. Store the next stream byte in W_020B (meaning not traced; no coverage run used it).
+.SND_CMD_DD
   LDY #&00
   LDA (WORK_PTR),Y
   STA W_020B
   JMP SND_STREAM_ADVANCE
-.L7_DA6F
+
+; Command DE. Continue the stream at the address in the next two bytes.
+.SND_CMD_JUMP
   LDY #&00
   LDA (WORK_PTR),Y
   PHA
@@ -3343,11 +3349,11 @@ ENDIF
   ASL A
   ASL A
   ASL A
-  STA Z_0C
+  STA SND_ARG
   LDA W_029A,X
   ASL A
   CLC
-  ADC Z_0C
+  ADC SND_ARG
   TAY
   LDA WORK_PTR
   CLC
@@ -3375,13 +3381,13 @@ ENDIF
   AND #&03
   STA W_029A,X
   ASL A
-  STA Z_0C
+  STA SND_ARG
   TXA
   ASL A
   ASL A
   ASL A
   CLC
-  ADC Z_0C
+  ADC SND_ARG
   TAY
   LDA W_029F,Y
   STA WORK_PTR
@@ -3390,12 +3396,16 @@ ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)
-.L7_DAD4
+
+; Command E1. Store the next stream byte in W_0210 (meaning not traced).
+.SND_CMD_E1
   LDY #&00
   LDA (WORK_PTR),Y
   STA W_0210
   JMP SND_STREAM_ADVANCE
-.L7_DADE
+
+; Command E2. Store the next stream byte in W_02C7,X for this channel (meaning not traced).
+.SND_CMD_E2
   LDY #&00
   LDA (WORK_PTR),Y
   STA W_02C7,X
@@ -3487,7 +3497,9 @@ ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)
-.L7_DB5F
+
+; Command EB. Add the next stream byte to SND_TRANSPOSE,X.
+.SND_CMD_TRANSPOSE_REL
   LDY #&00
   LDA (WORK_PTR),Y
   CLC
@@ -3526,8 +3538,8 @@ ENDIF
 .SND_SCALE_GATE
   STA WORK_PTR2_HI
   LDA #&00
-  STA Z_06
-  STA Z_07
+  STA SND_TMP0
+  STA SND_TMP1
   STA WORK_PTR2
   LDA SND_GATE_SCL,X
   ASL A
@@ -3535,20 +3547,20 @@ ENDIF
   ASL A
   ASL A
   ASL A
-  STA Z_0C
+  STA SND_ARG
   LDY #&02
 .L7_DBB6
   LSR WORK_PTR2
   ROR WORK_PTR2_HI
-  ASL Z_0C
+  ASL SND_ARG
   BCC L7_DBCB
-  LDA Z_06
+  LDA SND_TMP0
   CLC
   ADC WORK_PTR2
-  STA Z_06
-  LDA Z_07
+  STA SND_TMP0
+  LDA SND_TMP1
   ADC WORK_PTR2_HI
-  STA Z_07
+  STA SND_TMP1
 .L7_DBCB
   DEY
   BPL L7_DBB6
@@ -3562,7 +3574,7 @@ ENDIF
   RTS
 .L7_DBD9
   LDA #&00
-  STA Z_0C
+  STA SND_ARG
   STA WORK_PTR2_HI
   TAY
 .L7_DBE0
@@ -3573,7 +3585,7 @@ ENDIF
   BCC L7_DBF4
   CMP #&D6
   BNE L7_DBEE
-  INC Z_0C
+  INC SND_ARG
 .L7_DBEE
   PLA
   TAY
@@ -3583,11 +3595,11 @@ ENDIF
 ; (not seen executing during the coverage runs)
   RTS
 .L7_DBF4
-  LDA Z_0C
+  LDA SND_ARG
   BEQ L7_DC20
   LDA SND_DUR_UNIT,X
   BEQ L7_DC07
-  LDA Z_0C
+  LDA SND_ARG
   AND #&0F
   JSR SND_MUL_DURATION
   JMP L7_DC12
@@ -3598,17 +3610,17 @@ ENDIF
   TAY
   INY
   LDA (WORK_PTR),Y
-  STA Z_0D
+  STA SND_ARG_HI
   TYA
   PHA
-  LDA Z_0D
+  LDA SND_ARG_HI
 .L7_DC12
   STA WORK_PTR2
   CLC
   ADC WORK_PTR2_HI
   STA WORK_PTR2_HI
   LDA #&00
-  STA Z_0C
+  STA SND_ARG
   JMP L7_DBEE
 .L7_DC20
   PLA
@@ -3622,35 +3634,35 @@ ENDIF
   PLA
   SEC
   SBC SND_GATE,X
-  STA Z_0C
+  STA SND_ARG
   PLA
   STA WORK_PTR2_HI
   SEC
-  SBC Z_0C
+  SBC SND_ARG
   STA SND_GATE,X
   RTS
 
 ; Return A = SND_DUR_UNIT,X * (A+1).
 .SND_MUL_DURATION
-  STA Z_0C
-  INC Z_0C
+  STA SND_ARG
+  INC SND_ARG
   LDA SND_DUR_UNIT,X
-  STA Z_0E
+  STA SND_TMP2
   LDA #&00
-  STA Z_0D
+  STA SND_ARG_HI
   LDY #&05
 .L7_DC4E
-  LSR Z_0C
+  LSR SND_ARG
   BCC L7_DC59
-  LDA Z_0D
+  LDA SND_ARG_HI
   CLC
-  ADC Z_0E
-  STA Z_0D
+  ADC SND_TMP2
+  STA SND_ARG_HI
 .L7_DC59
-  ASL Z_0E
+  ASL SND_TMP2
   DEY
   BNE L7_DC4E
-  LDA Z_0D
+  LDA SND_ARG_HI
   RTS
 
 ; Map the note nibble through octave SND_OCTAVE,X and transpose SND_TRANSPOSE,X. Y indexes the period tables.
@@ -3660,13 +3672,13 @@ ENDIF
   LSR A
   LSR A
   LSR A
-  STA Z_0C
-  DEC Z_0C
+  STA SND_ARG
+  DEC SND_ARG
   LDY SND_OCTAVE,X
   DEY
   LDA SND_OCTAVE_BASE,Y
   CLC
-  ADC Z_0C
+  ADC SND_ARG
   CLC
   ADC SND_TRANSPOSE,X
   TAY
@@ -3680,9 +3692,9 @@ ENDIF
 .SND_JUMP_Z04
   JMP (WORK_PTR2)
 
-; Jump through the pointer in Z_0A.
+; Jump through the pointer in SND_VECTOR.
 .SND_JUMP_Z0A
-  JMP (Z_0A)
+  JMP (SND_VECTOR)
 
 ; APU timer low bytes. 96 entries, 8 octaves of 12 notes. Index comes from SND_NOTE_PERIOD.
 .SND_PERIOD_LO
@@ -3757,513 +3769,520 @@ ENDIF
 
 ; DPCM sample bits from E000 up to the vector area. Not code.
 .DPCM_SAMPLES
-  EQUB &01,&FF,&FF,&FF,&FF,&FE,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&80
-  EQUB &00,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&7F,&FF
-  EQUB &FF,&FC,&60,&F8,&07,&FF,&FF,&E0,&00,&00,&0F,&FF,&C0,&00,&00,&00
-  EQUB &3F,&FF,&FF,&FF,&F0,&7F,&FF,&F8,&00,&00,&00,&00,&00,&00,&00,&0F
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FE,&00,&00,&00,&00,&00,&1F,&FF,&F3,&FF
-  EQUB &FF,&FF,&00,&00,&00,&00,&FF,&F8,&00,&FF,&FF,&FF,&FF,&FC,&00,&00
-  EQUB &00,&00,&0F,&FF,&FF,&FF,&E0,&00,&1F,&FF,&E0,&00,&00,&00,&00,&00
-  EQUB &7F,&40,&03,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&03,&FF,&FF
-  EQUB &FF,&FF,&00,&FF,&FF,&00,&00,&00,&1F,&FF,&C0,&00,&00,&00,&07,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FE,&00,&00,&00,&00,&00,&7F,&FE,&00,&00
-  EQUB &00,&00,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&80,&00,&00
-  EQUB &00,&00,&00,&00,&7F,&FF,&FF,&FF,&FF,&FF,&FF,&FE,&00,&7F,&FF,&F8
-  EQUB &00,&00,&00,&00,&00,&00,&00,&7F,&FF,&FF,&FF,&FF,&FC,&00,&00,&3F
-  EQUB &FF,&FE,&0E,&10,&00,&00,&7F,&FF,&80,&00,&00,&00,&00,&00,&3F,&FF
-  EQUB &80,&01,&FF,&FF,&FF,&00,&00,&01,&FF,&F0,&00,&3D,&FF,&FF,&FF,&FF
-  EQUB &FF,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&03,&FF,&FF,&FF,&FF,&F0,&00
-  EQUB &00,&00,&00,&00,&03,&FF,&FF,&FF,&F8,&00,&00,&00,&00,&00,&00,&FF
-  EQUB &FF,&FF,&FF,&80,&00,&3F,&FF,&FF,&FF,&FF,&FF,&FF,&F8,&00,&00,&00
-  EQUB &00,&00,&01,&FF,&E3,&EF,&DF,&FF,&FF,&FF,&FF,&C0,&00,&00,&00,&00
-  EQUB &00,&00,&00,&00,&00,&F8,&00,&3F,&FF,&FF,&FF,&FF,&F8,&63,&FF,&80
-  EQUB &0F,&FF,&FF,&F8,&00,&0F,&FF,&E0,&00,&01,&FF,&FF,&C0,&00,&3F,&00
-  EQUB &01,&FF,&FF,&C3,&FF,&FF,&E0,&00,&0F,&FF,&00,&00,&00,&00,&00,&00
-  EQUB &00,&3F,&FF,&FE,&FF,&FF,&FF,&FE,&00,&00,&00,&1F,&FF,&FF,&F8,&00
-  EQUB &00,&00,&00,&30,&00,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00
-  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&7F,&FF,&FF,&FF,&FF,&FF,&FF,&F8
-  EQUB &00,&00,&00,&00,&00,&07,&FF,&8F,&FE,&00,&00,&00,&00,&00,&03,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&7F,&00,&00
-  EQUB &00,&00,&3F,&F8,&00,&00,&00,&00,&00,&00,&3F,&FF,&FF,&FF,&FF,&FF
-  EQUB &FF,&FF,&E0,&00,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&FF,&FF,&FF
-  EQUB &FF,&FF,&F0,&00,&00,&00,&00,&00,&00,&00,&01,&FF,&8F,&02,&1E,&00
-  EQUB &00,&00,&FF,&FF,&82,&7F,&FF,&FF,&FF,&FF,&FF,&C1,&FF,&EF,&FF,&FF
-  EQUB &FF,&F8,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&03,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&1F,&E1,&57,&FF,&FF
-  EQUB &FF,&87,&FF,&FF,&FF,&C0,&00,&00,&00,&00,&00,&00,&00,&7F,&FF,&FF
-  EQUB &81,&FF,&FF,&FF,&E0,&00,&00,&FF,&FE,&01,&FF,&00,&0F,&FF,&FC,&00
-  EQUB &00,&00,&00,&FF,&FF,&FF,&80,&00,&00,&00,&00,&00,&FF,&FF,&FF,&FF
-  EQUB &FE,&00,&7A,&80,&00,&1F,&FF,&FF,&FD,&FF,&E0,&1F,&FF,&E0,&00,&00
-  EQUB &07,&C2,&87,&7B,&FE,&00,&00,&00,&00,&1E,&3F,&FF,&FF,&F0,&0F,&FF
-  EQUB &FF,&80,&00,&00,&00,&00,&FF,&FF,&FF,&FF,&FF,&80,&00,&3F,&FC,&3F
-  EQUB &E0,&00,&F8,&00,&00,&68,&00,&00,&3F,&FE,&00,&00,&07,&FF,&FF,&FF
-  EQUB &FF,&FF,&FF,&C0,&00,&10,&00,&1F,&FF,&FF,&FF,&E0,&00,&00,&55,&8A
-  EQUB &7F,&B2,&E7,&FF,&80,&00,&00,&00,&1D,&FF,&E0,&00,&01,&FF,&F9,&FF
-  EQUB &FF,&F0,&00,&07,&FF,&FF,&FF,&E0,&00,&00,&00,&01,&FF,&FF,&FF,&C0
-  EQUB &00,&00,&00,&FF,&FF,&FF,&FF,&FC,&00,&00,&00,&00,&00,&0F,&FF,&FF
-  EQUB &FF,&FF,&E0,&1F,&FF,&00,&00,&00,&07,&FF,&FF,&FF,&80,&00,&00,&03
-  EQUB &FE,&3E,&C0,&00,&7F,&FF,&FF,&FF,&F0,&40,&00,&01,&D0,&00,&7F,&FF
-  EQUB &FF,&FF,&C0,&00,&00,&00,&00,&0F,&FF,&FF,&00,&0F,&F0,&00,&07,&FF
-  EQUB &FF,&FF,&F0,&00,&03,&FE,&D0,&03,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00
-  EQUB &03,&C0,&00,&00,&03,&FF,&FF,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&00
-  EQUB &00,&07,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&01,&FF,&80,&00,&FF
-  EQUB &FF,&FF,&FF,&FF,&00,&00,&00,&00,&02,&FF,&FF,&FF,&FF,&1F,&C0,&00
-  EQUB &02,&5F,&E2,&0F,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&00,&FF,&FF,&E0
-  EQUB &00,&0F,&FF,&FF,&FF,&C0,&00,&18,&01,&E0,&00,&0F,&C0,&00,&71,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&C0,&00,&00,&00,&00,&07,&FF,&80,&1F,&FF
-  EQUB &FF,&FF,&80,&00,&07,&FF,&FF,&FF,&80,&00,&FF,&FF,&BF,&F8,&00,&00
-  EQUB &00,&00,&1F,&FF,&C0,&00,&00,&00,&07,&FF,&FF,&FF,&FF,&F8,&00,&00
-  EQUB &03,&FF,&F8,&00,&FF,&FF,&E0,&00,&01,&00,&01,&FF,&FF,&FF,&E0,&80
-  EQUB &00,&00,&01,&E0,&1C,&3F,&FF,&FF,&FF,&FF,&FF,&FF,&FC,&00,&00,&00
-  EQUB &00,&00,&00,&FF,&FF,&FC,&00,&00,&1F,&FF,&FF,&FF,&FF,&FF,&FF,&00
-  EQUB &00,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&C0,&00,&3E,&00,&00,&7F
-  EQUB &FF,&FF,&C0,&FF,&F0,&00,&00,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&D0
-  EQUB &7F,&FF,&FF,&8F,&FF,&F0,&00,&08,&D0,&00,&00,&00,&00,&00,&01,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&F8,&00,&00,&07,&FF,&00,&07,&FF,&FF,&00,&1F
-  EQUB &C6,&00,&09,&3F,&FF,&00,&00,&00,&07,&FF,&FF,&FF,&F0,&1F,&FF,&B0
-  EQUB &00,&78,&00,&00,&07,&FF,&E0,&00,&1F,&FF,&FF,&F0,&00,&07,&00,&17
-  EQUB &AF,&FC,&00,&07,&80,&BF,&FF,&FF,&FF,&FF,&FF,&FC,&00,&30,&00,&00
-  EQUB &00,&00,&00,&FF,&FF,&E0,&00,&3F,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00
-  EQUB &00,&00,&00,&00,&00,&3F,&E0,&00,&00,&00,&02,&81,&FF,&FF,&FF,&D9
-  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&F0,&00,&00,&00,&00,&0E,&FF,&FF,&FF,&E0
-  EQUB &00,&00,&00,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&FF,&EB,&FF,&FF,&FF
-  EQUB &F0,&00,&00,&0C,&00,&00,&00,&FF,&FF,&80,&00,&00,&00,&00,&00,&00
-  EQUB &00,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FE,&00,&00,&00,&00,&07,&F0,&00
-  EQUB &1F,&FF,&FF,&FF,&FF,&FF,&FF,&EE,&00,&00,&00,&00,&03,&FF,&FF,&00
-  EQUB &00,&00,&0F,&FF,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&03,&FF,&FF,&FF
-  EQUB &FF,&FF,&E0,&00,&00,&1F,&F8,&00,&00,&1E,&00,&0F,&FF,&E0,&03,&FF
-  EQUB &80,&00,&7F,&F8,&00,&03,&FF,&FF,&EF,&FF,&FF,&E0,&00,&00,&00,&08
-  EQUB &FF,&FF,&FF,&C0,&03,&FF,&FF,&00,&0F,&FF,&80,&00,&00,&04,&FF,&FF
-  EQUB &F9,&5F,&80,&08,&00,&40,&00,&01,&FF,&C0,&3F,&FF,&FF,&24,&00,&00
-  EQUB &7F,&FF,&FF,&FF,&FF,&80,&00,&0F,&FC,&00,&3F,&FF,&FF,&FC,&00,&00
-  EQUB &00,&00,&00,&00,&FF,&FF,&FF,&FF,&FF,&FF,&00,&03,&FE,&00,&00,&00
-  EQUB &1F,&FF,&FF,&C0,&00,&00,&00,&1F,&FF,&FF,&E0,&BF,&FF,&FC,&00,&00
-  EQUB &C0,&00,&00,&1F,&F9,&7D,&FF,&FF,&FF,&00,&38,&80,&00,&00,&FF,&FF
-  EQUB &FF,&FF,&FF,&FE,&00,&00,&00,&00,&3D,&68,&00,&00,&00,&FF,&FF,&FF
-  EQUB &FE,&07,&FF,&FF,&FF,&F0,&00,&00,&00,&00,&00,&07,&FF,&0F,&F6,&80
-  EQUB &7F,&FF,&00,&00,&38,&3F,&FF,&FF,&FB,&FF,&20,&01,&EF,&03,&F9,&40
-  EQUB &10,&00,&00,&00,&FF,&FF,&FF,&C0,&00,&00,&03,&FF,&FF,&FF,&FF,&FF
-  EQUB &FF,&E0,&00,&00,&00,&00,&01,&FF,&FF,&FF,&E0,&00,&00,&00,&3F,&FF
-  EQUB &FF,&FF,&FC,&00,&00,&03,&FF,&0B,&C0,&1F,&F0,&21,&3C,&FF,&FF,&E0
-  EQUB &00,&00,&00,&00,&01,&FF,&FF,&FF,&FF,&F8,&07,&E8,&05,&5F,&FF,&FF
-  EQUB &82,&F5,&F0,&3C,&50,&00,&01,&F5,&00,&00,&00,&FE,&02,&00,&03,&FF
-  EQUB &FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&03,&FF,&FC,&3F,&FF,&C8,&88
-  EQUB &B1,&05,&6F,&2E,&C0,&7F,&FF,&88,&00,&01,&FF,&F8,&00,&1F,&FF,&FF
-  EQUB &FF,&F0,&00,&00,&00,&7F,&FE,&00,&0B,&E0,&01,&25,&FF,&FE,&00,&01
-  EQUB &FF,&C0,&04,&3F,&FF,&F8,&07,&8F,&CF,&FF,&FF,&FF,&F4,&02,&28,&00
-  EQUB &00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&F8,&00,&00,&03,&40,&4F,&FF
-  EQUB &FF,&80,&00,&1F,&FF,&EB,&FF,&80,&00,&00,&00,&0B,&40,&7F,&FF,&FF
-  EQUB &D3,&00,&7F,&F0,&7F,&FF,&FF,&F0,&01,&54,&C0,&00,&00,&00,&00,&2F
-  EQUB &FF,&FF,&FF,&FF,&FC,&10,&30,&90,&00,&04,&07,&FE,&01,&3F,&FF,&FF
-  EQUB &FE,&08,&AF,&80,&07,&F8,&4F,&D3,&FF,&C5,&00,&00,&00,&00,&00,&07
-  EQUB &FF,&FF,&FF,&C0,&FF,&FF,&E1,&C9,&C4,&00,&00,&1F,&FF,&FF,&FC,&00
-  EQUB &06,&90,&00,&FF,&FF,&A0,&00,&01,&FF,&F3,&FF,&00,&00,&7F,&FF,&FE
-  EQUB &00,&03,&FF,&FC,&00,&00,&3D,&FD,&E7,&00,&00,&7D,&C3,&85,&5F,&FF
-  EQUB &FE,&05,&7F,&10,&00,&00,&00,&0F,&FF,&DF,&E2,&9D,&F5,&00,&00,&7F
-  EQUB &FF,&C6,&B9,&5F,&FF,&FF,&00,&00,&32,&90,&02,&17,&F5,&80,&74,&00
-  EQUB &04,&82,&FF,&FC,&14,&7F,&FF,&FF,&C2,&7F,&F5,&37,&FF,&80,&00,&00
-  EQUB &19,&7A,&BB,&60,&00,&28,&00,&19,&E6,&F6,&BF,&FF,&F7,&42,&92,&FA
-  EQUB &11,&00,&12,&FF,&F4,&00,&0F,&FF,&FF,&FF,&00,&4F,&01,&00,&1F,&C9
-  EQUB &24,&A9,&5E,&FF,&F1,&50,&7F,&F8,&00,&2B,&4A,&C0,&29,&B2,&10,&C9
-  EQUB &BF,&FF,&D9,&FF,&FF,&FE,&00,&00,&00,&00,&00,&1B,&67,&FF,&FA,&0B
-  EQUB &FF,&C0,&4D,&F5,&80,&02,&6F,&57,&66,&00,&0F,&FF,&F0,&FF,&A9,&49
-  EQUB &11,&2A,&DF,&FF,&E0,&00,&03,&D8,&01,&2E,&5B,&F1,&1F,&D7,&EE,&44
-  EQUB &80,&25,&FF,&FB,&48,&07,&FF,&FE,&20,&00,&00,&06,&FF,&6E,&48,&6A
-  EQUB &9B,&20,&94,&7F,&11,&1B,&FF,&7F,&FF,&F8,&05,&10,&81,&29,&6D,&60
-  EQUB &00,&77,&DA,&5B,&24,&ED,&B3,&56,&CA,&A4,&00,&B7,&FF,&FD,&25,&DF
-  EQUB &EA,&10,&00,&12,&55,&90,&2A,&FE,&D2,&DE,&AB,&6A,&53,&BD,&2D,&CD
-  EQUB &20,&AE,&B4,&91,&45,&53,&4E,&D8,&04,&9E,&DA,&D2,&4D,&EF,&FD,&CD
-  EQUB &B2,&90,&00,&05,&48,&00,&9F,&FA,&AD,&FD,&A9,&BF,&FF,&80,&00,&27
-  EQUB &6B,&54,&DF,&AB,&6D,&C9,&B9,&92,&04,&40,&00,&09,&FF,&DB,&52,&B3
-  EQUB &EF,&B0,&05,&4F,&B6,&DE,&41,&4A,&90,&05,&FF,&FF,&FF,&E0,&00,&11
-  EQUB &04,&52,&A5,&BF,&6B,&48,&92,&7B,&6E,&DB,&05,&4A,&BF,&FC,&00,&00
-  EQUB &7D,&BD,&D4,&88,&25,&FF,&FF,&00,&00,&36,&94,&DF,&6B,&42,&2A,&4F
-  EQUB &FF,&D4,&09,&69,&55,&4A,&D9,&21,&7F,&66,&47,&FF,&90,&00,&1B,&01
-  EQUB &54,&49,&DF,&FA,&A6,&4B,&5F,&FF,&F0,&00,&01,&77,&FE,&00,&06,&B5
-  EQUB &D0,&12,&AD,&FE,&DA,&90,&17,&DD,&D9,&14,&AA,&95,&76,&92,&6E,&D5
-  EQUB &14,&00,&01,&7F,&FF,&5A,&97,&7A,&7D,&ED,&80,&00,&01,&7F,&FF,&FF
-  EQUB &C0,&14,&B1,&AF,&C8,&00,&00,&00,&0F,&FF,&F8,&20,&00,&7F,&FF,&FF
-  EQUB &FF,&01,&12,&FF,&FF,&F0,&40,&03,&94,&80,&02,&AF,&FF,&FF,&A0,&00
-  EQUB &00,&1F,&FF,&94,&00,&4A,&BB,&FF,&FF,&92,&AD,&D4,&00,&12,&57,&D9
+  EQUB &01,&FF,&FF,&FF,&FF,&FE
+.D7_E006
+  EQUB &00,&00,&00,&00,&1F,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&07,&FF,&FF
+  EQUB &FF,&FF,&FF,&00,&00,&00,&00,&00,&7F,&FF,&FF,&FC,&60,&F8,&07,&FF
+  EQUB &FF,&E0,&00,&00,&0F,&FF,&C0,&00,&00,&00,&3F,&FF,&FF,&FF,&F0,&7F
+  EQUB &FF,&F8,&00,&00,&00,&00,&00,&00,&00,&0F,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &FE,&00,&00,&00,&00,&00,&1F,&FF,&F3,&FF,&FF,&FF,&00,&00,&00,&00
+  EQUB &FF,&F8,&00,&FF,&FF,&FF,&FF,&FC,&00,&00,&00,&00,&0F,&FF,&FF,&FF
+  EQUB &E0,&00,&1F,&FF,&E0,&00,&00,&00,&00,&00,&7F,&40,&03,&FF,&FF,&FF
+  EQUB &FF,&FF,&E0,&00,&00,&00,&00,&03,&FF,&FF,&FF,&FF,&00,&FF,&FF,&00
+  EQUB &00,&00,&1F,&FF,&C0,&00,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &FE,&00,&00,&00,&00,&00,&7F,&FE,&00,&00,&00,&00,&00,&00,&07,&FF
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&00,&00,&00,&7F,&FF
+  EQUB &FF,&FF,&FF,&FF,&FF,&FE,&00,&7F,&FF,&F8,&00,&00,&00,&00,&00,&00
+  EQUB &00,&7F,&FF,&FF,&FF,&FF,&FC,&00,&00,&3F,&FF,&FE,&0E,&10,&00,&00
+  EQUB &7F,&FF,&80,&00,&00,&00,&00,&00,&3F,&FF,&80,&01,&FF,&FF,&FF,&00
+  EQUB &00,&01,&FF,&F0,&00,&3D,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00
+  EQUB &00,&00,&00,&03,&FF,&FF,&FF,&FF,&F0,&00,&00,&00,&00,&00,&03,&FF
+  EQUB &FF,&FF,&F8,&00,&00,&00,&00,&00,&00,&FF,&FF,&FF,&FF,&80,&00,&3F
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&F8,&00,&00,&00,&00,&00,&01,&FF,&E3,&EF
+  EQUB &DF,&FF,&FF,&FF,&FF,&C0,&00,&00,&00,&00,&00,&00,&00,&00,&00,&F8
+  EQUB &00,&3F,&FF,&FF,&FF,&FF,&F8,&63,&FF,&80,&0F,&FF,&FF,&F8,&00,&0F
+  EQUB &FF,&E0,&00,&01,&FF,&FF,&C0,&00,&3F,&00,&01,&FF,&FF,&C3,&FF,&FF
+  EQUB &E0,&00,&0F,&FF,&00,&00,&00,&00,&00,&00,&00,&3F,&FF,&FE,&FF,&FF
+  EQUB &FF,&FE,&00,&00,&00,&1F,&FF,&FF,&F8,&00,&00,&00,&00,&30,&00,&FF
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&00,&00,&00
+  EQUB &00,&00,&7F,&FF,&FF,&FF,&FF,&FF,&FF,&F8,&00,&00,&00,&00,&00,&07
+  EQUB &FF,&8F,&FE,&00,&00,&00,&00,&00,&03,&FF,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &FF,&FF,&FF,&FF,&E0,&00,&00,&7F,&00,&00,&00,&00,&3F,&F8,&00,&00
+  EQUB &00,&00,&00,&00,&3F,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&00
+  EQUB &00,&00,&1F,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&FF,&F0,&00,&00,&00
+  EQUB &00,&00,&00,&00,&01,&FF,&8F,&02,&1E,&00,&00,&00,&FF,&FF,&82,&7F
+  EQUB &FF,&FF,&FF,&FF,&FF,&C1,&FF,&EF,&FF,&FF,&FF,&F8,&00,&00,&00,&00
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&03,&FF,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &E0,&00,&00,&00,&00,&1F,&E1,&57,&FF,&FF,&FF,&87,&FF,&FF,&FF,&C0
+  EQUB &00,&00,&00,&00,&00,&00,&00,&7F,&FF,&FF,&81,&FF,&FF,&FF,&E0,&00
+  EQUB &00,&FF,&FE,&01,&FF,&00,&0F,&FF,&FC,&00,&00,&00,&00,&FF,&FF,&FF
+  EQUB &80,&00,&00,&00,&00,&00,&FF,&FF,&FF,&FF,&FE,&00,&7A,&80,&00,&1F
+  EQUB &FF,&FF,&FD,&FF,&E0,&1F,&FF,&E0,&00,&00,&07,&C2,&87,&7B,&FE,&00
+  EQUB &00,&00,&00,&1E,&3F,&FF,&FF,&F0,&0F,&FF,&FF,&80,&00,&00,&00,&00
+  EQUB &FF,&FF,&FF,&FF,&FF,&80,&00,&3F,&FC,&3F,&E0,&00,&F8,&00,&00,&68
+  EQUB &00,&00,&3F,&FE,&00,&00,&07,&FF,&FF,&FF,&FF,&FF,&FF,&C0,&00,&10
+  EQUB &00,&1F,&FF,&FF,&FF,&E0,&00,&00,&55,&8A,&7F,&B2,&E7,&FF,&80,&00
+  EQUB &00,&00,&1D,&FF,&E0,&00,&01,&FF,&F9,&FF,&FF,&F0,&00,&07,&FF,&FF
+  EQUB &FF,&E0,&00,&00,&00,&01,&FF,&FF,&FF,&C0,&00,&00,&00,&FF,&FF,&FF
+  EQUB &FF,&FC,&00,&00,&00,&00,&00,&0F,&FF,&FF,&FF,&FF,&E0,&1F,&FF,&00
+  EQUB &00,&00,&07,&FF,&FF,&FF,&80,&00,&00,&03,&FE,&3E,&C0,&00,&7F,&FF
+  EQUB &FF,&FF,&F0,&40,&00,&01,&D0,&00,&7F,&FF,&FF,&FF,&C0,&00,&00,&00
+  EQUB &00,&0F,&FF,&FF,&00,&0F,&F0,&00,&07,&FF,&FF,&FF,&F0,&00,&03,&FE
+  EQUB &D0,&03,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&03,&C0,&00,&00,&03,&FF
+  EQUB &FF,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&00,&00,&07,&FF,&FF,&FF,&FF
+  EQUB &FF,&00,&00,&00,&00,&01,&FF,&80,&00,&FF,&FF,&FF,&FF,&FF,&00,&00
+  EQUB &00,&00,&02,&FF,&FF,&FF,&FF,&1F,&C0,&00,&02,&5F,&E2,&0F,&FF,&FF
+  EQUB &FF,&E0,&00,&00,&00,&00,&00,&FF,&FF,&E0,&00,&0F,&FF,&FF,&FF,&C0
+  EQUB &00,&18,&01,&E0,&00,&0F,&C0,&00,&71,&FF,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &C0,&00,&00,&00,&00,&07,&FF,&80,&1F,&FF,&FF,&FF,&80,&00,&07,&FF
+  EQUB &FF,&FF,&80,&00,&FF,&FF,&BF,&F8,&00,&00,&00,&00,&1F,&FF,&C0,&00
+  EQUB &00,&00,&07,&FF,&FF,&FF,&FF,&F8,&00,&00,&03,&FF,&F8,&00,&FF,&FF
+  EQUB &E0,&00,&01,&00,&01,&FF,&FF,&FF,&E0,&80,&00,&00,&01,&E0,&1C,&3F
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&FC,&00,&00,&00,&00,&00,&00,&FF,&FF,&FC
+  EQUB &00,&00,&1F,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&00,&1F
+  EQUB &FF,&FF,&FF,&FF,&C0,&00,&3E,&00,&00,&7F,&FF,&FF,&C0,&FF,&F0,&00
+  EQUB &00,&00,&00,&00,&00,&1F,&FF,&FF,&FF,&D0,&7F,&FF,&FF,&8F,&FF,&F0
+  EQUB &00,&08,&D0,&00,&00,&00,&00,&00,&01,&FF,&FF,&FF,&FF,&FF,&FF,&F8
+  EQUB &00,&00,&07,&FF,&00,&07,&FF,&FF,&00,&1F,&C6,&00,&09,&3F,&FF,&00
+  EQUB &00,&00,&07,&FF,&FF,&FF,&F0,&1F,&FF,&B0,&00,&78,&00,&00,&07,&FF
+  EQUB &E0,&00,&1F,&FF,&FF,&F0,&00,&07,&00,&17,&AF,&FC,&00,&07,&80,&BF
+  EQUB &FF,&FF,&FF,&FF,&FF,&FC,&00,&30,&00,&00,&00,&00,&00,&FF,&FF,&E0
+  EQUB &00,&3F,&FF,&FF,&FF,&FF,&FF,&FF,&00,&00,&00,&00,&00,&00,&00,&3F
+  EQUB &E0,&00,&00,&00,&02,&81,&FF,&FF,&FF,&D9,&FF,&FF,&FF,&FF,&FF,&FF
+  EQUB &F0,&00,&00,&00,&00,&0E,&FF,&FF,&FF,&E0,&00,&00,&00,&00,&00,&07
+  EQUB &FF,&FF,&FF,&FF,&FF,&FF,&EB,&FF,&FF,&FF,&F0,&00,&00,&0C,&00,&00
+  EQUB &00,&FF,&FF,&80,&00,&00,&00,&00,&00,&00,&00,&FF,&FF,&FF,&FF,&FF
+  EQUB &FF,&FF,&FE,&00,&00,&00,&00,&07,&F0,&00,&1F,&FF,&FF,&FF,&FF,&FF
+  EQUB &FF,&EE,&00,&00,&00,&00,&03,&FF,&FF,&00,&00,&00,&0F,&FF,&FF,&FF
+  EQUB &FF,&FF,&80,&00,&00,&00,&03,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&1F
+  EQUB &F8,&00,&00,&1E,&00,&0F,&FF,&E0,&03,&FF,&80,&00,&7F,&F8,&00,&03
+  EQUB &FF,&FF,&EF,&FF,&FF,&E0,&00,&00,&00,&08,&FF,&FF,&FF,&C0,&03,&FF
+  EQUB &FF,&00,&0F,&FF,&80,&00,&00,&04,&FF,&FF,&F9,&5F,&80,&08,&00,&40
+  EQUB &00,&01,&FF,&C0,&3F,&FF,&FF,&24,&00,&00,&7F,&FF,&FF,&FF,&FF,&80
+  EQUB &00,&0F,&FC,&00,&3F,&FF,&FF,&FC,&00,&00,&00,&00,&00,&00,&FF,&FF
+  EQUB &FF,&FF,&FF,&FF,&00,&03,&FE,&00,&00,&00,&1F,&FF,&FF,&C0,&00,&00
+  EQUB &00,&1F,&FF,&FF,&E0,&BF,&FF,&FC,&00,&00,&C0,&00,&00,&1F,&F9,&7D
+  EQUB &FF,&FF,&FF,&00,&38,&80,&00,&00,&FF,&FF,&FF,&FF,&FF,&FE,&00,&00
+  EQUB &00,&00,&3D,&68,&00,&00,&00,&FF,&FF,&FF,&FE,&07,&FF,&FF,&FF,&F0
+  EQUB &00,&00,&00,&00,&00,&07,&FF,&0F,&F6,&80,&7F,&FF,&00,&00,&38,&3F
+  EQUB &FF,&FF,&FB,&FF,&20,&01,&EF,&03,&F9,&40,&10,&00,&00,&00,&FF,&FF
+  EQUB &FF,&C0,&00,&00,&03,&FF,&FF,&FF,&FF,&FF,&FF,&E0,&00,&00,&00,&00
+  EQUB &01,&FF,&FF,&FF,&E0,&00,&00,&00,&3F,&FF,&FF,&FF,&FC,&00,&00,&03
+  EQUB &FF,&0B,&C0,&1F,&F0,&21,&3C,&FF,&FF,&E0,&00,&00,&00,&00,&01,&FF
+  EQUB &FF,&FF,&FF,&F8,&07,&E8,&05,&5F,&FF,&FF,&82,&F5,&F0,&3C,&50,&00
+  EQUB &01,&F5,&00,&00,&00,&FE,&02,&00,&03,&FF,&FF,&FF,&FF,&FF,&FF,&00
+  EQUB &00,&00,&00,&03,&FF,&FC,&3F,&FF,&C8,&88,&B1,&05,&6F,&2E,&C0,&7F
+  EQUB &FF,&88,&00,&01,&FF,&F8,&00,&1F,&FF,&FF,&FF,&F0,&00,&00,&00,&7F
+  EQUB &FE,&00,&0B,&E0,&01,&25,&FF,&FE,&00,&01,&FF,&C0,&04,&3F,&FF,&F8
+  EQUB &07,&8F,&CF,&FF,&FF,&FF,&F4,&02,&28,&00,&00,&00,&00,&00,&1F,&FF
+  EQUB &FF,&FF,&FF,&F8,&00,&00,&03,&40,&4F,&FF,&FF,&80,&00,&1F,&FF,&EB
+  EQUB &FF,&80,&00,&00,&00,&0B,&40,&7F,&FF,&FF,&D3,&00,&7F,&F0,&7F,&FF
+  EQUB &FF,&F0,&01,&54,&C0,&00,&00,&00,&00,&2F,&FF,&FF,&FF,&FF,&FC,&10
+  EQUB &30,&90,&00,&04,&07,&FE,&01,&3F,&FF,&FF,&FE,&08,&AF,&80,&07,&F8
+  EQUB &4F,&D3,&FF,&C5,&00,&00,&00,&00,&00,&07,&FF,&FF,&FF,&C0,&FF,&FF
+  EQUB &E1,&C9,&C4,&00,&00,&1F,&FF,&FF,&FC,&00,&06,&90,&00,&FF,&FF,&A0
+  EQUB &00,&01,&FF,&F3,&FF,&00,&00,&7F,&FF,&FE,&00,&03,&FF,&FC,&00,&00
+  EQUB &3D,&FD,&E7,&00,&00,&7D,&C3,&85,&5F,&FF,&FE,&05,&7F,&10,&00,&00
+  EQUB &00,&0F,&FF,&DF,&E2,&9D,&F5,&00,&00,&7F,&FF,&C6,&B9,&5F,&FF,&FF
+  EQUB &00,&00,&32,&90,&02,&17,&F5,&80,&74,&00,&04,&82,&FF,&FC,&14,&7F
+  EQUB &FF,&FF,&C2,&7F,&F5,&37,&FF,&80,&00,&00,&19,&7A,&BB,&60,&00,&28
+  EQUB &00,&19,&E6,&F6,&BF,&FF,&F7,&42,&92,&FA,&11,&00,&12,&FF,&F4,&00
+  EQUB &0F,&FF,&FF,&FF,&00,&4F,&01,&00,&1F,&C9,&24,&A9,&5E,&FF,&F1,&50
+  EQUB &7F,&F8,&00,&2B,&4A,&C0,&29,&B2,&10,&C9,&BF,&FF,&D9,&FF,&FF,&FE
+  EQUB &00,&00,&00,&00,&00,&1B,&67,&FF,&FA,&0B,&FF,&C0,&4D,&F5,&80,&02
+  EQUB &6F,&57,&66,&00,&0F,&FF,&F0,&FF,&A9,&49,&11,&2A,&DF,&FF,&E0,&00
+  EQUB &03,&D8,&01,&2E,&5B,&F1,&1F,&D7,&EE,&44,&80,&25,&FF,&FB,&48,&07
+  EQUB &FF,&FE,&20,&00,&00,&06,&FF,&6E,&48,&6A,&9B,&20,&94,&7F,&11,&1B
+  EQUB &FF,&7F,&FF,&F8,&05,&10,&81,&29,&6D,&60,&00,&77,&DA,&5B,&24,&ED
+  EQUB &B3,&56,&CA,&A4,&00,&B7,&FF,&FD,&25,&DF,&EA,&10,&00,&12,&55,&90
+  EQUB &2A,&FE,&D2,&DE,&AB,&6A,&53,&BD,&2D,&CD,&20,&AE,&B4,&91,&45,&53
+  EQUB &4E,&D8,&04,&9E,&DA,&D2,&4D,&EF,&FD,&CD,&B2,&90,&00,&05,&48,&00
+  EQUB &9F,&FA,&AD,&FD,&A9,&BF,&FF,&80,&00,&27,&6B,&54,&DF,&AB,&6D,&C9
+  EQUB &B9,&92,&04,&40,&00,&09,&FF,&DB,&52,&B3,&EF,&B0,&05,&4F,&B6,&DE
+  EQUB &41,&4A,&90,&05,&FF,&FF,&FF,&E0,&00,&11,&04,&52,&A5,&BF,&6B,&48
+  EQUB &92,&7B,&6E,&DB,&05,&4A,&BF,&FC,&00,&00,&7D,&BD,&D4,&88,&25,&FF
+  EQUB &FF,&00,&00,&36,&94,&DF,&6B,&42,&2A,&4F,&FF,&D4,&09,&69,&55,&4A
+  EQUB &D9,&21,&7F,&66,&47,&FF,&90,&00,&1B,&01,&54,&49,&DF,&FA,&A6,&4B
+  EQUB &5F,&FF,&F0,&00,&01,&77,&FE,&00,&06,&B5,&D0,&12,&AD,&FE,&DA,&90
+  EQUB &17,&DD,&D9,&14,&AA,&95,&76,&92,&6E,&D5,&14,&00,&01,&7F,&FF,&5A
+  EQUB &97,&7A,&7D,&ED,&80,&00,&01,&7F,&FF,&FF,&C0,&14,&B1,&AF,&C8,&00
+  EQUB &00,&00,&0F,&FF,&F8,&20,&00,&7F,&FF,&FF,&FF,&01,&12,&FF,&FF,&F0
+  EQUB &40,&03,&94,&80,&02,&AF,&FF,&FF,&A0,&00,&00,&1F,&FF,&94,&00,&4A
+  EQUB &BB,&FF,&FF,&92,&AD,&D4,&00,&12,&57,&D9
 .D7_E800
-  EQUB &21,&00,&2F,&FF,&FE,&02,&6F,&FF,&B4,&00,&16,&92,&01,&09,&5F,&FF
-  EQUB &E1,&24,&94,&3F,&FF,&FF,&00,&00,&01,&FF,&FA,&00,&00,&B6,&FF,&6C
-  EQUB &85,&3B,&77,&24,&A5,&AA,&FE,&A2,&14,&09,&AF,&ED,&DD,&56,&80,&01
-  EQUB &FA,&AC,&D0,&29,&2E,&FB,&71,&01,&1F,&FF,&FF,&F8,&20,&00,&03,&FB
-  EQUB &80,&00,&00,&0F,&FF,&EA,&EF,&F7,&FF,&F8,&00,&0F,&FB,&54,&A2,&55
-  EQUB &10,&22,&2B,&BB,&D8,&40,&00,&1A,&ED,&FF,&B2,&96,&D3,&BF,&FF,&D0
-  EQUB &82,&05,&7D,&5A,&40,&40,&00,&FF,&FF,&E2,&10,&0A,&FE,&FF,&B2,&00
-  EQUB &00,&00,&3F,&FF,&FA,&D2,&56,&DD,&BB,&D8,&00,&00,&7F,&FE,&89,&24
-  EQUB &EF,&F5,&64,&4F,&77,&24,&94,&4C,&80,&00,&00,&7F,&FF,&FF,&E0,&45
-  EQUB &6A,&ED,&E4,&91,&00,&05,&FF,&FE,&E9,&04,&96,&AB,&BA,&A5,&15,&28
-  EQUB &96,&DF,&B6,&88,&49,&12,&9A,&9D,&6D,&DD,&82,&02,&24,&B7,&7F,&7F
-  EQUB &FA,&20,&05,&65,&A7,&FD,&A0,&04,&76,&D2,&02,&15,&B7,&BB,&5B,&AD
-  EQUB &68,&00,&0D,&FF,&FF,&DE,&40,&00,&03,&EF,&57,&6B,&59,&08,&01,&FF
-  EQUB &BA,&A2,&00,&1F,&FF,&B2,&41,&2D,&DF,&FF,&E0,&02,&66,&88,&A8,&80
-  EQUB &48,&BF,&FF,&7E,&C4,&00,&13,&2D,&33,&FF,&ED,&24,&46,&EE,&4B,&59
-  EQUB &B4,&44,&94,&CB,&59,&6A,&B5,&24,&76,&AB,&74,&91,&0A,&D2,&6E,&E9
-  EQUB &BB,&69,&9D,&CD,&29,&11,&37,&B8,&12,&75,&20,&8A,&7E,&FF,&6A,&40
-  EQUB &09,&67,&ED,&B1,&28,&11,&27,&FF,&D9,&92,&4A,&55,&FE,&ED,&40,&10
-  EQUB &13,&7B,&BF,&59,&68,&25,&2A,&B5,&A9,&5E,&D6,&81,&00,&8A,&57,&FE
-  EQUB &B4,&41,&2A,&77,&EF,&6A,&94,&B5,&B0,&54,&BF,&E5,&4A,&62,&51,&4B
-  EQUB &2D,&B6,&20,&40,&12,&FB,&BB,&B6,&56,&B7,&FD,&4A,&B5,&58,&95,&10
-  EQUB &42,&92,&BA,&64,&11,&37,&FD,&B6,&52,&95,&6D,&51,&BD,&F4,&86,&EF
-  EQUB &6A,&80,&10,&01,&77,&7E,&FB,&20,&00,&9B,&7F,&BB,&20,&25,&2A,&57
-  EQUB &FF,&FC,&00,&FF,&FE,&08,&84,&11,&24,&F6,&D9,&24,&14,&DD,&DA,&92
-  EQUB &B2,&A3,&48,&04,&BF,&FF,&65,&4A,&95,&5A,&ED,&DD,&20,&4A,&DA,&22
-  EQUB &4F,&7E,&B1,&12,&56,&DA,&93,&72,&94,&A2,&25,&4D,&B5,&36,&D6,&CA
-  EQUB &01,&0F,&FD,&B6,&4A,&6F,&D5,&80,&89,&75,&C9,&A5,&A9,&59,&66,&AA
-  EQUB &AA,&DA,&B4,&92,&4E,&B2,&25,&DA,&5A,&AE,&B4,&B4,&AB,&EE,&80,&01
-  EQUB &2F,&EF,&6A,&02,&4A,&6F,&6A,&B6,&D2,&52,&DB,&14,&95,&AC,&AA,&AA
-  EQUB &AB,&51,&14,&82,&57,&FF,&B6,&EE,&A2,&57,&AC,&80,&92,&6B,&65,&20
-  EQUB &25,&35,&92,&DD,&DF,&DB,&41,&49,&6F,&7D,&6A,&D9,&04,&14,&AB,&2A
-  EQUB &BB,&5A,&C2,&48,&89,&37,&4D,&B6,&55,&21,&29,&DE,&E9,&AB,&77,&76
-  EQUB &88,&93,&4C,&91,&1B,&BE,&B4,&82,&05,&B6,&EB,&6A,&48,&49,&2E,&77
-  EQUB &6A,&A6,&F7,&D6,&08,&AB,&55,&44,&96,&AB,&64,&12,&77,&AD,&AB,&25
-  EQUB &53,&29,&09,&5D,&B6,&EE,&F6,&91,&54,&84,&92,&91,&57,&76,&C9,&29
-  EQUB &B6,&5A,&B6,&D5,&6E,&F4,&40,&44,&59,&4D,&B7,&6D,&69,&49,&2A,&A9
-  EQUB &11,&25,&5A,&E5,&36,&DD,&EE,&22,&5B,&B8,&8A,&56,&A9,&26,&5D,&AD
-  EQUB &A6,&EF,&5A,&C4,&49,&08,&92,&59,&22,&4E,&FB,&D5,&AD,&AD,&12,&8A
-  EQUB &DD,&ED,&01,&00,&95,&4F,&FB,&CA,&52,&BD,&DB,&6D,&64,&00,&02,&FE
-  EQUB &B5,&B5,&91,&00,&92,&94,&DF,&FB,&DD,&29,&49,&52,&A6,&AA,&D2,&B7
-  EQUB &F7,&E8,&00,&90,&92,&5D,&EF,&56,&91,&44,&25,&F6,&AA,&49,&46,&AD
-  EQUB &B4,&AD,&6D,&22,&4B,&77,&75,&92,&93,&5A,&AA,&CA,&52,&49,&B5,&EA
-  EQUB &49,&4D,&4A,&12,&4B,&FF,&F7,&55,&82,&04,&4D,&DB,&A4,&89,&55,&6D
-  EQUB &6A,&A0,&82,&95,&6F,&F6,&ED,&94,&9A,&CC,&4A,&97,&77,&5A,&24,&A9
-  EQUB &52,&CA,&22,&49,&6E,&F7,&6C,&B5,&B5,&08,&8A,&8D,&48,&02,&2F,&76
-  EQUB &F6,&DC,&B7,&FF,&FE,&DB,&20,&00,&00,&2A,&2D,&B6,&DB,&90,&00,&8A
-  EQUB &C9,&AE,&1F,&FF,&E8,&80,&09,&2A,&54,&95,&55,&55,&55,&55,&55,&40
-  EQUB &01,&0A,&7F,&FF,&FA,&AA,&AD,&69,&55,&55,&2A,&AA,&AA,&A5,&55,&56
-  EQUB &AA,&AF,&F0,&DE,&0A,&F0,&AB,&21,&7C,&22,&52,&55,&55,&55,&55,&52
-  EQUB &AA,&AA,&B5,&55,&55,&56,&AA,&A5,&55,&55,&55,&55,&55,&55,&62,&4C
-  EQUB &1A,&B4,&3E,&4B,&59,&68,&3F,&75,&75,&55,&55,&55,&55,&55,&55,&AA
-  EQUB &AA,&A5,&55,&55,&54,&AA,&AA,&95,&55,&55,&55,&55,&55,&56,&D5,&BA
-  EQUB &CA,&BA,&91,&A8,&AA,&D1,&24,&A9,&45,&55,&55,&55,&55,&55,&56,&AA
-  EQUB &AA,&AA,&AA,&AA,&AA,&AA,&AD,&55,&55,&55,&55,&55,&55,&40,&84,&AA
-  EQUB &AA,&AC,&AF,&F7,&56,&AA,&AD,&55,&55,&55,&55,&55,&55,&4B,&AC,&D6
-  EQUB &AE,&90,&B6,&AA,&16,&A9,&59,&54,&9B,&45,&4C,&D3,&35,&24,&E3,&13
-  EQUB &AA,&84,&DA,&AA,&2A,&AD,&59,&5D,&5B,&D5,&55,&55,&59,&9A,&AA,&AA
-  EQUB &AA,&AA,&AA,&AA,&AA,&A5,&56,&ED,&55,&55,&D2,&75,&34,&4B,&64,&AA
-  EQUB &4C,&2A,&A4,&AA,&AB,&55,&55,&55,&55,&55,&55,&55,&55,&A4,&A9,&A8
-  EQUB &BA,&AA,&AA,&AA,&AD,&2D,&2D,&55,&55,&52,&D5,&55,&4E,&AA,&AA,&AA
-  EQUB &AA,&AD,&AA,&6A,&A9,&B5,&55,&55,&FF,&FF,&FF,&FF,&FF,&80,&00,&00
-  EQUB &00,&00,&00,&00,&00,&00,&C6,&7F,&EF,&FF,&1F,&BF,&C6,&7F,&FD,&EF
-  EQUB &FF,&FF,&FF,&FC,&00,&00,&00,&00,&00,&00,&00,&00,&00,&FF,&87,&FF
-  EQUB &FF,&FF,&7F,&CE,&CF,&CF,&C6,&7F,&1D,&39,&19,&0F,&00,&40,&00,&00
-  EQUB &00,&00,&00,&34,&78,&7B,&EF,&FF,&FF,&EF,&FF,&FF,&FF,&FD,&0C,&60
-  EQUB &60,&70,&00,&08,&00,&00,&C0,&00,&11,&1C,&3E,&77,&F7,&FF,&FF,&FF
-  EQUB &FF,&FE,&FF,&8F,&F8,&00,&18,&10,&08,&01,&80,&00,&18,&03,&80,&71
-  EQUB &F8,&7F,&E3,&FF,&EF,&FB,&FF,&FF,&DF,&E3,&F0,&37,&01,&04,&00,&00
-  EQUB &00,&80,&18,&1B,&E0,&E1,&F8,&FE,&67,&FE,&7E,&FC,&FD,&FC,&7C,&FF
-  EQUB &F8,&22,&08,&02,&08,&00,&10,&34,&0E,&0F,&07,&D8,&FC,&F3,&7F,&C7
-  EQUB &9F,&FC,&79,&F3,&EE,&31,&B3,&07,&D0,&40,&21,&8C,&00,&00,&B8,&70
-  EQUB &3F,&83,&EE,&F8,&FF,&C7,&3F,&F6,&71,&F8,&69,&F1,&70,&E0,&8F,&10
-  EQUB &18,&10,&41,&91,&B0,&F1,&2C,&CE,&C7,&FF,&31,&F0,&F4,&F9,&CF,&EE
-  EQUB &0E,&F0,&1D,&4C,&07,&02,&C1,&E0,&33,&81,&88,&F8,&7E,&E1,&C7,&E6
-  EQUB &73,&9C,&7B,&3F,&19,&87,&E3,&40,&FC,&C0,&9A,&8A,&71,&0C,&7C,&1E
-  EQUB &21,&A3,&EA,&C1,&FC,&70,&FA,&B1,&72,&E3,&E1,&FC,&03,&FC,&0C,&D8
-  EQUB &38,&1E,&13,&C1,&C7,&C0,&78,&73,&8F,&46,&70,&FC,&AC,&E5,&E0,&CF
-  EQUB &F0,&C3,&5A,&70,&71,&AA,&E1,&19,&70,&3C,&39,&C2,&67,&E2,&3E,&19
-  EQUB &E1,&CE,&71,&75,&55,&C3,&97,&28,&F8,&65,&C3,&6A,&62,&74,&C3,&C3
-  EQUB &29,&F0,&79,&83,&CE,&4C,&EA,&6C,&9D,&C3,&68,&F8,&78,&B5,&C1,&CE
-  EQUB &2A,&A7,&2B,&2A,&37,&07,&8E,&1A,&DA,&34,&E3,&A1,&BA,&97,&2A,&AA
-  EQUB &AD,&55,&8D,&65,&C3,&59,&53,&54,&72,&B1,&5D,&2A,&63,&2E,&39,&2C
-  EQUB &D8,&BC,&33,&8E,&AB,&2C,&3C,&A9,&B1,&D2,&B2,&AC,&B2,&CD,&2A,&AC
-  EQUB &AC,&AC,&6C,&AA,&AB,&16,&A5,&A5,&A9,&AB,&2A,&CA,&6B,&4C,&AD,&54
-  EQUB &D3,&4C,&B5,&55,&2A,&CD,&2B,&4C,&D3,&1B,&4B,&2A,&CA,&B2,&B4,&AD
-  EQUB &DB,&33,&97,&01,&82,&04,&00,&87,&0E,&BF,&F9,&FF,&FF,&FF,&EF,&D9
-  EQUB &F8,&30,&03,&00,&E2,&05,&0F,&1C,&33,&8C,&00,&31,&81,&80,&C3,&85
-  EQUB &3F,&EF,&FB,&FF,&9F,&3F,&F7,&E3,&87,&98,&01,&C0,&46,&10,&1E,&18
-  EQUB &66,&20,&70,&73,&81,&C7,&CF,&CD,&C1,&FF,&7C,&FF,&1F,&3F,&DF,&38
-  EQUB &0F,&87,&06,&08,&00,&30,&18,&40,&B3,&88,&6B,&38,&E7,&CF,&97,&DF
-  EQUB &79,&E7,&7C,&67,&9F,&F1,&DC,&70,&31,&81,&00,&30,&00,&78,&18,&D0
-  EQUB &07,&9C,&7D,&FE,&7E,&7E,&3C,&F3,&FC,&5E,&3E,&E1,&E6,&30,&1E,&00
-  EQUB &70,&21,&E0,&18,&61,&81,&C1,&7C,&3F,&99,&F9,&F7,&9F,&3D,&FC,&78
-  EQUB &E7,&84,&1E,&1E,&07,&81,&CC,&0D,&81,&83,&87,&0E,&C1,&C2,&93,&E6
-  EQUB &F9,&F2,&F1,&F9,&E3,&E5,&F8,&78,&3E,&05,&E0,&C1,&98,&66,&1C,&00
-  EQUB &78,&E1,&C3,&38,&EE,&CF,&83,&F3,&9D,&C7,&3F,&C3,&AA,&3C,&7E,&03
-  EQUB &D0,&CC,&18,&68,&E3,&02,&3E,&38,&1E,&3C,&38,&3E,&3C,&E3,&CF,&8F
-  EQUB &2F,&1C,&7C,&CE,&0E,&73,&31,&C8,&15,&67,&0E,&07,&43,&1C,&32,&79
-  EQUB &27,&F0,&59,&F0,&F9,&8F,&0F,&B6,&1F,&1A,&E1,&C3,&83,&8F,&17,&31
-  EQUB &8C,&70,&E8,&2C,&E7,&0B,&8E,&E1,&73,&CA,&9A,&AC,&DE,&38,&3E,&1C
-  EQUB &E3,&E0,&C9,&F0,&3C,&70,&D4,&70,&F4,&70,&F0,&5E,&70,&9F,&46,&1F
-  EQUB &1D,&47,&A9,&3A,&63,&75,&4D,&1C,&71,&71,&9B,&0A,&AA,&AC,&3C,&A8
-  EQUB &CF,&1C,&65,&47,&8F,&2C,&5E,&35,&37,&25,&E3,&87,&33,&16,&71,&39
-  EQUB &93,&8E,&33,&92,&D4,&A6,&9B,&1A,&A8,&EC,&C7,&93,&33,&8D,&33,&93
-  EQUB &96,&70,&F2,&6A,&C6,&8D,&2C,&B4,&E3,&43,&C0,&64,&EC,&67,&1F,&3E
-  EQUB &C3,&1E,&6E,&EE,&E0,&C4,&01,&C4,&F6,&30,&64,&E3,&1C,&5F,&1A,&CC
-  EQUB &FB,&88,&8C,&FE,&38,&C9,&82,&2C,&8C,&B3,&B3,&2E,&3F,&B6,&66,&CF
-  EQUB &8C,&4B,&85,&80,&8F,&9B,&D1,&F2,&B1,&80,&52,&E0,&F3,&44,&BF,&27
-  EQUB &CF,&9A,&4C,&1C,&FD,&66,&30,&E6,&E4,&63,&18,&E1,&C9,&98,&C1,&99
-  EQUB &97,&7C,&1C,&12,&8F,&9C,&E6,&7D,&39,&E1,&E2,&4C,&66,&73,&9E,&27
-  EQUB &0E,&34,&C3,&81,&D9,&39,&F9,&E7,&1C,&C8,&E6,&0D,&27,&4F,&90,&26
-  EQUB &37,&CF,&B6,&39,&34,&46,&05,&CE,&D6,&71,&E1,&C7,&31,&34,&F3,&6D
-  EQUB &03,&31,&3A,&CD,&8F,&47,&4E,&51,&C6,&66,&63,&99,&19,&B9,&1C,&65
-  EQUB &9C,&9C,&44,&DD,&AF,&49,&E7,&23,&93,&8E,&24,&4E,&C6,&F1,&B7,&C2
-  EQUB &4E,&63,&1C,&A7,&27,&06,&A3,&4E,&C1,&34,&F4,&EC,&F1,&F1,&B4,&78
-  EQUB &64,&33,&59,&A6,&0F,&0D,&B6,&5C,&C6,&17,&32,&71,&21,&D9,&C9,&D8
-  EQUB &FB,&74,&C8,&32,&3C,&CC,&7B,&33,&87,&0F,&60,&4B,&D1,&8E,&0C,&FE
-  EQUB &53,&29,&8F,&9A,&64,&EC,&89,&A2,&F9,&13,&E6,&33,&F1,&18,&69,&A5
-  EQUB &B9,&3E,&0E,&3D,&86,&6C,&C7,&8F,&23,&89,&C8,&C4,&67,&79,&D8,&3C
-  EQUB &8C,&66,&31,&9C,&CE,&E6,&39,&A7,&3C,&59,&33,&15,&9A,&67,&13,&89
-  EQUB &9A,&E9,&C7,&26,&22,&D8,&C7,&33,&59,&3E,&74,&C8,&C6,&EC,&B1,&3C
-  EQUB &E7,&FF,&FA,&00,&03,&ED,&E0,&00,&10,&01,&FC,&03,&FF,&FF,&FE,&F8
-  EQUB &00,&0F,&FF,&FF,&F0,&00,&41,&01,&80,&1E,&00,&00,&03,&F3,&FF,&FF
-  EQUB &FF,&FF,&F8,&00,&1F,&8E,&F8,&7E,&00,&00,&30,&01,&F1,&A9,&82,&80
-  EQUB &E3,&CF,&FF,&FF,&FF,&FF,&C0,&58,&39,&46,&20,&20,&00,&08,&87,&BF
-  EQUB &FE,&7A,&04,&A8,&0F,&FF,&FF,&FF,&FF,&C1,&B4,&94,&00,&30,&00,&00
-  EQUB &10,&14,&EF,&DF,&D2,&7F,&97,&C8,&B6,&FE,&FD,&FF,&C8,&6A,&AA,&5C
-  EQUB &01,&00,&00,&00,&51,&41,&DB,&1C,&FF,&7D,&7F,&7A,&BF,&BB,&D8,&47
-  EQUB &E2
+  EQUB &21,&00,&2F,&FF,&FE
+.D7_E805
+  EQUB &02,&6F,&FF,&B4,&00,&16,&92,&01,&09,&5F,&FF,&E1,&24,&94,&3F,&FF
+  EQUB &FF,&00,&00,&01,&FF,&FA,&00,&00,&B6,&FF,&6C,&85,&3B,&77,&24,&A5
+  EQUB &AA,&FE,&A2,&14,&09,&AF,&ED,&DD,&56,&80,&01,&FA,&AC,&D0,&29,&2E
+  EQUB &FB,&71,&01,&1F,&FF,&FF,&F8,&20,&00,&03,&FB,&80,&00,&00,&0F,&FF
+  EQUB &EA,&EF,&F7,&FF,&F8,&00,&0F,&FB,&54,&A2,&55,&10,&22,&2B,&BB,&D8
+  EQUB &40,&00,&1A,&ED,&FF,&B2,&96,&D3,&BF,&FF,&D0,&82,&05,&7D,&5A,&40
+  EQUB &40,&00,&FF,&FF,&E2,&10,&0A,&FE,&FF,&B2,&00,&00,&00,&3F,&FF,&FA
+  EQUB &D2,&56,&DD,&BB,&D8,&00,&00,&7F,&FE,&89,&24,&EF,&F5,&64,&4F,&77
+  EQUB &24,&94,&4C,&80,&00,&00,&7F,&FF,&FF,&E0,&45,&6A,&ED,&E4,&91,&00
+  EQUB &05,&FF,&FE,&E9,&04,&96,&AB,&BA,&A5,&15,&28,&96,&DF,&B6,&88,&49
+  EQUB &12,&9A,&9D,&6D,&DD,&82,&02,&24,&B7,&7F,&7F,&FA,&20,&05,&65,&A7
+  EQUB &FD,&A0,&04,&76,&D2,&02,&15,&B7,&BB,&5B,&AD,&68,&00,&0D,&FF,&FF
+  EQUB &DE,&40,&00,&03,&EF,&57,&6B,&59,&08,&01,&FF,&BA,&A2,&00,&1F,&FF
+  EQUB &B2,&41,&2D,&DF,&FF,&E0,&02,&66,&88,&A8,&80,&48,&BF,&FF,&7E,&C4
+  EQUB &00,&13,&2D,&33,&FF,&ED,&24,&46,&EE,&4B,&59,&B4,&44,&94,&CB,&59
+  EQUB &6A,&B5,&24,&76,&AB,&74,&91,&0A,&D2,&6E,&E9,&BB,&69,&9D,&CD,&29
+  EQUB &11,&37,&B8,&12,&75,&20,&8A,&7E,&FF,&6A,&40,&09,&67,&ED,&B1,&28
+  EQUB &11,&27,&FF,&D9,&92,&4A,&55,&FE,&ED,&40,&10,&13,&7B,&BF,&59,&68
+  EQUB &25,&2A,&B5,&A9,&5E,&D6,&81,&00,&8A,&57,&FE,&B4,&41,&2A,&77,&EF
+  EQUB &6A,&94,&B5,&B0,&54,&BF,&E5,&4A,&62,&51,&4B,&2D,&B6,&20,&40,&12
+  EQUB &FB,&BB,&B6,&56,&B7,&FD,&4A,&B5,&58,&95,&10,&42,&92,&BA,&64,&11
+  EQUB &37,&FD,&B6,&52,&95,&6D,&51,&BD,&F4,&86,&EF,&6A,&80,&10,&01,&77
+  EQUB &7E,&FB,&20,&00,&9B,&7F,&BB,&20,&25,&2A,&57,&FF,&FC,&00,&FF,&FE
+  EQUB &08,&84,&11,&24,&F6,&D9,&24,&14,&DD,&DA,&92,&B2,&A3,&48,&04,&BF
+  EQUB &FF,&65,&4A,&95,&5A,&ED,&DD,&20,&4A,&DA,&22,&4F,&7E,&B1,&12,&56
+  EQUB &DA,&93,&72,&94,&A2,&25,&4D,&B5,&36,&D6,&CA,&01,&0F,&FD,&B6,&4A
+  EQUB &6F,&D5,&80,&89,&75,&C9,&A5,&A9,&59,&66,&AA,&AA,&DA,&B4,&92,&4E
+  EQUB &B2,&25,&DA,&5A,&AE,&B4,&B4,&AB,&EE,&80,&01,&2F,&EF,&6A,&02,&4A
+  EQUB &6F,&6A,&B6,&D2,&52,&DB,&14,&95,&AC,&AA,&AA,&AB,&51,&14,&82,&57
+  EQUB &FF,&B6,&EE,&A2,&57,&AC,&80,&92,&6B,&65,&20,&25,&35,&92,&DD,&DF
+  EQUB &DB,&41,&49,&6F,&7D,&6A,&D9,&04,&14,&AB,&2A,&BB,&5A,&C2,&48,&89
+  EQUB &37,&4D,&B6,&55,&21,&29,&DE,&E9,&AB,&77,&76,&88,&93,&4C,&91,&1B
+  EQUB &BE,&B4,&82,&05,&B6,&EB,&6A,&48,&49,&2E,&77,&6A,&A6,&F7,&D6,&08
+  EQUB &AB,&55,&44,&96,&AB,&64,&12,&77,&AD,&AB,&25,&53,&29,&09,&5D,&B6
+  EQUB &EE,&F6,&91,&54,&84,&92,&91,&57,&76,&C9,&29,&B6,&5A,&B6,&D5,&6E
+  EQUB &F4,&40,&44,&59,&4D,&B7,&6D,&69,&49,&2A,&A9,&11,&25,&5A,&E5,&36
+  EQUB &DD,&EE,&22,&5B,&B8,&8A,&56,&A9,&26,&5D,&AD,&A6,&EF,&5A,&C4,&49
+  EQUB &08,&92,&59,&22,&4E,&FB,&D5,&AD,&AD,&12,&8A,&DD,&ED,&01,&00,&95
+  EQUB &4F,&FB,&CA,&52,&BD,&DB,&6D,&64,&00,&02,&FE,&B5,&B5,&91,&00,&92
+  EQUB &94,&DF,&FB,&DD,&29,&49,&52,&A6,&AA,&D2,&B7,&F7,&E8,&00,&90,&92
+  EQUB &5D,&EF,&56,&91,&44,&25,&F6,&AA,&49,&46,&AD,&B4,&AD,&6D,&22,&4B
+  EQUB &77,&75,&92,&93,&5A,&AA,&CA,&52,&49,&B5,&EA,&49,&4D,&4A,&12,&4B
+  EQUB &FF,&F7,&55,&82,&04,&4D,&DB,&A4,&89,&55,&6D,&6A,&A0,&82,&95,&6F
+  EQUB &F6,&ED,&94,&9A,&CC,&4A,&97,&77,&5A,&24,&A9,&52,&CA,&22,&49,&6E
+  EQUB &F7,&6C,&B5,&B5,&08,&8A,&8D,&48,&02,&2F,&76,&F6,&DC,&B7,&FF,&FE
+  EQUB &DB,&20,&00,&00,&2A,&2D,&B6,&DB,&90,&00,&8A,&C9,&AE,&1F,&FF,&E8
+  EQUB &80,&09,&2A,&54,&95,&55,&55,&55,&55,&55,&40,&01,&0A,&7F,&FF,&FA
+  EQUB &AA,&AD,&69,&55,&55,&2A,&AA,&AA,&A5,&55,&56,&AA,&AF,&F0,&DE,&0A
+  EQUB &F0,&AB,&21,&7C,&22,&52,&55,&55,&55,&55,&52,&AA,&AA,&B5,&55,&55
+  EQUB &56,&AA,&A5,&55,&55,&55,&55,&55,&55,&62,&4C,&1A,&B4,&3E,&4B,&59
+  EQUB &68,&3F,&75,&75,&55,&55,&55,&55,&55,&55,&AA,&AA,&A5,&55,&55,&54
+  EQUB &AA,&AA,&95,&55,&55,&55,&55,&55,&56,&D5,&BA,&CA,&BA,&91,&A8,&AA
+  EQUB &D1,&24,&A9,&45,&55,&55,&55,&55,&55,&56,&AA,&AA,&AA,&AA,&AA,&AA
+  EQUB &AA,&AD,&55,&55,&55,&55,&55,&55,&40,&84,&AA,&AA,&AC,&AF,&F7,&56
+  EQUB &AA,&AD,&55,&55,&55,&55,&55,&55,&4B,&AC,&D6,&AE,&90,&B6,&AA,&16
+  EQUB &A9,&59,&54,&9B,&45,&4C,&D3,&35,&24,&E3,&13,&AA,&84,&DA,&AA,&2A
+  EQUB &AD,&59,&5D,&5B,&D5,&55,&55,&59,&9A,&AA,&AA,&AA,&AA,&AA,&AA,&AA
+  EQUB &A5,&56,&ED,&55,&55,&D2,&75,&34,&4B,&64,&AA,&4C,&2A,&A4,&AA,&AB
+  EQUB &55,&55,&55,&55,&55,&55,&55,&55,&A4,&A9,&A8,&BA,&AA,&AA,&AA,&AD
+  EQUB &2D,&2D,&55,&55,&52,&D5,&55,&4E,&AA,&AA,&AA,&AA,&AD,&AA,&6A,&A9
+  EQUB &B5,&55,&55,&FF,&FF,&FF,&FF,&FF,&80,&00,&00,&00,&00,&00,&00,&00
+  EQUB &00,&C6,&7F,&EF,&FF,&1F,&BF,&C6,&7F,&FD,&EF,&FF,&FF,&FF,&FC,&00
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&FF,&87,&FF,&FF,&FF,&7F,&CE,&CF
+  EQUB &CF,&C6,&7F,&1D,&39,&19,&0F,&00,&40,&00,&00,&00,&00,&00,&34,&78
+  EQUB &7B,&EF,&FF,&FF,&EF,&FF,&FF,&FF,&FD,&0C,&60,&60,&70,&00,&08,&00
+  EQUB &00,&C0,&00,&11,&1C,&3E,&77,&F7,&FF,&FF,&FF,&FF,&FE,&FF,&8F,&F8
+  EQUB &00,&18,&10,&08,&01,&80,&00,&18,&03,&80,&71,&F8,&7F,&E3,&FF,&EF
+  EQUB &FB,&FF,&FF,&DF,&E3,&F0,&37,&01,&04,&00,&00,&00,&80,&18,&1B,&E0
+  EQUB &E1,&F8,&FE,&67,&FE,&7E,&FC,&FD,&FC,&7C,&FF,&F8,&22,&08,&02,&08
+  EQUB &00,&10,&34,&0E,&0F,&07,&D8,&FC,&F3,&7F,&C7,&9F,&FC,&79,&F3,&EE
+  EQUB &31,&B3,&07,&D0,&40,&21,&8C,&00,&00,&B8,&70,&3F,&83,&EE,&F8,&FF
+  EQUB &C7,&3F,&F6,&71,&F8,&69,&F1,&70,&E0,&8F,&10,&18,&10,&41,&91,&B0
+  EQUB &F1,&2C,&CE,&C7,&FF,&31,&F0,&F4,&F9,&CF,&EE,&0E,&F0,&1D,&4C,&07
+  EQUB &02,&C1,&E0,&33,&81,&88,&F8,&7E,&E1,&C7,&E6,&73,&9C,&7B,&3F,&19
+  EQUB &87,&E3,&40,&FC,&C0,&9A,&8A,&71,&0C,&7C,&1E,&21,&A3,&EA,&C1,&FC
+  EQUB &70,&FA,&B1,&72,&E3,&E1,&FC,&03,&FC,&0C,&D8,&38,&1E,&13,&C1,&C7
+  EQUB &C0,&78,&73,&8F,&46,&70,&FC,&AC,&E5,&E0,&CF,&F0,&C3,&5A,&70,&71
+  EQUB &AA,&E1,&19,&70,&3C,&39,&C2,&67,&E2,&3E,&19,&E1,&CE,&71,&75,&55
+  EQUB &C3,&97,&28,&F8,&65,&C3,&6A,&62,&74,&C3,&C3,&29,&F0,&79,&83,&CE
+  EQUB &4C,&EA,&6C,&9D,&C3,&68,&F8,&78,&B5,&C1,&CE,&2A,&A7,&2B,&2A,&37
+  EQUB &07,&8E,&1A,&DA,&34,&E3,&A1,&BA,&97,&2A,&AA,&AD,&55,&8D,&65,&C3
+  EQUB &59,&53,&54,&72,&B1,&5D,&2A,&63,&2E,&39,&2C,&D8,&BC,&33,&8E,&AB
+  EQUB &2C,&3C,&A9,&B1,&D2,&B2,&AC,&B2,&CD,&2A,&AC,&AC,&AC,&6C,&AA,&AB
+  EQUB &16,&A5,&A5,&A9,&AB,&2A,&CA,&6B,&4C,&AD,&54,&D3,&4C,&B5,&55,&2A
+  EQUB &CD,&2B,&4C,&D3,&1B,&4B,&2A,&CA,&B2,&B4,&AD,&DB,&33,&97,&01,&82
+  EQUB &04,&00,&87,&0E,&BF,&F9,&FF,&FF,&FF,&EF,&D9,&F8,&30,&03,&00,&E2
+  EQUB &05,&0F,&1C,&33,&8C,&00,&31,&81,&80,&C3,&85,&3F,&EF,&FB,&FF,&9F
+  EQUB &3F,&F7,&E3,&87,&98,&01,&C0,&46,&10,&1E,&18,&66,&20,&70,&73,&81
+  EQUB &C7,&CF,&CD,&C1,&FF,&7C,&FF,&1F,&3F,&DF,&38,&0F,&87,&06,&08,&00
+  EQUB &30,&18,&40,&B3,&88,&6B,&38,&E7,&CF,&97,&DF,&79,&E7,&7C,&67,&9F
+  EQUB &F1,&DC,&70,&31,&81,&00,&30,&00,&78,&18,&D0,&07,&9C,&7D,&FE,&7E
+  EQUB &7E,&3C,&F3,&FC,&5E,&3E,&E1,&E6,&30,&1E,&00,&70,&21,&E0,&18,&61
+  EQUB &81,&C1,&7C,&3F,&99,&F9,&F7,&9F,&3D,&FC,&78,&E7,&84,&1E,&1E,&07
+  EQUB &81,&CC,&0D,&81,&83,&87,&0E,&C1,&C2,&93,&E6,&F9,&F2,&F1,&F9,&E3
+  EQUB &E5,&F8,&78,&3E,&05,&E0,&C1,&98,&66,&1C,&00,&78,&E1,&C3,&38,&EE
+  EQUB &CF,&83,&F3,&9D,&C7,&3F,&C3,&AA,&3C,&7E,&03,&D0,&CC,&18,&68,&E3
+  EQUB &02,&3E,&38,&1E,&3C,&38,&3E,&3C,&E3,&CF,&8F,&2F,&1C,&7C,&CE,&0E
+  EQUB &73,&31,&C8,&15,&67,&0E,&07,&43,&1C,&32,&79,&27,&F0,&59,&F0,&F9
+  EQUB &8F,&0F,&B6,&1F,&1A,&E1,&C3,&83,&8F,&17,&31,&8C,&70,&E8,&2C,&E7
+  EQUB &0B,&8E,&E1,&73,&CA,&9A,&AC,&DE,&38,&3E,&1C,&E3,&E0,&C9,&F0,&3C
+  EQUB &70,&D4,&70,&F4,&70,&F0,&5E,&70,&9F,&46,&1F,&1D,&47,&A9,&3A,&63
+  EQUB &75,&4D,&1C,&71,&71,&9B,&0A,&AA,&AC,&3C,&A8,&CF,&1C,&65,&47,&8F
+  EQUB &2C,&5E,&35,&37,&25,&E3,&87,&33,&16,&71,&39,&93,&8E,&33,&92,&D4
+  EQUB &A6,&9B,&1A,&A8,&EC,&C7,&93,&33,&8D,&33,&93,&96,&70,&F2,&6A,&C6
+  EQUB &8D,&2C,&B4,&E3,&43,&C0,&64,&EC,&67,&1F,&3E,&C3,&1E,&6E,&EE,&E0
+  EQUB &C4,&01,&C4,&F6,&30,&64,&E3,&1C,&5F,&1A,&CC,&FB,&88,&8C,&FE,&38
+  EQUB &C9,&82,&2C,&8C,&B3,&B3,&2E,&3F,&B6,&66,&CF,&8C,&4B,&85,&80,&8F
+  EQUB &9B,&D1,&F2,&B1,&80,&52,&E0,&F3,&44,&BF,&27,&CF,&9A,&4C,&1C,&FD
+  EQUB &66,&30,&E6,&E4,&63,&18,&E1,&C9,&98,&C1,&99,&97,&7C,&1C,&12,&8F
+  EQUB &9C,&E6,&7D,&39,&E1,&E2,&4C,&66,&73,&9E,&27,&0E,&34,&C3,&81,&D9
+  EQUB &39,&F9,&E7,&1C,&C8,&E6,&0D,&27,&4F,&90,&26,&37,&CF,&B6,&39,&34
+  EQUB &46,&05,&CE,&D6,&71,&E1,&C7,&31,&34,&F3,&6D,&03,&31,&3A,&CD,&8F
+  EQUB &47,&4E,&51,&C6,&66,&63,&99,&19,&B9,&1C,&65,&9C,&9C,&44,&DD,&AF
+  EQUB &49,&E7,&23,&93,&8E,&24,&4E,&C6,&F1,&B7,&C2,&4E,&63,&1C,&A7,&27
+  EQUB &06,&A3,&4E,&C1,&34,&F4,&EC,&F1,&F1,&B4,&78,&64,&33,&59,&A6,&0F
+  EQUB &0D,&B6,&5C,&C6,&17,&32,&71,&21,&D9,&C9,&D8,&FB,&74,&C8,&32,&3C
+  EQUB &CC,&7B,&33,&87,&0F,&60,&4B,&D1,&8E,&0C,&FE,&53,&29,&8F,&9A,&64
+  EQUB &EC,&89,&A2,&F9,&13,&E6,&33,&F1,&18,&69,&A5,&B9,&3E,&0E,&3D,&86
+  EQUB &6C,&C7,&8F,&23,&89,&C8,&C4,&67,&79,&D8,&3C,&8C,&66,&31,&9C,&CE
+  EQUB &E6,&39,&A7,&3C,&59,&33,&15,&9A,&67,&13,&89,&9A,&E9,&C7,&26,&22
+  EQUB &D8,&C7,&33,&59,&3E,&74,&C8,&C6,&EC,&B1,&3C,&E7,&FF,&FA,&00,&03
+  EQUB &ED,&E0,&00,&10,&01,&FC,&03,&FF,&FF,&FE,&F8,&00,&0F,&FF,&FF,&F0
+  EQUB &00,&41,&01,&80,&1E,&00,&00,&03,&F3,&FF,&FF,&FF,&FF,&F8,&00,&1F
+  EQUB &8E,&F8,&7E,&00,&00,&30,&01,&F1,&A9,&82,&80,&E3,&CF,&FF,&FF,&FF
+  EQUB &FF,&C0,&58,&39,&46,&20,&20,&00,&08,&87,&BF,&FE,&7A,&04,&A8,&0F
+  EQUB &FF,&FF,&FF,&FF,&C1,&B4,&94,&00,&30,&00,&00,&10,&14,&EF,&DF,&D2
+  EQUB &7F,&97,&C8,&B6,&FE,&FD,&FF,&C8,&6A,&AA,&5C,&01,&00,&00,&00,&51
+  EQUB &41,&DB,&1C,&FF,&7D,&7F,&7A,&BF,&BB,&D8,&47,&E2
 .D7_F001
-  EQUB &37,&D0,&04,&1D,&20,&14,&08,&29,&00,&BA,&95,&3A,&7D,&FF,&FF,&FF
-  EQUB &96,&ED,&55,&59,&2D,&48,&18,&22,&86,&50,&02,&C8,&49,&A9,&A0,&9D
-  EQUB &E9,&6E,&FF,&FF,&F7,&DB,&B9,&20,&9D,&89,&5B,&10,&A0,&89,&01,&11
-  EQUB &04,&A9,&69,&5B,&37,&B6,&BE,&F6,&DD,&FF,&6B,&B5,&24,&93,&55,&96
-  EQUB &92,&40,&84,&81,&11,&08,&96,&72,&AD,&AD,&B6,&6F,&ED,&BF,&7D,&B4
-  EQUB &B6,&B3,&52,&A5,&56,&94,&44,&90,&40,&24,&82,&4D,&74,&CA,&5A,&DB
-  EQUB &73,&AF,&DB,&DB,&D6,&D6,&ED,&AC,&B4,&92,&49,&24,&82,&4A,&42,&21
-  EQUB &4A,&D5,&28,&D2,&6A,&DB,&DD,&B6,&EB,&77,&B5,&BD,&76,&59,&AA,&D8
-  EQUB &EE,&33,&00,&BE,&73,&7E,&00,&3E,&F3,&08,&63,&61,&7D,&F7,&E3,&00
-  EQUB &4C,&62,&E6,&64,&F4,&40,&C4,&61,&EF,&FF,&FF,&FF,&9D,&D2,&40,&00
-  EQUB &00,&00,&04,&84,&CF,&5D,&ED,&FB,&CF,&FB,&7E,&D3,&86,&64,&E3,&1C
-  EQUB &4A,&55,&94,&AC,&31,&21,&10,&80,&42,&1A,&B6,&BB,&BF,&EF,&DE,&ED
-  EQUB &64,&66,&A6,&7A,&F7,&D7,&D4,&99,&04,&02,&08,&B1,&56,&69,&8A,&24
-  EQUB &A2,&18,&55,&66,&D7,&5E,&F5,&EB,&AD,&BA,&BA,&6B,&55,&69,&CC,&C6
-  EQUB &AC,&52,&A4,&A9,&50,&C9,&54,&90,&A5,&44,&A9,&33,&13,&4E,&5C,&D5
-  EQUB &B4,&F9,&D7,&5B,&77,&5E,&6D,&B6,&76,&AD,&35,&2A,&91,&8C,&28,&61
-  EQUB &19,&24,&48,&8B,&12,&96,&54,&CD,&59,&D9,&B5,&D7,&76,&D9,&F6,&B5
-  EQUB &DA,&B9,&96,&A6,&99,&4B,&25,&2A,&4A,&92,&4A,&99,&46,&52,&4D,&29
-  EQUB &93,&65,&56,&2A,&AA,&A5,&B1,&C9,&D4,&D5,&CB,&55,&B9,&6A,&B6,&AD
-  EQUB &B6,&AD,&5B,&59,&99,&5A,&95,&32,&32,&52,&A4,&54,&52,&28,&54,&A8
-  EQUB &A5,&32,&AC,&D5,&9C,&AD,&AD,&B6,&D6,&D7,&5B,&AD,&6D,&6B,&96,&D3
-  EQUB &2C,&CD,&2A,&49,&54,&94,&92,&61,&A9,&48,&CA,&54,&4D,&49,&A5,&4C
-  EQUB &B2,&D5,&65,&5A,&D5,&AD,&5B,&5A,&D5,&5B,&96,&D9,&B5,&57,&2E,&3A
-  EQUB &A6,&9A,&38,&D4,&C5,&54,&55,&49,&32,&99,&52,&94,&CA,&8D,&2A,&66
-  EQUB &54,&CB,&33,&2D,&35,&36,&55,&CA,&D6,&6A,&D6,&B5,&59,&B5,&AD,&76
-  EQUB &CD,&5B,&35,&56,&AB,&4A,&99,&95,&4A,&4A,&92,&54,&55,&89,&52,&8A
-  EQUB &52,&A5,&54,&A6,&95,&65,&9A,&AD,&9B,&56,&AD,&AD,&AD,&56,&D5,&AB
-  EQUB &5A,&D5,&55,&96,&CA,&D3,&2C,&D6,&72,&5E,&39,&19,&07,&D0,&00,&FD
-  EQUB &EC,&49,&7F,&1E,&F8,&8F,&70,&0B,&63,&60,&7A,&D0,&00,&1D,&B1,&2C
-  EQUB &1F,&FF,&FF,&FE,&A6,&74,&00,&3C,&00,&3B,&7D,&D8,&00,&1F,&EF,&FF
-  EQUB &5F,&E2,&00,&1F,&E8,&16,&92,&40,&68,&0F,&FE,&00,&78,&0C,&10,&0F
-  EQUB &FF,&0B,&FF,&E4,&90,&0F,&FF,&EF,&78,&AB,&C0,&03,&FE,&01,&FF,&FF
-  EQUB &86,&00,&7F,&C1,&80,&2F,&80,&00,&1F,&E0,&3F,&07,&FC,&00,&0F,&FF
-  EQUB &7F,&E7,&F8,&00,&07,&FE,&07,&FC,&60,&00,&0F,&FE,&00,&54,&3F,&10
-  EQUB &0F,&FE,&00,&EF,&7F,&80,&07,&FF,&83,&CF,&FC,&00,&03,&FF,&E7,&EA
-  EQUB &FE,&00,&00,&FF,&E0,&7C,&AF,&00,&00,&3F,&E0,&3F,&E3,&02,&00,&7F
-  EQUB &FC,&7F,&FD,&40,&00,&7F,&FC,&07,&F0,&80,&00,&3F,&FC,&00,&FC,&00
-  EQUB &00,&1F,&FF,&FF,&FF,&E0,&00,&0F,&FC,&1F,&FF,&F8,&00,&0F,&FF,&8F
-  EQUB &FC,&58,&00,&07,&FF,&80,&10,&50,&00,&07,&FF,&07,&FF,&FC,&00,&07
-  EQUB &FF,&C3,&FF,&28,&00,&07,&FF,&83,&E0,&7F,&00,&03,&FE,&01,&FD,&B8
-  EQUB &80,&01,&FF,&C3,&FF,&6C,&00,&03,&FF,&83,&FF,&0F,&40,&01,&FF,&C0
-  EQUB &FF,&FF,&E0,&81,&FE,&00,&7E,&04,&20,&00,&FF,&80,&FF,&3E,&00,&01
-  EQUB &FF,&F9,&FF,&CE,&70,&00,&7F,&00,&7F,&0F,&00,&00,&7F,&F0,&7F,&86
-  EQUB &00,&00,&7F,&F0,&3F,&FF,&C0,&00,&7F,&FC,&3F,&F7,&FA,&00,&3F,&F8
-  EQUB &1F,&87,&E0,&00,&3F,&E0,&1F,&E2,&E0,&00,&1F,&C0,&0F,&F7,&A0,&00
-  EQUB &3F,&FF,&1F,&E1,&FC,&00,&1F,&FE,&03,&C1,&F8,&00,&1F,&FE,&03,&E9
-  EQUB &78,&00,&0F,&FE,&00,&FF,&BC,&00,&1F,&FF,&03,&FF,&FE,&00,&0F,&FE
-  EQUB &00,&7F,&FC,&00,&07,&FE,&01,&EB,&F0,&00,&07,&FE,&00,&BB,&FF,&80
-  EQUB &07,&FF,&03,&F8,&FF,&00,&03,&FF,&00,&04,&BF,&80,&03,&FF,&80,&7E
-  EQUB &3F,&80,&03,&FF,&C0,&FE,&5F,&00,&03,&FF,&E0,&7F,&3F,&80,&03,&FF
-  EQUB &C0,&7B,&0F,&C8,&01,&FF,&C0,&7F,&8F,&00,&00,&F8,&C0,&3E,&07,&FF
-  EQUB &71,&FF,&E0,&1C,&03,&B8,&20,&FD,&84,&7E,&01,&F6,&00,&7F,&E2,&FF
-  EQUB &08,&33,&90,&FC,&28,&3E,&01,&7F,&F8,&7F,&00,&7E,&A8,&BF,&FC,&7F
-  EQUB &80,&7E,&00,&0B,&7C,&3C,&82,&7F,&18,&00,&7E,&3C,&43,&7F,&28,&73
-  EQUB &FF,&1F,&0E,&1F,&90,&00,&D3,&07,&02,&0F,&E0,&0F,&FF,&0F,&CF,&8B
-  EQUB &91,&05,&FF,&85,&01,&83,&F8,&1F,&FF,&AF,&81,&CE,&C0,&00,&FF,&E0
-  EQUB &C4,&EE,&18,&60,&FF,&F0,&D4,&FC,&08,&0E,&F9,&38,&74,&7E,&00,&05
-  EQUB &7F,&F8,&34,&FE,&00,&40,&7F,&7C,&B8,&3F,&10,&24,&7E,&1C,&7C,&3E
-  EQUB &00,&40,&7F,&3E,&FC,&1F,&84,&FF,&FC,&7E,&3C,&1F,&00,&00,&14,&3F
-  EQUB &7E,&07,&C0,&7C,&F6,&BC,&FF,&0F,&80,&08,&3F,&39,&7E,&03,&80,&1F
-  EQUB &2C,&38,&7F,&AF,&A0,&34,&06,&3E,&7E,&34,&C0,&1E,&7F,&4E,&F8,&00
-  EQUB &D0,&00,&F6,&FF,&E9,&9C,&D3,&2B,&E4,&E3,&9F,&E1,&05,&00,&20,&7F
-  EQUB &9F,&BF,&8A,&00,&7D,&BF,&DF,&08,&C0,&84,&1C,&7F,&C7,&1D,&60,&D5
-  EQUB &9F,&A2,&67,&FC,&00,&C0,&02,&0B,&57,&FF,&81,&E0,&3F,&3B,&9F,&FF
-  EQUB &80,&00,&1B,&1F,&C3,&CD,&01,&C7,&9D,&0F,&A7,&FE,&00,&85,&A8,&0F
-  EQUB &F7,&FF,&C0,&60,&04,&BF,&F3,&FE,&80,&00,&78,&72,&EA,&F8,&E0,&EE
-  EQUB &14,&A8,&FA,&FC,&70,&13,&51,&89,&FA,&78,&20,&3F,&81,&15,&FF,&F0
-  EQUB &30,&14,&C1,&5F,&FC,&F8,&29,&FF,&40,&03,&C8,&FB,&31,&40,&F1,&69
-  EQUB &F3,&FC,&10,&E1,&E4,&EB,&F3,&FF,&30,&C1,&C0,&0C,&D0,&AE,&3C,&71
-  EQUB &D4,&B4,&0A,&BF,&3E,&1D,&44,&7C,&48,&7C,&BC,&0B,&D9,&3C,&26,&2C
-  EQUB &7C,&01,&00,&FF,&80,&7E,&7F,&F3,&E4,&DE,&40,&3E,&7E,&04,&E1,&2D
-  EQUB &80,&1C,&BF,&C4,&AE,&BF,&EC,&0F,&3F,&9E,&48,&25,&C8,&06,&3F,&FE
-  EQUB &08,&11,&32,&0F,&3D,&BC,&4C,&15,&6A,&07,&3F,&6D,&76,&39,&F8,&03
-  EQUB &1B,&76,&C4,&00,&E0,&07,&8F,&DD,&D2,&93,&EE,&27,&D1,&DF,&E6,&80
-  EQUB &6D,&06,&A5,&8F,&67,&24,&BA,&97,&A3,&9F,&63,&20,&79,&4B,&45,&CF
-  EQUB &B9,&11,&51,&2E,&81,&DB,&5C,&01,&4A,&72,&29,&E7,&FB,&54,&D0,&FF
-  EQUB &8B,&49,&F7,&00,&11,&2C,&27,&A6,&AB,&86,&09,&7F,&81,&BA,&D7,&D2
-  EQUB &D9,&4F,&54,&86,&DF,&E1,&A5,&5F,&61,&97,&8F,&A0,&00,&1F,&E1,&07
-  EQUB &CF,&E0,&69,&2A,&E3,&03,&8B,&F9,&4A,&0F,&A2,&23,&A7,&F4,&4A,&1F
-  EQUB &F3,&31,&83,&E0,&4C,&0F,&E9,&2F,&8F,&F0,&0A,&2F,&C0,&5D,&83,&FC
-  EQUB &D3,&07,&B4,&2E,&D3,&FF,&17,&0F,&E8,&2F,&80,&3C,&23,&09,&D4,&1F
-  EQUB &C4,&FC,&25,&90,&B2,&0F,&A0,&7F,&15,&A4,&EB,&0F,&E1,&7F,&A6,&88
-  EQUB &E8,&49,&B0,&1F,&26,&11,&4A,&25,&E9,&FF,&EF,&26,&69,&82,&A0,&5F
-  EQUB &DF,&26,&2A,&C4,&B9,&5F,&DD,&13,&57,&C4,&55,&03,&D2,&A4,&0D,&B1
-  EQUB &3A,&CF,&EB,&01,&43,&40,&16,&4D,&EE,&D6,&49,&DA,&5E,&9C,&FD,&94
-  EQUB &AD,&4C,&23,&91,&AD,&0C,&85,&38,&57,&4F,&FD,&93,&29,&C9,&2D,&A5
-  EQUB &EE,&46,&91,&D8,&BB,&29,&DE,&2D,&4D,&54,&0D,&46,&FC,&0D,&26,&71
-  EQUB &6D,&56,&FD,&0A,&14,&70,&52,&49,&FF,&05,&0B,&EC,&B1,&AC,&FF,&93
-  EQUB &43,&74,&12,&54,&ED,&89,&01,&9D,&39,&F6,&FE,&A3,&42,&D5,&10,&97
-  EQUB &6F,&52,&91,&BE,&9A,&65,&B7,&C2,&A0,&EC,&12,&96,&D3,&54,&54,&7A
-  EQUB &AC,&B4,&EB,&68,&94,&55,&14,&4B,&DB,&36,&44,&BE,&3A,&8D,&ED,&5A
-  EQUB &59,&1C,&99,&11,&ED,&2D,&22,&5D,&55,&A6,&DB,&1A,&5A,&95,&A6,&A9
-  EQUB &A9,&3E,&1E,&48,&C7,&69,&EA,&15,&98,&3E,&4F,&84,&E5,&F0,&54,&79
-  EQUB &A9,&5A,&9C,&B2,&68,&D4,&9F,&D4,&32,&56,&85,&78,&7F,&22,&66,&98
-  EQUB &A9,&79,&AA,&9E,&4A,&50,&F5,&AE,&29,&C6,&38,&7B,&94,&3C,&1D,&66
-  EQUB &CE,&34,&27,&A1,&D9,&9D,&19,&9D,&11,&6B,&5A,&C5,&7E,&01,&58,&BF
-  EQUB &15,&AE,&54,&1D,&86,&75,&AD,&52,&95,&4B,&D4,&5E,&15,&C6,&34,&DA
-  EQUB &59,&CE,&52,&0F,&D2,&F0,&99,&27,&90,&FE,&99,&0C,&E4,&CA,&DE,&91
-  EQUB &E0,&D1,&BD,&26,&A9,&E2,&1E,&69,&AA,&67,&25,&58,&DF,&0A,&93,&71
-  EQUB &66,&96,&63,&9A,&69,&5C,&A9,&66,&A6,&DA,&03,&D9,&59,&5C,&A9,&96
-  EQUB &99,&AB,&49,&3E,&D2,&86,&AA,&A8,&F2,&6F,&84,&B1,&B1,&CB,&35,&70
-  EQUB &6C,&AB,&55,&2C,&CA,&97,&95,&45,&55,&D3,&22,&D9,&5C,&6C,&CA,&91
-  EQUB &75,&CE,&17,&69,&41,&ED,&CA,&1B,&54,&AE,&98,&AD,&65,&A6,&A7,&89
-  EQUB &5A,&2A,&E5,&F8,&14,&5B,&99,&6D,&5C,&05,&E2,&D9,&7C,&25,&62,&DA
-  EQUB &1D,&97,&52,&8D,&57,&23,&6A,&66,&36,&93,&78,&5A,&A5,&AA,&54,&F8
-  EQUB &67,&13,&58,&B6,&65,&6A,&57,&15,&4E,&5A,&43,&F8,&6D,&81,&9D,&55
-  EQUB &66,&F0,&8E,&1F,&25,&B2,&99,&3E,&0B,&56,&9C,&A6,&A5,&66,&66,&1B
-  EQUB &AB,&C8,&66,&2A,&CD,&B2,&72,&59,&33,&4B,&79,&86,&98,&E5,&9C,&53
-  EQUB &C9,&9A,&55,&26,&CA,&D5,&33,&4C,&F0,&AB,&1C,&8B,&E5,&D1,&1B,&47
-  EQUB &2A,&3F,&87,&43,&91,&3A,&C3,&BB,&A2,&51,&A9,&9A,&B3,&36,&5B,&82
-  EQUB &62,&7E,&53,&8B,&C2,&55,&AA,&D3,&5C,&C3,&65,&72,&45,&E5,&E2,&AA
-  EQUB &55,&5A,&9C,&5A,&5A,&8D,&4B,&B5,&25,&58,&B5,&1E,&E8,&AA,&1D,&56
-  EQUB &72,&74,&B1,&39,&1E,&56,&D5,&24,&D6,&9A,&36,&B8,&C9,&53,&87,&9A
-  EQUB &B8,&35,&8C,&EA,&57,&8A,&68,&EC,&87,&63,&8B,&B2,&6C,&99,&5A,&A9
-  EQUB &99,&72,&71,&0F,&CA,&8A,&EB,&2B,&23,&55,&CC,&52,&EA,&55,&9D,&4A
-  EQUB &8B,&4E,&66,&9A,&96,&A3,&95,&5D,&8A,&35,&5A,&8B,&66,&AA,&57,&83
-  EQUB &4A,&F1,&A3,&59,&CA,&37,&41,&AA,&F8,&74,&AA,&99,&83,&9D,&CE,&49
-  EQUB &97,&05,&D9,&9D,&92,&69,&0F,&C9,&63,&74,&A5,&9C,&AA,&8D,&D0,&D6
-  EQUB &9A,&4E,&54,&D5,&A9,&59,&65,&66,&66,&72,&4E,&66,&96,&6B,&16,&27
-  EQUB &69,&6A,&E2,&92,&CD,&96,&5A,&B4,&A5,&38,&5D,&CB,&A2,&69,&98,&D4
-  EQUB &B7,&4E,&4B,&84,&76,&33,&CC,&E1,&8E,&82,&FA,&76,&0D,&C4,&B7,&0B
-  EQUB &E0,&EC,&3B,&0E,&A5,&78,&95,&A8,&F4,&97,&88,&E5,&71,&8D,&69,&B8
-  EQUB &95,&A8,&B5,&CC,&A2,&DA,&95,&1E,&E2,&72,&95,&68,&DB,&17,&21,&BC
-  EQUB &98,&75,&AA,&A6,&A5,&98,&E6,&66,&3A,&9D,&25,&A1,&D5,&95,&B2,&56
-  EQUB &8B,&6A,&9A,&5A,&70,&D5,&E2,&4B,&72,&96,&69,&66,&B8,&93,&4D,&72
-  EQUB &2E,&5E,&13,&5A,&5A,&AB,&51,&36,&99,&95,&9C,&B5,&C2,&30,&EF,&45
-  EQUB &D8,&59,&87,&E0,&EC,&1F,&84,&EA,&57,&26,&4B,&72,&A9,&59,&68,&BC
-  EQUB &2D,&B1,&A8,&76,&99,&CA,&36,&A4,&F0,&DA,&95,&E2,&71,&8D,&58,&D6
+  EQUB &37,&D0,&04,&1D
+.D7_F005
+  EQUB &20,&14,&08,&29,&00,&BA,&95,&3A,&7D,&FF,&FF,&FF,&96,&ED,&55,&59
+  EQUB &2D,&48,&18,&22,&86,&50,&02,&C8,&49,&A9,&A0,&9D,&E9,&6E,&FF,&FF
+  EQUB &F7,&DB,&B9,&20,&9D,&89,&5B,&10,&A0,&89,&01,&11,&04,&A9,&69,&5B
+  EQUB &37,&B6,&BE,&F6,&DD,&FF,&6B,&B5,&24,&93,&55,&96,&92,&40,&84,&81
+  EQUB &11,&08,&96,&72,&AD,&AD,&B6,&6F,&ED,&BF,&7D,&B4,&B6,&B3,&52,&A5
+  EQUB &56,&94,&44,&90,&40,&24,&82,&4D,&74,&CA,&5A,&DB,&73,&AF,&DB,&DB
+  EQUB &D6,&D6,&ED,&AC,&B4,&92,&49,&24,&82,&4A,&42,&21,&4A,&D5,&28,&D2
+  EQUB &6A,&DB,&DD,&B6,&EB,&77,&B5,&BD,&76,&59,&AA,&D8,&EE,&33,&00,&BE
+  EQUB &73,&7E,&00,&3E,&F3,&08,&63,&61,&7D,&F7,&E3,&00,&4C,&62,&E6,&64
+  EQUB &F4,&40,&C4,&61,&EF,&FF,&FF,&FF,&9D,&D2,&40,&00,&00,&00,&04,&84
+  EQUB &CF,&5D,&ED,&FB,&CF,&FB,&7E,&D3,&86,&64,&E3,&1C,&4A,&55,&94,&AC
+  EQUB &31,&21,&10,&80,&42,&1A,&B6,&BB,&BF,&EF,&DE,&ED,&64,&66,&A6,&7A
+  EQUB &F7,&D7,&D4,&99,&04,&02,&08,&B1,&56,&69,&8A,&24,&A2,&18,&55,&66
+  EQUB &D7,&5E,&F5,&EB,&AD,&BA,&BA,&6B,&55,&69,&CC,&C6,&AC,&52,&A4,&A9
+  EQUB &50,&C9,&54,&90,&A5,&44,&A9,&33,&13,&4E,&5C,&D5,&B4,&F9,&D7,&5B
+  EQUB &77,&5E,&6D,&B6,&76,&AD,&35,&2A,&91,&8C,&28,&61,&19,&24,&48,&8B
+  EQUB &12,&96,&54,&CD,&59,&D9,&B5,&D7,&76,&D9,&F6,&B5,&DA,&B9,&96,&A6
+  EQUB &99,&4B,&25,&2A,&4A,&92,&4A,&99,&46,&52,&4D,&29,&93,&65,&56,&2A
+  EQUB &AA,&A5,&B1,&C9,&D4,&D5,&CB,&55,&B9,&6A,&B6,&AD,&B6,&AD,&5B,&59
+  EQUB &99,&5A,&95,&32,&32,&52,&A4,&54,&52,&28,&54,&A8,&A5,&32,&AC,&D5
+  EQUB &9C,&AD,&AD,&B6,&D6,&D7,&5B,&AD,&6D,&6B,&96,&D3,&2C,&CD,&2A,&49
+  EQUB &54,&94,&92,&61,&A9,&48,&CA,&54,&4D,&49,&A5,&4C,&B2,&D5,&65,&5A
+  EQUB &D5,&AD,&5B,&5A,&D5,&5B,&96,&D9,&B5,&57,&2E,&3A,&A6,&9A,&38,&D4
+  EQUB &C5,&54,&55,&49,&32,&99,&52,&94,&CA,&8D,&2A,&66,&54,&CB,&33,&2D
+  EQUB &35,&36,&55,&CA,&D6,&6A,&D6,&B5,&59,&B5,&AD,&76,&CD,&5B,&35,&56
+  EQUB &AB,&4A,&99,&95,&4A,&4A,&92,&54,&55,&89,&52,&8A,&52,&A5,&54,&A6
+  EQUB &95,&65,&9A,&AD,&9B,&56,&AD,&AD,&AD,&56,&D5,&AB,&5A,&D5,&55,&96
+  EQUB &CA,&D3,&2C,&D6,&72,&5E,&39,&19,&07,&D0,&00,&FD,&EC,&49,&7F,&1E
+  EQUB &F8,&8F,&70,&0B,&63,&60,&7A,&D0,&00,&1D,&B1,&2C,&1F,&FF,&FF,&FE
+  EQUB &A6,&74,&00,&3C,&00,&3B,&7D,&D8,&00,&1F,&EF,&FF,&5F,&E2,&00,&1F
+  EQUB &E8,&16,&92,&40,&68,&0F,&FE,&00,&78,&0C,&10,&0F,&FF,&0B,&FF,&E4
+  EQUB &90,&0F,&FF,&EF,&78,&AB,&C0,&03,&FE,&01,&FF,&FF,&86,&00,&7F,&C1
+  EQUB &80,&2F,&80,&00,&1F,&E0,&3F,&07,&FC,&00,&0F,&FF,&7F,&E7,&F8,&00
+  EQUB &07,&FE,&07,&FC,&60,&00,&0F,&FE,&00,&54,&3F,&10,&0F,&FE,&00,&EF
+  EQUB &7F,&80,&07,&FF,&83,&CF,&FC,&00,&03,&FF,&E7,&EA,&FE,&00,&00,&FF
+  EQUB &E0,&7C,&AF,&00,&00,&3F,&E0,&3F,&E3,&02,&00,&7F,&FC,&7F,&FD,&40
+  EQUB &00,&7F,&FC,&07,&F0,&80,&00,&3F,&FC,&00,&FC,&00,&00,&1F,&FF,&FF
+  EQUB &FF,&E0,&00,&0F,&FC,&1F,&FF,&F8,&00,&0F,&FF,&8F,&FC,&58,&00,&07
+  EQUB &FF,&80,&10,&50,&00,&07,&FF,&07,&FF,&FC,&00,&07,&FF,&C3,&FF,&28
+  EQUB &00,&07,&FF,&83,&E0,&7F,&00,&03,&FE,&01,&FD,&B8,&80,&01,&FF,&C3
+  EQUB &FF,&6C,&00,&03,&FF,&83,&FF,&0F,&40,&01,&FF,&C0,&FF,&FF,&E0,&81
+  EQUB &FE,&00,&7E,&04,&20,&00,&FF,&80,&FF,&3E,&00,&01,&FF,&F9,&FF,&CE
+  EQUB &70,&00,&7F,&00,&7F,&0F,&00,&00,&7F,&F0,&7F,&86,&00,&00,&7F,&F0
+  EQUB &3F,&FF,&C0,&00,&7F,&FC,&3F,&F7,&FA,&00,&3F,&F8,&1F,&87,&E0,&00
+  EQUB &3F,&E0,&1F,&E2,&E0,&00,&1F,&C0,&0F,&F7,&A0,&00,&3F,&FF,&1F,&E1
+  EQUB &FC,&00,&1F,&FE,&03,&C1,&F8,&00,&1F,&FE,&03,&E9,&78,&00,&0F,&FE
+  EQUB &00,&FF,&BC,&00,&1F,&FF,&03,&FF,&FE,&00,&0F,&FE,&00,&7F,&FC,&00
+  EQUB &07,&FE,&01,&EB,&F0,&00,&07,&FE,&00,&BB,&FF,&80,&07,&FF,&03,&F8
+  EQUB &FF,&00,&03,&FF,&00,&04,&BF,&80,&03,&FF,&80,&7E,&3F,&80,&03,&FF
+  EQUB &C0,&FE,&5F,&00,&03,&FF,&E0,&7F,&3F,&80,&03,&FF,&C0,&7B,&0F,&C8
+  EQUB &01,&FF,&C0,&7F,&8F,&00,&00,&F8,&C0,&3E,&07,&FF,&71,&FF,&E0,&1C
+  EQUB &03,&B8,&20,&FD,&84,&7E,&01,&F6,&00,&7F,&E2,&FF,&08,&33,&90,&FC
+  EQUB &28,&3E,&01,&7F,&F8,&7F,&00,&7E,&A8,&BF,&FC,&7F,&80,&7E,&00,&0B
+  EQUB &7C,&3C,&82,&7F,&18,&00,&7E,&3C,&43,&7F,&28,&73,&FF,&1F,&0E,&1F
+  EQUB &90,&00,&D3,&07,&02,&0F,&E0,&0F,&FF,&0F,&CF,&8B,&91,&05,&FF,&85
+  EQUB &01,&83,&F8,&1F,&FF,&AF,&81,&CE,&C0,&00,&FF,&E0,&C4,&EE,&18,&60
+  EQUB &FF,&F0,&D4,&FC,&08,&0E,&F9,&38,&74,&7E,&00,&05,&7F,&F8,&34,&FE
+  EQUB &00,&40,&7F,&7C,&B8,&3F,&10,&24,&7E,&1C,&7C,&3E,&00,&40,&7F,&3E
+  EQUB &FC,&1F,&84,&FF,&FC,&7E,&3C,&1F,&00,&00,&14,&3F,&7E,&07,&C0,&7C
+  EQUB &F6,&BC,&FF,&0F,&80,&08,&3F,&39,&7E,&03,&80,&1F,&2C,&38,&7F,&AF
+  EQUB &A0,&34,&06,&3E,&7E,&34,&C0,&1E,&7F,&4E,&F8,&00,&D0,&00,&F6,&FF
+  EQUB &E9,&9C,&D3,&2B,&E4,&E3,&9F,&E1,&05,&00,&20,&7F,&9F,&BF,&8A,&00
+  EQUB &7D,&BF,&DF,&08,&C0,&84,&1C,&7F,&C7,&1D,&60,&D5,&9F,&A2,&67,&FC
+  EQUB &00,&C0,&02,&0B,&57,&FF,&81,&E0,&3F,&3B,&9F,&FF,&80,&00,&1B,&1F
+  EQUB &C3,&CD,&01,&C7,&9D,&0F,&A7,&FE,&00,&85,&A8,&0F,&F7,&FF,&C0,&60
+  EQUB &04,&BF,&F3,&FE,&80,&00,&78,&72,&EA,&F8,&E0,&EE,&14,&A8,&FA,&FC
+  EQUB &70,&13,&51,&89,&FA,&78,&20,&3F,&81,&15,&FF,&F0,&30,&14,&C1,&5F
+  EQUB &FC,&F8,&29,&FF,&40,&03,&C8,&FB,&31,&40,&F1,&69,&F3,&FC,&10,&E1
+  EQUB &E4,&EB,&F3,&FF,&30,&C1,&C0,&0C,&D0,&AE,&3C,&71,&D4,&B4,&0A,&BF
+  EQUB &3E,&1D,&44,&7C,&48,&7C,&BC,&0B,&D9,&3C,&26,&2C,&7C,&01,&00,&FF
+  EQUB &80,&7E,&7F,&F3,&E4,&DE,&40,&3E,&7E,&04,&E1,&2D,&80,&1C,&BF,&C4
+  EQUB &AE,&BF,&EC,&0F,&3F,&9E,&48,&25,&C8,&06,&3F,&FE,&08,&11,&32,&0F
+  EQUB &3D,&BC,&4C,&15,&6A,&07,&3F,&6D,&76,&39,&F8,&03,&1B,&76,&C4,&00
+  EQUB &E0,&07,&8F,&DD,&D2,&93,&EE,&27,&D1,&DF,&E6,&80,&6D,&06,&A5,&8F
+  EQUB &67,&24,&BA,&97,&A3,&9F,&63,&20,&79,&4B,&45,&CF,&B9,&11,&51,&2E
+  EQUB &81,&DB,&5C,&01,&4A,&72,&29,&E7,&FB,&54,&D0,&FF,&8B,&49,&F7,&00
+  EQUB &11,&2C,&27,&A6,&AB,&86,&09,&7F,&81,&BA,&D7,&D2,&D9,&4F,&54,&86
+  EQUB &DF,&E1,&A5,&5F,&61,&97,&8F,&A0,&00,&1F,&E1,&07,&CF,&E0,&69,&2A
+  EQUB &E3,&03,&8B,&F9,&4A,&0F,&A2,&23,&A7,&F4,&4A,&1F,&F3,&31,&83,&E0
+  EQUB &4C,&0F,&E9,&2F,&8F,&F0,&0A,&2F,&C0,&5D,&83,&FC,&D3,&07,&B4,&2E
+  EQUB &D3,&FF,&17,&0F,&E8,&2F,&80,&3C,&23,&09,&D4,&1F,&C4,&FC,&25,&90
+  EQUB &B2,&0F,&A0,&7F,&15,&A4,&EB,&0F,&E1,&7F,&A6,&88,&E8,&49,&B0,&1F
+  EQUB &26,&11,&4A,&25,&E9,&FF,&EF,&26,&69,&82,&A0,&5F,&DF,&26,&2A,&C4
+  EQUB &B9,&5F,&DD,&13,&57,&C4,&55,&03,&D2,&A4,&0D,&B1,&3A,&CF,&EB,&01
+  EQUB &43,&40,&16,&4D,&EE,&D6,&49,&DA,&5E,&9C,&FD,&94,&AD,&4C,&23,&91
+  EQUB &AD,&0C,&85,&38,&57,&4F,&FD,&93,&29,&C9,&2D,&A5,&EE,&46,&91,&D8
+  EQUB &BB,&29,&DE,&2D,&4D,&54,&0D,&46,&FC,&0D,&26,&71,&6D,&56,&FD,&0A
+  EQUB &14,&70,&52,&49,&FF,&05,&0B,&EC,&B1,&AC,&FF,&93,&43,&74,&12,&54
+  EQUB &ED,&89,&01,&9D,&39,&F6,&FE,&A3,&42,&D5,&10,&97,&6F,&52,&91,&BE
+  EQUB &9A,&65,&B7,&C2,&A0,&EC,&12,&96,&D3,&54,&54,&7A,&AC,&B4,&EB,&68
+  EQUB &94,&55,&14,&4B,&DB,&36,&44,&BE,&3A,&8D,&ED,&5A,&59,&1C,&99,&11
+  EQUB &ED,&2D,&22,&5D,&55,&A6,&DB,&1A,&5A,&95,&A6,&A9,&A9,&3E,&1E,&48
+  EQUB &C7,&69,&EA,&15,&98,&3E,&4F,&84,&E5,&F0,&54,&79,&A9,&5A,&9C,&B2
+  EQUB &68,&D4,&9F,&D4,&32,&56,&85,&78,&7F,&22,&66,&98,&A9,&79,&AA,&9E
+  EQUB &4A,&50,&F5,&AE,&29,&C6,&38,&7B,&94,&3C,&1D,&66,&CE,&34,&27,&A1
+  EQUB &D9,&9D,&19,&9D,&11,&6B,&5A,&C5,&7E,&01,&58,&BF,&15,&AE,&54,&1D
+  EQUB &86,&75,&AD,&52,&95,&4B,&D4,&5E,&15,&C6,&34,&DA,&59,&CE,&52,&0F
+  EQUB &D2,&F0,&99,&27,&90,&FE,&99,&0C,&E4,&CA,&DE,&91,&E0,&D1,&BD,&26
+  EQUB &A9,&E2,&1E,&69,&AA,&67,&25,&58,&DF,&0A,&93,&71,&66,&96,&63,&9A
+  EQUB &69,&5C,&A9,&66,&A6,&DA,&03,&D9,&59,&5C,&A9,&96,&99,&AB,&49,&3E
+  EQUB &D2,&86,&AA,&A8,&F2,&6F,&84,&B1,&B1,&CB,&35,&70,&6C,&AB,&55,&2C
+  EQUB &CA,&97,&95,&45,&55,&D3,&22,&D9,&5C,&6C,&CA,&91,&75,&CE,&17,&69
+  EQUB &41,&ED,&CA,&1B,&54,&AE,&98,&AD,&65,&A6,&A7,&89,&5A,&2A,&E5,&F8
+  EQUB &14,&5B,&99,&6D,&5C,&05,&E2,&D9,&7C,&25,&62,&DA,&1D,&97,&52,&8D
+  EQUB &57,&23,&6A,&66,&36,&93,&78,&5A,&A5,&AA,&54,&F8,&67,&13,&58,&B6
+  EQUB &65,&6A,&57,&15,&4E,&5A,&43,&F8,&6D,&81,&9D,&55,&66,&F0,&8E,&1F
+  EQUB &25,&B2,&99,&3E,&0B,&56,&9C,&A6,&A5,&66,&66,&1B,&AB,&C8,&66,&2A
+  EQUB &CD,&B2,&72,&59,&33,&4B,&79,&86,&98,&E5,&9C,&53,&C9,&9A,&55,&26
+  EQUB &CA,&D5,&33,&4C,&F0,&AB,&1C,&8B,&E5,&D1,&1B,&47,&2A,&3F,&87,&43
+  EQUB &91,&3A,&C3,&BB,&A2,&51,&A9,&9A,&B3,&36,&5B,&82,&62,&7E,&53,&8B
+  EQUB &C2,&55,&AA,&D3,&5C,&C3,&65,&72,&45,&E5,&E2,&AA,&55,&5A,&9C,&5A
+  EQUB &5A,&8D,&4B,&B5,&25,&58,&B5,&1E,&E8,&AA,&1D,&56,&72,&74,&B1,&39
+  EQUB &1E,&56,&D5,&24,&D6,&9A,&36,&B8,&C9,&53,&87,&9A,&B8,&35,&8C,&EA
+  EQUB &57,&8A,&68,&EC,&87,&63,&8B,&B2,&6C,&99,&5A,&A9,&99,&72,&71,&0F
+  EQUB &CA,&8A,&EB,&2B,&23,&55,&CC,&52,&EA,&55,&9D,&4A,&8B,&4E,&66,&9A
+  EQUB &96,&A3,&95,&5D,&8A,&35,&5A,&8B,&66,&AA,&57,&83,&4A,&F1,&A3,&59
+  EQUB &CA,&37,&41,&AA,&F8,&74,&AA,&99,&83,&9D,&CE,&49,&97,&05,&D9,&9D
+  EQUB &92,&69,&0F,&C9,&63,&74,&A5,&9C,&AA,&8D,&D0,&D6,&9A,&4E,&54,&D5
+  EQUB &A9,&59,&65,&66,&66,&72,&4E,&66,&96,&6B,&16,&27,&69,&6A,&E2,&92
+  EQUB &CD,&96,&5A,&B4,&A5,&38,&5D,&CB,&A2,&69,&98,&D4,&B7,&4E,&4B,&84
+  EQUB &76,&33,&CC,&E1,&8E,&82,&FA,&76,&0D,&C4,&B7,&0B,&E0,&EC,&3B,&0E
+  EQUB &A5,&78,&95,&A8,&F4,&97,&88,&E5,&71,&8D,&69,&B8,&95,&A8,&B5,&CC
+  EQUB &A2,&DA,&95,&1E,&E2,&72,&95,&68,&DB,&17,&21,&BC,&98,&75,&AA,&A6
+  EQUB &A5,&98,&E6,&66,&3A,&9D,&25,&A1,&D5,&95,&B2,&56,&8B,&6A,&9A,&5A
+  EQUB &70,&D5,&E2,&4B,&72,&96,&69,&66,&B8,&93,&4D,&72,&2E,&5E,&13,&5A
+  EQUB &5A,&AB,&51,&36,&99,&95,&9C,&B5,&C2,&30,&EF,&45,&D8,&59,&87,&E0
+  EQUB &EC,&1F,&84,&EA,&57,&26,&4B,&72,&A9,&59,&68,&BC,&2D,&B1,&A8,&76
+  EQUB &99,&CA,&36,&A4,&F0,&DA,&95,&E2,&71,&8D,&58,&D6
 .D7_F801
-  EQUB &95,&B2,&5A,&51,&AD,&B8,&A9,&96,&D2,&58,&9E,&56,&CA,&9A,&89,&79
-  EQUB &76,&1C,&96,&8D,&39,&A9,&A7,&29,&C6,&52,&7A,&9D,&16,&6A,&47,&5C
-  EQUB &A4,&D5,&CA,&5A,&59,&55,&4B,&D8,&5A,&56,&A0,&F7,&17,&89,&31,&A5
-  EQUB &B4,&AC,&D3,&59,&1A,&8F,&39,&39,&8D,&49,&D1,&B3,&2A,&B6,&4B,&23
-  EQUB &B8,&CB,&62,&B8,&AC,&D2,&B3,&92,&B5,&71,&18,&7B,&4E,&93,&22,&F2
-  EQUB &AD,&38,&CB,&2B,&C2,&B5,&35,&16,&C6,&E9,&4E,&50,&F4,&5C,&CD,&4F
-  EQUB &15,&2A,&CB,&0B,&DA,&C7,&03,&C8,&D7,&39,&54,&DC,&2B,&17,&29,&DC
-  EQUB &2C,&CD,&33,&31,&D8,&D5,&A9,&2D,&0E,&E1,&B4,&CD,&3E,&05,&2F,&55
-  EQUB &4D,&74,&25,&9B,&91,&B6,&54,&AB,&1A,&E3,&35,&27,&94,&B5,&2C,&6D
-  EQUB &65,&A1,&5A,&B2,&B2,&F9,&0D,&0B,&A9,&B3,&35,&92,&B4,&AD,&54,&B4
-  EQUB &6C,&B9,&35,&94,&D4,&5A,&AF,&45,&4A,&3F,&12,&D1,&76,&4B,&33,&69
-  EQUB &1B,&07,&E8,&D2,&B4,&C6,&AB,&71,&1C,&AB,&4C,&6C,&D9,&46,&75,&5A
-  EQUB &E2,&55,&A3,&66,&3D,&85,&98,&B6,&AE,&0B,&C3,&59,&6E,&43,&D8,&98
-  EQUB &4F,&95,&CD,&68,&8B,&55,&61,&7E,&5D,&09,&41,&BE,&5E,&4B,&84,&E5
-  EQUB &1C,&B7,&4A,&9C,&D2,&66,&94,&76,&5E,&27,&42,&D8,&B7,&87,&92,&72
-  EQUB &3A,&0F,&57,&1A,&79,&16,&0A,&F6,&F0,&5E,&25,&44,&7E,&BD,&01,&DA
-  EQUB &54,&B5,&6B,&18,&D9,&2B,&EC,&28,&D6,&55,&87,&5F,&09,&56,&8A,&C7
-  EQUB &B8,&56,&9B,&05,&D9,&A5,&8F,&46,&A3,&68,&76,&AD,&1B,&85,&58,&3D
-  EQUB &A6,&65,&9E,&18,&E6,&96,&5A,&9A,&35,&A9,&63,&D2,&4B,&5D,&27,&22
-  EQUB &B8,&76,&C7,&46,&A9,&39,&99,&65,&E1,&6A,&96,&59,&96,&E1,&9A,&A5
-  EQUB &53,&AA,&E2,&35,&95,&99,&9A,&6A,&55,&55,&3B,&1B,&2C,&0F,&8D,&D2
-  EQUB &66,&99,&A9,&B2,&96,&35,&4A,&D3,&A4,&B4,&5D,&46,&C5,&F0,&6D,&33
-  EQUB &86,&D1,&D3,&5C,&2B,&4A,&B1,&AF,&0C,&D5,&32,&B5,&1D,&89,&D3,&32
-  EQUB &D9,&66,&95,&35,&B1,&55,&9A,&9A,&53,&6A,&69,&95,&E2,&35,&52,&D8
-  EQUB &AE,&46,&D1,&B9,&2D,&4D,&47,&94,&E8,&6C,&CF,&09,&B9,&54,&3A,&CE
-  EQUB &56,&54,&AB,&1D,&55,&31,&F1,&55,&49,&6A,&D2,&AC,&BA,&15,&A6,&2A
-  EQUB &D9,&D1,&66,&AD,&20,&FC,&69,&1B,&69,&4C,&D8,&3A,&B2,&C3,&E9,&65
-  EQUB &1A,&C6,&CB,&C2,&B2,&CC,&8F,&53,&E0,&E4,&3E,&1B,&43,&E9,&35,&1B
-  EQUB &49,&74,&D2,&D9,&5A,&0E,&C5,&B5,&56,&33,&27,&2F,&10,&F9,&33,&1B
-  EQUB &A4,&74,&6A,&B3,&4B,&49,&AC,&E8,&39,&CD,&91,&B3,&33,&1B,&47,&95
-  EQUB &2A,&B5,&1C,&CC,&D5,&54,&AA,&1E,&97,&A1,&58,&D5,&9A,&65,&5A,&E0
-  EQUB &B6,&1E,&66,&A1,&EA,&6C,&8B,&66,&A8,&DA,&71,&5A,&1F,&49,&69,&59
-  EQUB &1F,&15,&C6,&C9,&98,&BC,&95,&8D,&D1,&6A,&53,&67,&25,&69,&71,&AC
-  EQUB &4E,&69,&58,&DA,&3C,&5D,&0B,&C5,&69,&69,&59,&A7,&16,&E0,&DC,&55
-  EQUB &8F,&61,&5A,&35,&A8,&CD,&C6,&A9,&72,&3C,&8D,&93,&CA,&69,&74,&6A
-  EQUB &4B,&8B,&74,&99,&A9,&63,&2D,&C8,&E5,&96,&B2,&A2,&E9,&38,&DC,&9D
-  EQUB &85,&6A,&23,&FE,&07,&C1,&E0,&E0,&F8,&F9,&61,&A8,&72,&D4,&DF,&12
-  EQUB &CC,&D2,&3C,&EB,&42,&B1,&B2,&B9,&2E,&15,&D2,&AA,&CC,&6C,&AB,&A3
-  EQUB &54,&E4,&34,&BD,&E2,&35,&50,&D8,&BD,&8F,&0B,&A4,&D0,&BD,&35,&4B
-  EQUB &E1,&49,&D2,&56,&BE,&87,&25,&72,&15,&9F,&E3,&03,&A8,&75,&95,&5C
-  EQUB &C3,&8D,&58,&DC,&6B,&07,&C5,&65,&6A,&8D,&66,&61,&DA,&9A,&A5,&C3
-  EQUB &35,&E2,&56,&46,&D5,&C9,&AA,&6A,&1C,&C7,&E1,&A3,&72,&94,&D9,&A5
-  EQUB &C9,&A3,&D0,&9F,&23,&61,&F8,&92,&BC,&8E,&34,&EC,&9A,&2D,&C5,&94
-  EQUB &F0,&D9,&99,&95,&A1,&D9,&58,&7E,&2C,&8B,&58,&DA,&5D,&16,&37,&0D
-  EQUB &69,&5D,&15,&AA,&59,&58,&B6,&97,&45,&74,&5A,&59,&8B,&A6,&C5,&A8
-  EQUB &7C,&65,&8E,&C9,&58,&DD,&16,&93,&66,&C1,&DA,&6A,&58,&D6,&9D,&2A
-  EQUB &96,&5C,&0F,&A9,&96,&A5,&9A,&56,&6B,&0D,&6A,&3B,&17,&15,&4D,&36
-  EQUB &9D,&0B,&69,&E0,&76,&79,&26,&C3,&A0,&FC,&72,&36,&C9,&1B,&69,&5C
-  EQUB &5C,&99,&5A,&2B,&A6,&72,&5A,&8E,&8B,&B1,&C9,&37,&43,&78,&9C,&2D
-  EQUB &96,&A8,&D9,&F0,&58,&3E,&9C,&A5,&D2,&5A,&2F,&23,&AA,&5A,&36,&3D
-  EQUB &45,&61,&DA,&B8,&37,&24,&E1,&F8,&5F,&05,&59,&50,&F6,&76,&47,&41
-  EQUB &9E,&66,&A5,&C6,&C3,&4D,&B2,&36,&A6,&C9,&72,&58,&DC,&AB,&07,&C4
-  EQUB &DC,&1E,&A6,&86,&D5,&9C,&95,&65,&D0,&B6,&74,&8B,&5B,&89,&66,&9C
-  EQUB &8D,&35,&CA,&5A,&98,&CD,&6A,&A4,&F2,&9C,&A7,&0B,&E1,&32,&DC,&96
-  EQUB &59,&A4,&7D,&1C,&A9,&A1,&DA,&5D,&16,&C5,&A9,&69,&99,&69,&A4,&7A
-  EQUB &B2,&56,&58,&AD,&6C,&72,&96,&95,&63,&65,&78,&95,&8D,&C3,&E1,&54
-  EQUB &AB,&56,&90,&EC,&3E,&1B,&4D,&C5,&27,&1A,&CB,&93,&61,&AD,&4A,&E1
-  EQUB &AC,&E9,&2D,&2B,&43,&B4,&D2,&DC,&93,&0D,&CB,&36,&4D,&8B,&43,&A4
-  EQUB &F7,&45,&32,&D8,&3A,&D7,&12,&66,&EC,&4A,&5E,&93,&53,&6C,&34,&8F
-  EQUB &64,&72,&B9,&4D,&0F,&91,&BC,&39,&4D,&0F,&51,&AC,&AF,&05,&96,&79
-  EQUB &58,&AA,&CC,&CA,&D1,&B6,&53,&42,&EC,&BC,&0F,&C1,&E2,&72,&AE,&4C
-  EQUB &CB,&26,&B3,&52,&D9,&4A,&3A,&CB,&53,&64,&CB,&32,&9A,&D3,&92,&6E
-  EQUB &32,&AC,&D1,&B6,&54,&D4,&AD,&31,&E8,&D5,&52,&CC,&AE,&A4,&B1,&A8
-  EQUB &EB,&2D,&4B,&A4,&D4,&3F,&13,&16,&E0,&EE,&8E,&26,&D0,&EE,&2D,&8E
-  EQUB &46,&C6,&76,&2B,&A2,&C8,&FA,&0F,&27,&C2,&B5,&4C,&D5,&C1,&D4,&F4
-  EQUB &37,&29,&C1,&D9,&A5,&A9,&6C,&61,&F4,&8D,&91,&F2,&9D,&86,&A1,&E6
-  EQUB &AA,&B2,&A9,&2D,&5A,&56,&9A,&8A,&E3,&79,&26,&2D,&E0,&76,&C7,&83
-  EQUB &47,&E1,&55,&65,&9A,&AA,&4F,&13,&A3,&E2,&9C,&63,&A1,&CF,&98,&37
-  EQUB &90,&73,&9A,&57,&2C,&88,&FA,&A3,&A3,&B2,&3C,&35,&54,&DE,&8C,&A2
-  EQUB &B2,&D9,&1F,&D1,&30,&A8,&EE,&CB,&2A,&D2,&36,&47,&A3,&5A,&9A,&9D
-  EQUB &44,&AA,&E4,&B6,&D3,&1C,&8D,&52,&D4,&D6,&9E,&C2,&47,&96,&5A,&6F
-  EQUB &02,&D6,&3C,&8D,&9C,&66,&A5,&62,&E9,&78,&8E,&C3,&99,&5E,&27,&13
-  EQUB &C8,&73,&57,&A1,&66,&96,&55,&A5,&5A,&9B,&4B,&36,&64,&9D,&C1,&D1
-  EQUB &B3,&2B,&52,&AC,&CC,&D6,&4A,&6B,&55,&4B,&92,&D4,&9B,&46,&D3,&65
-  EQUB &3A,&49,&E1,&78,&2F,&A3,&65,&34,&C3,&C9,&B4,&75,&99,&53,&0C,&EB
-  EQUB &C5,&38,&AA,&4E,&67,&62,&9A,&9A,&90,&7C,&CB,&59,&17,&2C,&D2,&E4
-  EQUB &9B,&33,&92,&6A,&B9,&4A,&D3,&35,&53,&C0,&DC,&BC,&55,&54,&B2,&3B
-  EQUB &27,&4C,&E9,&4A,&CC,&AC,&67,&B0,&D5,&39,&4B,&39,&34,&AB,&35,&8A
-  EQUB &D5,&2B,&4B,&3A,&4D,&29,&AB,&2D,&46,&B8,&D2,&BC,&A3,&AB,&1C,&93
-  EQUB &98,&D9,&56,&A6,&72,&8D,&67,&C1,&35,&59,&A9,&6C,&5A,&83,&E5,&A6
-  EQUB &65,&AC,&33,&67,&29,&59,&CA,&62,&E6,&B0,&EA,&A5,&A8,&D5,&A8,&D6
-  EQUB &CD,&21,&E4,&B5,&B5,&25,&AC,&49,&E6,&65,&B2,&A9,&87,&66,&58,&E6
-  EQUB &96,&8D,&B0,&F2,&69,&4D,&9A,&37,&86,&5A,&70,&E1,&DB,&A1,&53,&98
-  EQUB &D9,&A9,&A5,&66,&52,&AD,&DC,&19,&66,&9A,&8D,&B5,&5B,&46,&41,&AB
-  EQUB &A6,&74,&72,&99,&54,&CE,&AC,&A6,&5C,&95,&43,&F0,&BA,&A9,&A9,&72
-  EQUB &38,&E5,&AA,&37,&23,&B2,&9A,&A5,&9D,&2A,&5A,&64,&EE,&1A,&66,&9A
-  EQUB &55,&96,&AA,&96,&55,&A2,&BC,&D2,&56,&95,&A6,&49,&B9,&79,&2A,&71
-  EQUB &8B,&59,&55,&3D,&87,&22,&D6,&36,&78,&AA,&95,&51,&5E,&67,&55,&C1
-  EQUB &2C,&D2,&E6,&56,&78,&8D,&65,&5A,&37,&2E,&22,&B7,&89,&63,&9E,&26
-  EQUB &63,&D2,&36,&1D,&B5,&19,&95,&5A,&4E,&97,&26,&AA,&1C,&E7,&16,&96
-  EQUB &6A,&55,&A5,&C9,&66,&3A,&98,&B9,&96,&59,&A5,&C5,&25,&F0,&9B,&64
-  EQUB &A5,&D2,&C3,&CD,&14,&3E,&75,&43,&59,&A8,&3B,&71,&9C,&8D,&B2,&56
-  EQUB &96,&8E,&9A,&55,&8D,&A6,&A8,&CF,&C3,&03,&DB,&32,&2F,&86,&65,&3A
-  EQUB &98,&5E,&D3,&41,&EE,&28,&A7,&6C,&CC,&65,&A6,&34,&7C,&C6,&A5,&6A
-  EQUB &65,&67,&0B,&99,&AC,&55,&A6,&4D,&73,&45,&35,&55,&5A,&6A,&5A,&63
-  EQUB &56,&1E,&A9,&99,&95,&9A,&1D,&66,&6A,&66,&C8,&AD,&95,&D2,&56,&56
-  EQUB &95,&C5,&95,&99,&9B,&0D,&59,&AA,&D9,&54,&9D,&52,&B3,&63,&32,&B4
-  EQUB &AC,&B4,&D2,&75,&4C,&B3,&32,&6A,&AF,&05,&BC,&3C,&07,&6B,&4A,&CC
-  EQUB &F1,&53,&1B,&49,&76,&4D,&4D,&2C,&71,&CB,&4B,&33,&69,&26,&AC,&CA
-  EQUB &6B,&35,&33,&56,&64,&D6,&69,&AB,&14,&8E,&3B,&93,&C8,&C9,&A9,&9A
-  EQUB &CC,&F0,&72,&CD,&52,&75,&1A,&E4,&CD,&2B,&2A,&AB,&35,&A4,&AB,&4A
-  EQUB &D4,&AB,&4B,&2D,&35,&4A,&B4,&B4,&B8,&AC,&AB,&25,&D1,&66,&66,&A5
-  EQUB &5C,&65,&94,&75,&99,&A6,&65,&A0,&FB,&1A,&A4,&EA,&59,&59,&A5,&74
-  EQUB &96,&5A,&95,&A3,&47,&E8,&74,&83,&E4,&6D,&75,&62,&66,&A1,&E4,&FA
-  EQUB &8C,&AA,&38,&AE,&59,&9D,&8A,&64,&76,&A3,&B2,&A5,&A9,&5A,&59,&94
-  EQUB &BB,&89,&1E,&69,&94,&AD,&A9,&AA,&53,&E2,&6A,&56,&56,&9A,&95,&B2
-  EQUB &59,&2F,&86,&93,&A9,&A5,&99,&A6,&A5,&98,&DA,&65,&A6,&65,&69,&9A
-  EQUB &66,&95,&CA,&66,&B8,&35,&96,&69,&6A,&5A,&95,&9A,&92,&E9,&A9,&A7
-  EQUB &32,&55,&59,&95,&73,&29,&56,&CA,&1D,&AA,&68,&7C,&A5,&99,&AC,&8F
-  EQUB &26,&94,&B7,&1A,&5A,&6A,&68,&BB,&4A,&A9,&39,&B2,&97,&47,&A2,&CB
-  EQUB &51,&5F,&15,&C2,&DD,&18,&AD,&CA,&93,&78,&92,&1F,&F0,&61,&EC,&59
-  EQUB &57,&21,&7E,&32,&91,&D7,&29,&99,&97,&44,&CD,&BC,&0B,&5C,&C9,&35
-  EQUB &6C,&53,&9E,&25,&27,&D4,&38,&BD,&26,&8E,&93,&6A,&35,&BA,&0D,&A2
-  EQUB &B6,&59,&7A,&22,&AB,&65,&A5,&74,&A9,&A7,&23,&62,&D9,&AD,&8A,&2B
-  EQUB &72,&59,&6E,&1A,&36,&99,&93,&7A,&32,&CE,&95,&91,&B6,&34,&AB,&5E
-  EQUB &03,&AA,&D3,&1A,&B7,&0B,&A3,&B1,&4D,&A5,&C8,&DA,&55,&68,&F8,&5C
-  EQUB &96,&99,&35,&A9,&6A,&95,&95,&8F,&36,&11,&F1,&72,&1F,&19,&5B,&25
-  EQUB &5A,&3D,&29,&96,&C9,&5A,&59,&56,&9A,&36,&AB,&4D,&58,&B4,&CC,&4E
-  EQUB &CB,&46,&AC,&E8,&9A,&A5,&A8
+  EQUB &95,&B2,&5A
+.D7_F804
+  EQUB &51,&AD,&B8,&A9,&96,&D2,&58,&9E,&56,&CA,&9A,&89,&79,&76,&1C,&96
+  EQUB &8D,&39,&A9,&A7,&29,&C6,&52,&7A,&9D,&16,&6A,&47,&5C,&A4,&D5,&CA
+  EQUB &5A,&59,&55,&4B,&D8,&5A,&56,&A0,&F7,&17,&89,&31,&A5,&B4,&AC,&D3
+  EQUB &59,&1A,&8F,&39,&39,&8D,&49,&D1,&B3,&2A,&B6,&4B,&23,&B8,&CB,&62
+  EQUB &B8,&AC,&D2,&B3,&92,&B5,&71,&18,&7B,&4E,&93,&22,&F2,&AD,&38,&CB
+  EQUB &2B,&C2,&B5,&35,&16,&C6,&E9,&4E,&50,&F4,&5C,&CD,&4F,&15,&2A,&CB
+  EQUB &0B,&DA,&C7,&03,&C8,&D7,&39,&54,&DC,&2B,&17,&29,&DC,&2C,&CD,&33
+  EQUB &31,&D8,&D5,&A9,&2D,&0E,&E1,&B4,&CD,&3E,&05,&2F,&55,&4D,&74,&25
+  EQUB &9B,&91,&B6,&54,&AB,&1A,&E3,&35,&27,&94,&B5,&2C,&6D,&65,&A1,&5A
+  EQUB &B2,&B2,&F9,&0D,&0B,&A9,&B3,&35,&92,&B4,&AD,&54,&B4,&6C,&B9,&35
+  EQUB &94,&D4,&5A,&AF,&45,&4A,&3F,&12,&D1,&76,&4B,&33,&69,&1B,&07,&E8
+  EQUB &D2,&B4,&C6,&AB,&71,&1C,&AB,&4C,&6C,&D9,&46,&75,&5A,&E2,&55,&A3
+  EQUB &66,&3D,&85,&98,&B6,&AE,&0B,&C3,&59,&6E,&43,&D8,&98,&4F,&95,&CD
+  EQUB &68,&8B,&55,&61,&7E,&5D,&09,&41,&BE,&5E,&4B,&84,&E5,&1C,&B7,&4A
+  EQUB &9C,&D2,&66,&94,&76,&5E,&27,&42,&D8,&B7,&87,&92,&72,&3A,&0F,&57
+  EQUB &1A,&79,&16,&0A,&F6,&F0,&5E,&25,&44,&7E,&BD,&01,&DA,&54,&B5,&6B
+  EQUB &18,&D9,&2B,&EC,&28,&D6,&55,&87,&5F,&09,&56,&8A,&C7,&B8,&56,&9B
+  EQUB &05,&D9,&A5,&8F,&46,&A3,&68,&76,&AD,&1B,&85,&58,&3D,&A6,&65,&9E
+  EQUB &18,&E6,&96,&5A,&9A,&35,&A9,&63,&D2,&4B,&5D,&27,&22,&B8,&76,&C7
+  EQUB &46,&A9,&39,&99,&65,&E1,&6A,&96,&59,&96,&E1,&9A,&A5,&53,&AA,&E2
+  EQUB &35,&95,&99,&9A,&6A,&55,&55,&3B,&1B,&2C,&0F,&8D,&D2,&66,&99,&A9
+  EQUB &B2,&96,&35,&4A,&D3,&A4,&B4,&5D,&46,&C5,&F0,&6D,&33,&86,&D1,&D3
+  EQUB &5C,&2B,&4A,&B1,&AF,&0C,&D5,&32,&B5,&1D,&89,&D3,&32,&D9,&66,&95
+  EQUB &35,&B1,&55,&9A,&9A,&53,&6A,&69,&95,&E2,&35,&52,&D8,&AE,&46,&D1
+  EQUB &B9,&2D,&4D,&47,&94,&E8,&6C,&CF,&09,&B9,&54,&3A,&CE,&56,&54,&AB
+  EQUB &1D,&55,&31,&F1,&55,&49,&6A,&D2,&AC,&BA,&15,&A6,&2A,&D9,&D1,&66
+  EQUB &AD,&20,&FC,&69,&1B,&69,&4C,&D8,&3A,&B2,&C3,&E9,&65,&1A,&C6,&CB
+  EQUB &C2,&B2,&CC,&8F,&53,&E0,&E4,&3E,&1B,&43,&E9,&35,&1B,&49,&74,&D2
+  EQUB &D9,&5A,&0E,&C5,&B5,&56,&33,&27,&2F,&10,&F9,&33,&1B,&A4,&74,&6A
+  EQUB &B3,&4B,&49,&AC,&E8,&39,&CD,&91,&B3,&33,&1B,&47,&95,&2A,&B5,&1C
+  EQUB &CC,&D5,&54,&AA,&1E,&97,&A1,&58,&D5,&9A,&65,&5A,&E0,&B6,&1E,&66
+  EQUB &A1,&EA,&6C,&8B,&66,&A8,&DA,&71,&5A,&1F,&49,&69,&59,&1F,&15,&C6
+  EQUB &C9,&98,&BC,&95,&8D,&D1,&6A,&53,&67,&25,&69,&71,&AC,&4E,&69,&58
+  EQUB &DA,&3C,&5D,&0B,&C5,&69,&69,&59,&A7,&16,&E0,&DC,&55,&8F,&61,&5A
+  EQUB &35,&A8,&CD,&C6,&A9,&72,&3C,&8D,&93,&CA,&69,&74,&6A,&4B,&8B,&74
+  EQUB &99,&A9,&63,&2D,&C8,&E5,&96,&B2,&A2,&E9,&38,&DC,&9D,&85,&6A,&23
+  EQUB &FE,&07,&C1,&E0,&E0,&F8,&F9,&61,&A8,&72,&D4,&DF,&12,&CC,&D2,&3C
+  EQUB &EB,&42,&B1,&B2,&B9,&2E,&15,&D2,&AA,&CC,&6C,&AB,&A3,&54,&E4,&34
+  EQUB &BD,&E2,&35,&50,&D8,&BD,&8F,&0B,&A4,&D0,&BD,&35,&4B,&E1,&49,&D2
+  EQUB &56,&BE,&87,&25,&72,&15,&9F,&E3,&03,&A8,&75,&95,&5C,&C3,&8D,&58
+  EQUB &DC,&6B,&07,&C5,&65,&6A,&8D,&66,&61,&DA,&9A,&A5,&C3,&35,&E2,&56
+  EQUB &46,&D5,&C9,&AA,&6A,&1C,&C7,&E1,&A3,&72,&94,&D9,&A5,&C9,&A3,&D0
+  EQUB &9F,&23,&61,&F8,&92,&BC,&8E,&34,&EC,&9A,&2D,&C5,&94,&F0,&D9,&99
+  EQUB &95,&A1,&D9,&58,&7E,&2C,&8B,&58,&DA,&5D,&16,&37,&0D,&69,&5D,&15
+  EQUB &AA,&59,&58,&B6,&97,&45,&74,&5A,&59,&8B,&A6,&C5,&A8,&7C,&65,&8E
+  EQUB &C9,&58,&DD,&16,&93,&66,&C1,&DA,&6A,&58,&D6,&9D,&2A,&96,&5C,&0F
+  EQUB &A9,&96,&A5,&9A,&56,&6B,&0D,&6A,&3B,&17,&15,&4D,&36,&9D,&0B,&69
+  EQUB &E0,&76,&79,&26,&C3,&A0,&FC,&72,&36,&C9,&1B,&69,&5C,&5C,&99,&5A
+  EQUB &2B,&A6,&72,&5A,&8E,&8B,&B1,&C9,&37,&43,&78,&9C,&2D,&96,&A8,&D9
+  EQUB &F0,&58,&3E,&9C,&A5,&D2,&5A,&2F,&23,&AA,&5A,&36,&3D,&45,&61,&DA
+  EQUB &B8,&37,&24,&E1,&F8,&5F,&05,&59,&50,&F6,&76,&47,&41,&9E,&66,&A5
+  EQUB &C6,&C3,&4D,&B2,&36,&A6,&C9,&72,&58,&DC,&AB,&07,&C4,&DC,&1E,&A6
+  EQUB &86,&D5,&9C,&95,&65,&D0,&B6,&74,&8B,&5B,&89,&66,&9C,&8D,&35,&CA
+  EQUB &5A,&98,&CD,&6A,&A4,&F2,&9C,&A7,&0B,&E1,&32,&DC,&96,&59,&A4,&7D
+  EQUB &1C,&A9,&A1,&DA,&5D,&16,&C5,&A9,&69,&99,&69,&A4,&7A,&B2,&56,&58
+  EQUB &AD,&6C,&72,&96,&95,&63,&65,&78,&95,&8D,&C3,&E1,&54,&AB,&56,&90
+  EQUB &EC,&3E,&1B,&4D,&C5,&27,&1A,&CB,&93,&61,&AD,&4A,&E1,&AC,&E9,&2D
+  EQUB &2B,&43,&B4,&D2,&DC,&93,&0D,&CB,&36,&4D,&8B,&43,&A4,&F7,&45,&32
+  EQUB &D8,&3A,&D7,&12,&66,&EC,&4A,&5E,&93,&53,&6C,&34,&8F,&64,&72,&B9
+  EQUB &4D,&0F,&91,&BC,&39,&4D,&0F,&51,&AC,&AF,&05,&96,&79,&58,&AA,&CC
+  EQUB &CA,&D1,&B6,&53,&42,&EC,&BC,&0F,&C1,&E2,&72,&AE,&4C,&CB,&26,&B3
+  EQUB &52,&D9,&4A,&3A,&CB,&53,&64,&CB,&32,&9A,&D3,&92,&6E,&32,&AC,&D1
+  EQUB &B6,&54,&D4,&AD,&31,&E8,&D5,&52,&CC,&AE,&A4,&B1,&A8,&EB,&2D,&4B
+  EQUB &A4,&D4,&3F,&13,&16,&E0,&EE,&8E,&26,&D0,&EE,&2D,&8E,&46,&C6,&76
+  EQUB &2B,&A2,&C8,&FA,&0F,&27,&C2,&B5,&4C,&D5,&C1,&D4,&F4,&37,&29,&C1
+  EQUB &D9,&A5,&A9,&6C,&61,&F4,&8D,&91,&F2,&9D,&86,&A1,&E6,&AA,&B2,&A9
+  EQUB &2D,&5A,&56,&9A,&8A,&E3,&79,&26,&2D,&E0,&76,&C7,&83,&47,&E1,&55
+  EQUB &65,&9A,&AA,&4F,&13,&A3,&E2,&9C,&63,&A1,&CF,&98,&37,&90,&73,&9A
+  EQUB &57,&2C,&88,&FA,&A3,&A3,&B2,&3C,&35,&54,&DE,&8C,&A2,&B2,&D9,&1F
+  EQUB &D1,&30,&A8,&EE,&CB,&2A,&D2,&36,&47,&A3,&5A,&9A,&9D,&44,&AA,&E4
+  EQUB &B6,&D3,&1C,&8D,&52,&D4,&D6,&9E,&C2,&47,&96,&5A,&6F,&02,&D6,&3C
+  EQUB &8D,&9C,&66,&A5,&62,&E9,&78,&8E,&C3,&99,&5E,&27,&13,&C8,&73,&57
+  EQUB &A1,&66,&96,&55,&A5,&5A,&9B,&4B,&36,&64,&9D,&C1,&D1,&B3,&2B,&52
+  EQUB &AC,&CC,&D6,&4A,&6B,&55,&4B,&92,&D4,&9B,&46,&D3,&65,&3A,&49,&E1
+  EQUB &78,&2F,&A3,&65,&34,&C3,&C9,&B4,&75,&99,&53,&0C,&EB,&C5,&38,&AA
+  EQUB &4E,&67,&62,&9A,&9A,&90,&7C,&CB,&59,&17,&2C,&D2,&E4,&9B,&33,&92
+  EQUB &6A,&B9,&4A,&D3,&35,&53,&C0,&DC,&BC,&55,&54,&B2,&3B,&27,&4C,&E9
+  EQUB &4A,&CC,&AC,&67,&B0,&D5,&39,&4B,&39,&34,&AB,&35,&8A,&D5,&2B,&4B
+  EQUB &3A,&4D,&29,&AB,&2D,&46,&B8,&D2,&BC,&A3,&AB,&1C,&93,&98,&D9,&56
+  EQUB &A6,&72,&8D,&67,&C1,&35,&59,&A9,&6C,&5A,&83,&E5,&A6,&65,&AC,&33
+  EQUB &67,&29,&59,&CA,&62,&E6,&B0,&EA,&A5,&A8,&D5,&A8,&D6,&CD,&21,&E4
+  EQUB &B5,&B5,&25,&AC,&49,&E6,&65,&B2,&A9,&87,&66,&58,&E6,&96,&8D,&B0
+  EQUB &F2,&69,&4D,&9A,&37,&86,&5A,&70,&E1,&DB,&A1,&53,&98,&D9,&A9,&A5
+  EQUB &66,&52,&AD,&DC,&19,&66,&9A,&8D,&B5,&5B,&46,&41,&AB,&A6,&74,&72
+  EQUB &99,&54,&CE,&AC,&A6,&5C,&95,&43,&F0,&BA,&A9,&A9,&72,&38,&E5,&AA
+  EQUB &37,&23,&B2,&9A,&A5,&9D,&2A,&5A,&64,&EE,&1A,&66,&9A,&55,&96,&AA
+  EQUB &96,&55,&A2,&BC,&D2,&56,&95,&A6,&49,&B9,&79,&2A,&71,&8B,&59,&55
+  EQUB &3D,&87,&22,&D6,&36,&78,&AA,&95,&51,&5E,&67,&55,&C1,&2C,&D2,&E6
+  EQUB &56,&78,&8D,&65,&5A,&37,&2E,&22,&B7,&89,&63,&9E,&26,&63,&D2,&36
+  EQUB &1D,&B5,&19,&95,&5A,&4E,&97,&26,&AA,&1C,&E7,&16,&96,&6A,&55,&A5
+  EQUB &C9,&66,&3A,&98,&B9,&96,&59,&A5,&C5,&25,&F0,&9B,&64,&A5,&D2,&C3
+  EQUB &CD,&14,&3E,&75,&43,&59,&A8,&3B,&71,&9C,&8D,&B2,&56,&96,&8E,&9A
+  EQUB &55,&8D,&A6,&A8,&CF,&C3,&03,&DB,&32,&2F,&86,&65,&3A,&98,&5E,&D3
+  EQUB &41,&EE,&28,&A7,&6C,&CC,&65,&A6,&34,&7C,&C6,&A5,&6A,&65,&67,&0B
+  EQUB &99,&AC,&55,&A6,&4D,&73,&45,&35,&55,&5A,&6A,&5A,&63,&56,&1E,&A9
+  EQUB &99,&95,&9A,&1D,&66,&6A,&66,&C8,&AD,&95,&D2,&56,&56,&95,&C5,&95
+  EQUB &99,&9B,&0D,&59,&AA,&D9,&54,&9D,&52,&B3,&63,&32,&B4,&AC,&B4,&D2
+  EQUB &75,&4C,&B3,&32,&6A,&AF,&05,&BC,&3C,&07,&6B,&4A,&CC,&F1,&53,&1B
+  EQUB &49,&76,&4D,&4D,&2C,&71,&CB,&4B,&33,&69,&26,&AC,&CA,&6B,&35,&33
+  EQUB &56,&64,&D6,&69,&AB,&14,&8E,&3B,&93,&C8,&C9,&A9,&9A,&CC,&F0,&72
+  EQUB &CD,&52,&75,&1A,&E4,&CD,&2B,&2A,&AB,&35,&A4,&AB,&4A,&D4,&AB,&4B
+  EQUB &2D,&35,&4A,&B4,&B4,&B8,&AC,&AB,&25,&D1,&66,&66,&A5,&5C,&65,&94
+  EQUB &75,&99,&A6,&65,&A0,&FB,&1A,&A4,&EA,&59,&59,&A5,&74,&96,&5A,&95
+  EQUB &A3,&47,&E8,&74,&83,&E4,&6D,&75,&62,&66,&A1,&E4,&FA,&8C,&AA,&38
+  EQUB &AE,&59,&9D,&8A,&64,&76,&A3,&B2,&A5,&A9,&5A,&59,&94,&BB,&89,&1E
+  EQUB &69,&94,&AD,&A9,&AA,&53,&E2,&6A,&56,&56,&9A,&95,&B2,&59,&2F,&86
+  EQUB &93,&A9,&A5,&99,&A6,&A5,&98,&DA,&65,&A6,&65,&69,&9A,&66,&95,&CA
+  EQUB &66,&B8,&35,&96,&69,&6A,&5A,&95,&9A,&92,&E9,&A9,&A7,&32,&55,&59
+  EQUB &95,&73,&29,&56,&CA,&1D,&AA,&68,&7C,&A5,&99,&AC,&8F,&26,&94,&B7
+  EQUB &1A,&5A,&6A,&68,&BB,&4A,&A9,&39,&B2,&97,&47,&A2,&CB,&51,&5F,&15
+  EQUB &C2,&DD,&18,&AD,&CA,&93,&78,&92,&1F,&F0,&61,&EC,&59,&57,&21,&7E
+  EQUB &32,&91,&D7,&29,&99,&97,&44,&CD,&BC,&0B,&5C,&C9,&35,&6C,&53,&9E
+  EQUB &25,&27,&D4,&38,&BD,&26,&8E,&93,&6A,&35,&BA,&0D,&A2,&B6,&59,&7A
+  EQUB &22,&AB,&65,&A5,&74,&A9,&A7,&23,&62,&D9,&AD,&8A,&2B,&72,&59,&6E
+  EQUB &1A,&36,&99,&93,&7A,&32,&CE,&95,&91,&B6,&34,&AB,&5E,&03,&AA,&D3
+  EQUB &1A,&B7,&0B,&A3,&B1,&4D,&A5,&C8,&DA,&55,&68,&F8,&5C,&96,&99,&35
+  EQUB &A9,&6A,&95,&95,&8F,&36,&11,&F1,&72,&1F,&19,&5B,&25,&5A,&3D,&29
+  EQUB &96,&C9,&5A,&59,&56,&9A,&36,&AB,&4D,&58,&B4,&CC,&4E,&CB,&46,&AC
+  EQUB &E8,&9A,&A5,&A8
   FILLTO &FFE0
   EQUB &42,&4F,&4D,&42,&45,&52
 IF REGION_JP

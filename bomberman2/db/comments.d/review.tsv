@@ -1,1 +1,7 @@
 7:D81F	>	Advance the music stream of channel SND_CH by one tick (BGM bank mapped by SND_TICK_CHANNEL).\nWhile SND_NOTE_LEN,X is running, count it down at L7_D8E8. Otherwise clear the legato flag,\nquiet the channel, read the next stream byte: D0 and up is a command (SND_EXEC_CMD), else a note.
+7:DA23	>	Command D9. Reload the stream pointer of channel X from the channel table of the current BGM (SND_BGM_TABLE entry SND_BGM_LATCH-0C), i.e. restart the track.
+7:DA65	>	Command DD. Store the next stream byte in W_020B (meaning not traced; no coverage run used it).
+7:DA6F	>	Command DE. Continue the stream at the address in the next two bytes.
+7:DAD4	>	Command E1. Store the next stream byte in W_0210 (meaning not traced).
+7:DADE	>	Command E2. Store the next stream byte in W_02C7,X for this channel (meaning not traced).
+7:DB5F	>	Command EB. Add the next stream byte to SND_TRANSPOSE,X.

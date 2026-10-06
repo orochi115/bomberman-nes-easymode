@@ -153,6 +153,8 @@ class Emitter:
     def pointer_roles(self):
         """PRG offset -> ('lo'|'hi', (bank, target), adjust) from runtime pointer uses."""
         roles = {}
+        self.conflicts = [c for c in self.conflicts if not c.startswith(("pointer", "PRG byte", "db/"))]
+        self.warnings = []
         self.pairs = []          # (lo off, hi off, target bank, target, adj)
         for (lo, hi, kind), vals in self.d.meta["ptrs"].items():
             if len(vals) != 1:
@@ -205,6 +207,8 @@ class Emitter:
             hn = n
         else:
             hk = self.region_key(args[1])
+            if hk is None:
+                return           # the high byte has no counterpart in this region
             hn, ha = hk
             cnt = int(args[2]) if kind == "split" else 1
             pairs = [(a + i, ha + i) for i in range(cnt)]

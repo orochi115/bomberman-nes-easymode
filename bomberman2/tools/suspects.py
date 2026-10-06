@@ -115,8 +115,26 @@ def main():
     args = ap.parse_args()
     e = Emitter(args.region)
     e.collect()
-    known = {row[0] for ln, row in load_tsv("notptr.tsv")}
-    rows = [r for r in scan(e, args.bank) if (args.all or r[1] not in known) and (args.low or r[4] != "low")]
+    known = set()
+    for ln, row in load_tsv("notptr.tsv"):
+        k = row[0].split(":")
+        if len(k) == 3 and k[0] == args.region:
+            known.add(":".join(k[1:]))
+        elif len(k) == 2 and args.region == "us":
+            known.add(row[0])
+    us_known = {row[0] for ln, row in load_tsv("notptr.tsv") if len(row[0].split(":")) == 2}
+    jpmap = {}
+    if args.region == "jp":
+        import os
+        from emit import ROOT
+        for line in open(os.path.join(ROOT, "db", "jpmap.tsv")):
+            if not line.startswith("#"):
+                a, b = line.split()
+                jpmap[a] = b
+
+    def checked(key):
+        return key in known or jpmap.get(key) in us_known
+    rows = [r for r in scan(e, args.bank) if (args.all or not checked(r[1])) and (args.low or r[4] != "low")]
     order = {"high": 0, "med": 1, "low": 2}
     rows.sort(key=lambda r: (order[r[4]], r[1]))
     for r in rows:
