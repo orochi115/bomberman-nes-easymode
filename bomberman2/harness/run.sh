@@ -8,7 +8,7 @@
 #   harness/notes/**, and write inside the worktree (sandbox); no git, no web
 # - afterwards the task's db shards and notes are copied back here and
 #   tools/check.sh runs; the log goes to harness/logs/TASK.log
-set -e
+set -e -o pipefail
 TASK=$1
 [ -f "$(dirname "$0")/tasks/$TASK.md" ] || { echo "Usage: $0 TASK  (see harness/tasks/)"; exit 1; }
 
@@ -38,7 +38,7 @@ PROMPT="$(cat "$W/harness/RULES.md")
 $(cat "$W/harness/tasks/$TASK.md")
 
 ---
-你的任务名是 $TASK（环境变量 BM2_TASK 已设置）。当前目录是仓库的 bomberman2/ 目录。
+你的任务名是 ${TASK}（环境变量 BM2_TASK 已设置）。当前目录是仓库的 bomberman2/ 目录。
 先读 RULES 第 2 节的工具说明和 harness/notes/ 下已有的笔记，然后开始工作。
 完成后运行 tools/check.sh，直到 CHECK PASSED，再在笔记末尾贴上结果。"
 
