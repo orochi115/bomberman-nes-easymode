@@ -787,6 +787,16 @@ INCLUDE "input.asm"
 
   JSR VBLD
   JSR BUILD_MAP       ; Generate level map
+
+  ; The demo replays recorded pad input, so the game must see the same
+  ; FRAME_CNT as when it was recorded. How many frames the STAGE_SCREEN
+  ; vblank wait takes is a race with the NMI, which depends on code timing
+  ; (in the original too, whose first US demo after power-on gets 164),
+  ; so set it here while the NMI is still off. Doesn't touch carry (RAND).
+  LDA DEMOPLAY
+  BEQ demo_frame_set
+  LDA #DEMO_FRAME_CNT:STA FRAME_CNT
+.demo_frame_set
   JSR SPAWN           ; Spawn game entities (also sets stage started to 1)
   JSR PICK_BONUS_ITEM ; Determine which bonus item is available for this level
   JSR PICTURE_ON      ; Turn on screen and display

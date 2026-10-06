@@ -86,6 +86,7 @@ MAP_EXIT         = 8
 MAX_BOMB = 10
 MAX_BOMB_RANGE = 5
 DEMO_BOMB_RANGE = 4
+DEMO_FRAME_CNT = 162 ; FRAME_CNT when demo play starts (as in the original)
 MAX_FIRE = (MAX_BOMB*8)
 
 ; Enemy related
