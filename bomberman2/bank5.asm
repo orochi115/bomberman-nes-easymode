@@ -6,6 +6,8 @@
 
 ; Story mode only. If LIVES changed and is not negative, store it in LIVES_SHOWN and queue that digit at nametable column 1Bh row 02h.
 ; Skips when GAME_MODE is not 0. Called every frame from STAGE_LOOP.
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05 on both.
 .DRAW_LIVES
   LDA GAME_MODE
   BNE L5_802E
@@ -59,9 +61,9 @@ ENDIF
   ADC #HI(LEVEL_OBJ_TILES)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&18
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&06
   LDY #&04
   JMP UPLOAD_CHR_RAW
@@ -74,15 +76,15 @@ ENDIF
   ASL A
   ASL A
   ABS_ORA STAGE_NUM
-  STA RLE_BYTE
+  STA TEMP1
   ASL A
   CLC
-  ADC RLE_BYTE
+  ADC TEMP1
   TAX
   LDA D5_80CD,X
-  STA RLE_LEFT
+  STA TEMP3
   LDA POWER_STAGE
-  CMP RLE_BYTE
+  CMP TEMP1
   BNE L5_808D
 
 ; (not seen executing during the coverage runs)
@@ -93,10 +95,10 @@ ENDIF
   BNE L5_808D
 .L5_8089
   LDA #&19
-  STA RLE_LEFT
+  STA TEMP3
 .L5_808D
   JSR NEXT_RNG
-  CMP RLE_LEFT
+  CMP TEMP3
   BCC L5_8097
   BEQ L5_8097
   INX
@@ -1167,9 +1169,9 @@ ENDIF
   RTS
 .L5_87B4
   LDA ACT_W_COL
-  STA RLE_BYTE
+  STA TEMP1
   LDA ACT_W_ROW
-  STA RLE_BITS
+  STA TEMP2
   JMP L7_CF96
 .L5_87BF
   LDA ACT_REMOTE
@@ -1937,9 +1939,9 @@ ENDIF
   LDA #&62
   STA DATA_PTR_HI
   LDA #&A0
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&01
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDY #&00
 .L5_9266
   LDA #&FF
@@ -1948,14 +1950,14 @@ ENDIF
   BNE L5_926F
   INC DATA_PTR_HI
 .L5_926F
-  DEC PPU_ADDR
-  LDA PPU_ADDR
+  DEC DEST_PTR
+  LDA DEST_PTR
   CMP #&FF
   BNE L5_9279
-  DEC PPU_ADDR_HI
+  DEC DEST_PTR_HI
 .L5_9279
-  LDA PPU_ADDR
-  ORA PPU_ADDR_HI
+  LDA DEST_PTR
+  ORA DEST_PTR_HI
   BNE L5_9266
   RTS
 
@@ -2022,9 +2024,9 @@ ENDIF
   LDA #HI(UI_SPR_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&10
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -2033,9 +2035,9 @@ ENDIF
   LDA #HI(PASS_CHR_BYTES)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&05
   LDY #&01
   JMP UPLOAD_CHR_RLE
@@ -2072,6 +2074,8 @@ IF REGION_JP
 ELSE
 
 ; Point TILE_GFX, TILE_MAP and TILE_ATTR at bank-4 password layout tables, point DATA_PTR at PASSWORD_LAY, and jump to L7_CD89.
+
+; JP: PASS_META_ATTR_JP and PASS_META_MAP_JP / US: PASS_META_ATTR and PASS_META_MAP.
 .BIND_PASS_LAYOUT
   LDA #LO(PASS_META_ATTR)
 ENDIF
@@ -2338,6 +2342,8 @@ ENDIF
   JMP DRAW_METASPRITE
 
 ; Map the eight password bytes to tiles and queue them at column 0Dh, row 13h.
+
+; PPU-run source low byte for the eight password tiles. JP 38 / US 3A. High byte is 05.
 .DRAW_PASS_LINE
   JSR MAP_PASS_TILES
   LDX #&0D
@@ -2357,13 +2363,15 @@ ENDIF
   JMP QUEUE_PPU_RUN
 
 ; For each of eight bytes in PASS_EDIT, store PASS_GLYPHS of that nybble into W_053A, or FEh when the byte is negative.
+
+; JP indexes JP_PASS_GLYPHS / US indexes PASS_GLYPHS.
 .MAP_PASS_TILES
   LDX #&07
 .L5_954E
   LDY PASS_EDIT,X
   BMI L5_9559
 IF REGION_JP
-  LDA JD5_9609,Y
+  LDA JP_PASS_GLYPHS,Y
 ELSE
   LDA PASS_GLYPHS,Y
 ENDIF
@@ -2377,6 +2385,8 @@ ENDIF
   RTS
 
 ; Build an eight-nybble code in PASS_EDIT from RNG, AREA_NUM, STAGE_NUM, ACTOR_FIRE and ACTOR_BOMBS, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
+
+; Same 38/3A PPU-run low byte as DRAW_PASS_LINE.
 .MAKE_STAGE_CODE
   JSR NEXT_RNG
   AND #&0F
@@ -2384,7 +2394,7 @@ ENDIF
   LDX #&00
   STA PASS_EDIT,X
   LDA #&00
-  STA RLE_BYTE
+  STA TEMP1
   ABS_LDA AREA_NUM
   LDX #&01
   STA PASS_EDIT,X
@@ -2411,7 +2421,7 @@ ENDIF
   LDX #&07
   STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  LDA RLE_BYTE
+  LDA TEMP1
   AND #&0F
   LDX #&03
   STA PASS_EDIT,X
@@ -2434,11 +2444,11 @@ ENDIF
   STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
-; Add A into the running sum RLE_BYTE. MAKE_STAGE_CODE calls this after each stored nybble.
+; Add A into the running sum TEMP1. MAKE_STAGE_CODE calls this after each stored nybble.
 .ADD_PASS_NIBBLE
   CLC
-  ADC RLE_BYTE
-  STA RLE_BYTE
+  ADC TEMP1
+  STA TEMP1
   RTS
 
 ; XOR PASS_EDIT bytes 1 through 7 with byte 0.
@@ -2454,7 +2464,10 @@ ENDIF
   RTS
   EQUB &0B,&0A,&01,&0C,&09,&04,&08,&06,&07,&0D,&02,&0E,&0F,&03,&05,&00
 IF REGION_JP
-.JD5_9609
+
+; JP password tile ids, 16 bytes: 50 43 4B 4E 46 4F 48 49 47 45 42 41 44 4A 4C 4D.
+; US shows a different order in PASS_GLYPHS and keeps this order in PASS_GLYPH_US.
+.JP_PASS_GLYPHS
   EQUB &50,&43
 ELSE
 ENDIF
@@ -2593,20 +2606,22 @@ ENDIF
   RTS
 
 ; Compare the eight decoded tiles with the seven words at PASS_WORDS.
-; Out: carry clear and RLE_BYTE = word index on a match. Carry set and RLE_BYTE = FFh otherwise.
+; Out: carry clear and TEMP1 = word index on a match. Carry set and TEMP1 = FFh otherwise.
 .MATCH_PASS_WORD
   LDA #&00
-  STA RLE_BYTE
+  STA TEMP1
   LDA #LO(PASS_WORDS)
   STA DATA_PTR
   LDA #HI(PASS_WORDS)
   STA DATA_PTR_HI
 .L5_96D2
   LDY #&00
+
+; JP reads JP_PASS_GLYPHS,X / US reads PASS_GLYPH_US,X.
 .L5_96D4
   LDX PASS_DEC,Y
 IF REGION_JP
-  LDA JD5_9609,X
+  LDA JP_PASS_GLYPHS,X
 ELSE
   LDA PASS_GLYPH_US,X
 ENDIF
@@ -2628,16 +2643,18 @@ ENDIF
   LDA DATA_PTR_HI
   ADC #&00
   STA DATA_PTR_HI
-  INC RLE_BYTE
-  LDA RLE_BYTE
+  INC TEMP1
+  LDA TEMP1
   CMP #&07
   BCC L5_96D2
   LDA #&FF
-  STA RLE_BYTE
+  STA TEMP1
   SEC
   RTS
 
 ; Seven secret words, 8 tile bytes each. MATCH_PASS_WORD compares them with the decoded password tiles. US tile ids come from PASS_GLYPH_US.
+
+; US-only PASS_GLYPH_US (50 43 4B ...). That order is the JP glyph order.
 .PASS_WORDS
   EQUB &50,&43,&44,&45,&46,&47,&41,&42,&50,&41,&43,&48,&49,&4E,&4B,&4F
   EQUB &50,&41,&4E,&49,&43,&4D,&41,&4E,&50,&4F,&4E,&45,&4A,&41,&43,&4B
@@ -2653,10 +2670,10 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Apply secret word RLE_BYTE.
+; Apply secret word TEMP1.
 ; 0 sets MENU_MODE1. 1 and 2 set PASS_MARK to 1 or 2 and MENU_REDRAW. 3 sets MENU_BONUS. 4, 5 and 6 set FUSE_INIT to 2Dh, 4Bh or 69h and set MENU_REDRAW.
 .APPLY_PASS_WORD
-  LDX RLE_BYTE
+  LDX TEMP1
   BEQ L5_979F
   DEX
   BEQ L5_9794
@@ -2725,9 +2742,9 @@ ENDIF
 .POLL_PASS_KEYS
   LDX #&07
   LDA #&80
-  STA RLE_BYTE
+  STA TEMP1
 .L5_97B6
-  LDA RLE_BYTE
+  LDA TEMP1
   BIT JOY_NEW
   BNE L5_97D1
   CLC
@@ -2745,7 +2762,7 @@ ENDIF
   SEC
 .L5_97D7
   ROL PASS_EDGES
-  LSR RLE_BYTE
+  LSR TEMP1
   DEX
   BPL L5_97B6
   RTS
@@ -2858,6 +2875,8 @@ ENDIF
 
 ; Queue five tiles: 54h, 7Eh, and the three clock digits ORed with 30h.
 ; Column comes from CLOCK_HUD_COL indexed by GAME_MODE. Row is 2.
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_STAGE_CLOCK
   LDA #&54
   STA W_052A
@@ -2949,6 +2968,8 @@ ENDIF
 ; Queue LIVES_TEXT and the LIVES digit at column 16h, row 2. Called for story mode and from the bonus stage.
 .DRAW_LIVES_HUD
   LDX #&00
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .L5_99A2
   LDA LIVES_TEXT,X
   STA W_052A,X
@@ -2979,6 +3000,8 @@ ENDIF
   EQUB &4C,&45,&46,&54,&40
 
 ; In: A is a one-byte count, X and Y are the nametable cell. Queues four tiles starting at W_052A, with the count ORed with 30h in the fourth byte.
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_SCORE_PAIR
   PHA
   JSR XY_TO_NT_ADDR
@@ -3446,11 +3469,13 @@ ENDIF
 ; Draw one sound parameter as two glyphs.
 ; In: X = row 0..2. Value is SNDROOM_P0,X minus SND_PARAM_MIN.
 ; Queued at column 12h, row SND_VALUE_ROW,X.
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_SND_VALUE
   LDA SNDROOM_P0,X
   SEC
   SBC SND_PARAM_MIN,X
-  STA RLE_BYTE
+  STA TEMP1
   LSR A
   LSR A
   LSR A
@@ -3458,7 +3483,7 @@ ENDIF
   TAY
   LDA SND_HEX_GLYPH,Y
   STA W_052A
-  LDA RLE_BYTE
+  LDA TEMP1
   AND #&0F
   TAY
   LDA SND_HEX_GLYPH,Y
@@ -3490,19 +3515,21 @@ IF REGION_JP
 
 ; (not seen executing during the coverage runs)
 .DRAW_SND_ROOM_TEXT
-  LDA #LO(JD5_A14E)
+  LDA #LO(JP_SND_ROOM_TEXT)
 ELSE
 
 ; (not seen executing during the coverage runs)
 
 ; Queue the four sound-room strings through QUEUE_XY_BYTES.
 ; Each record is X, Y, length, then tiles.
+
+; JP string table JP_SND_ROOM_TEXT / US D5_A15E. JP records insert extra 40 tile bytes.
 .DRAW_SND_ROOM_TEXT
   LDA #LO(D5_A15E)
 ENDIF
   STA DATA_PTR
 IF REGION_JP
-  LDA #HI(JD5_A14E)
+  LDA #HI(JP_SND_ROOM_TEXT)
 ELSE
   LDA #HI(D5_A15E)
 ENDIF
@@ -3549,7 +3576,9 @@ ENDIF
   STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 IF REGION_JP
-.JD5_A14E
+
+; JP sound-room string records for DRAW_SND_ROOM_TEXT. US reads D5_A15E.
+.JP_SND_ROOM_TEXT
   EQUB &03
 ELSE
 ENDIF
@@ -3590,6 +3619,9 @@ ENDIF
 ; Title screen. SHOW_FRONT enters here.
 ; Loads CHR, map and palette, then animates until Start/A or the idle timer TITLE_IDLE/TITLE_IDLE_HI hits 0.
 ; Idle timeout calls START_DEMO. Exit fades and turns the PPU off.
+
+; JP stores TITLE_PHASE = 1 with no SCROLL_X write, then JP_TITLE_PAL, JP_TITLE_MAP_A and JP_DRAW_BANNER.
+; US clears SCROLL_X, uses LOAD_TITLE_PAL and DRAW_TITLE_MAP, and skips the banner call. US title loop also waits while TITLE_PHASE is nonzero.
 .RUN_TITLE
   JSR PPU_OFF
   JSR NMI_OFF
@@ -3682,15 +3714,17 @@ ENDIF
 
 ; Upload TITLE_SPR_CHR at PPU $1000 and TITLE_BG_CHR at $0000.
 ; RLE. No inputs. Falls into the US map setup on the US path.
+
+; Title CHR upload diverges: JP queues a short run from TITLE_LOGO_TILES (bytes at JP_TITLE_Q1). US uploads TITLE_NT_RLE_2 plus TITLE_ATTR through DRAW_NAMETABLE_RLE_2.
 .LOAD_TITLE_CHR
   LDA #LO(TITLE_SPR_CHR)
   STA DATA_PTR
   LDA #HI(TITLE_SPR_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&10
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -3700,9 +3734,9 @@ IF REGION_JP
   LDA #HI(TITLE_BG_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
   JMP UPLOAD_CHR_RLE
@@ -3733,8 +3767,8 @@ IF REGION_JP
 
 ; JP: queue 11h bytes of TITLE_LOGO_TILES at the XY in JD5_A2B1.
 .JP_DRAW_BANNER
-  LDX JD5_A2B1
-  LDY JD5_A2B2
+  LDX JP_TITLE_Q1
+  LDY JP_TITLE_Q2
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_LOGO_TILES)
   STA DATA_PTR
@@ -3747,8 +3781,8 @@ IF REGION_JP
 
 ; JP: queue the same 11h bytes at the XY in JD5_A2B3. Called when the title scroll finishes.
 .JP_DRAW_BANNER2
-  LDX JD5_A2B3
-  LDY JD5_A2B4
+  LDX JP_TITLE_Q3
+  LDY JP_TITLE_Q4
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_LOGO_TILES)
 ELSE
@@ -3756,9 +3790,9 @@ ELSE
   LDA #HI(TITLE_BG_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
   JMP UPLOAD_CHR_RLE
@@ -3784,13 +3818,15 @@ IF REGION_JP
   STA PPU_RUN_CTRL
   LDX #&11
   JMP QUEUE_PPU_RUN
-.JD5_A2B1
+
+; JP bytes after the title PPU run setup: 28, 19, 08, 19. US draws TITLE_NT_RLE_2 instead.
+.JP_TITLE_Q1
   EQUB &28
-.JD5_A2B2
+.JP_TITLE_Q2
   EQUB &19
-.JD5_A2B3
+.JP_TITLE_Q3
   EQUB &08
-.JD5_A2B4
+.JP_TITLE_Q4
   EQUB &19
 ELSE
   LDA #HI(TITLE_NT_RLE_2)
@@ -3847,6 +3883,8 @@ ELSE
 .TITLE_BANNER_TOP
   EQUB &00,&00,&00,&00,&E7,&F3,&00,&E6,&E5,&E9,&00
 ENDIF
+
+; JP tile byte EB / US F9, and US has TITLE_BANNER_BOT which JP omits.
 .TITLE_LOGO_TILES
   EQUB &ED
 IF REGION_JP
@@ -3880,6 +3918,8 @@ ENDIF
   BEQ L5_A32D
 .L5_A32C
   RTS
+
+; Row count. JP Y = 16 / US Y = 15.
 .L5_A32D
   LDA #&00
   STA TITLE_BLINK
@@ -3898,6 +3938,8 @@ ENDIF
   STA PPU_RUN_CTRL
   LDX #&0B
   JMP QUEUE_PPU_RUN
+
+; Row count. JP Y = 16 / US Y = 15.
 .L5_A34A
   LDX #&0B
 IF REGION_JP
@@ -4076,6 +4118,8 @@ ENDIF
   INC TITLE_PHASE
   LDA #&01
   JSR AUDIO_CALL
+
+; JP shake bytes JP_TITLE_SHAKE and JP_TITLE_DY, and JP_DRAW_BANNER2. US uses TITLE_SHAKE, D5_A586 and DRAW_TITLE_BANNER.
 .TITLE_SCROLL_ON
   INC TITLE_JOLT
   LDA TITLE_JOLT
@@ -4090,7 +4134,7 @@ ELSE
 ENDIF
   STA SPLIT_SCROLL_X
 IF REGION_JP
-  LDA JD5_A533,X
+  LDA JP_TITLE_DY,X
 ELSE
   LDA D5_A586,X
 ENDIF
@@ -4123,7 +4167,9 @@ ENDIF
 IF REGION_JP
 .JP_TITLE_SHAKE
   EQUB &FA
-.JD5_A533
+
+; JP second title-shake byte list. US shake bytes are D5_A586.
+.JP_TITLE_DY
   EQUB &FF,&FD,&FF,&FA,&FF,&FD,&FF,&FA,&FF,&FD,&FF
 ELSE
 ENDIF
@@ -4131,6 +4177,8 @@ ENDIF
 ; 16 words. Low byte is SPLIT_SCROLL_X, bit 0 of the high byte is SPLIT_CTRL_BIT. Index is TITLE_JOLT.
 .TITLE_SHAKE
   EQUB &FE
+
+; Shake bytes differ: JP FB FF then FD FF FA FF FA FF FD FF / US 01 00 pairs and a longer tail.
 .D5_A586
   EQUB &FF
 IF REGION_JP
@@ -4198,6 +4246,8 @@ ENDIF
   RTS
 
 ; Title nametable rows revealed while SCROLL_Y climbs. 11h rows of 20h tiles. Not pointers.
+
+; Two map bytes. JP 00 00 / US E7 F3.
 .TITLE_MAP_ROWS
   EQUB &00,&00,&02,&03,&04,&05,&06,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&80,&81,&82,&00,&00,&00,&00,&00
@@ -4271,6 +4321,8 @@ ENDIF
   JSR MARK_PALETTE
   LDA #&13
   JSR AUDIO_CALL
+
+; US only: if the confirmed mode is 02 and JOY_SIG_OK is 0, play sound 04 and keep waiting. JP accepts mode 02 with no probe.
 .MODE_MENU_WAIT
   JSR WAIT_NMI
   JSR MODE_MENU_INPUT
@@ -4309,9 +4361,9 @@ ENDIF
   LDA #HI(UI_SPR_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&10
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -4320,9 +4372,9 @@ ENDIF
   LDA #HI(PLAY_BG_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&C0
   JMP UPLOAD_CHR_RLE
@@ -4398,6 +4450,8 @@ ENDIF
   BEQ L5_A949
   LDA #&06
   STA START_AREA
+
+; One map byte. JP 3B / US 49.
 .L5_A949
   RTS
   EQUB &AD
@@ -4466,9 +4520,9 @@ ENDIF
   LDX #&0E
   LDY #&03
   JSR XY_TO_NT_ADDR
-  LDA PPU_ADDR_HI
+  LDA DEST_PTR_HI
   STA PPU_ADDRESS
-  LDA PPU_ADDR
+  LDA DEST_PTR
   STA PPU_ADDRESS
   LDX #&07
 .L5_AA06
@@ -4525,6 +4579,8 @@ ENDIF
   JMP PPU_OFF
 
 ; Point TILE_ATTR/TILE_MAP/TILE_GFX at the shared UI tiles and DATA_PTR at GAME_OVER_LAY, then JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP. The following attribute setup matches.
 .DRAW_GAME_OVER_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -4625,9 +4681,9 @@ ENDIF
   LDA (DATA_PTR),Y
   TAY
   JSR XY_TO_NT_ADDR
-  LDA PPU_ADDR_HI
+  LDA DEST_PTR_HI
   STA PPU_ADDRESS
-  LDA PPU_ADDR
+  LDA DEST_PTR
   STA PPU_ADDRESS
   LDY #&02
   LDA (DATA_PTR),Y
@@ -4719,6 +4775,8 @@ ENDIF
   BNE L5_AC94
   LDX #&07
   LDY #&00
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .L5_AC9E
   LDA SCORE_NOW,X
   ORA #&30
@@ -4889,9 +4947,9 @@ ENDIF
   LDA D5_AE0B,X
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&10
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -4900,9 +4958,9 @@ ENDIF
   LDA #HI(INTRO_BG_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -5027,6 +5085,8 @@ ENDIF
 ; 6 areas, interleaved X then Y for the intro sprite. Not a pointer. INTRO_FRAME_PTR is the matching 6 words of animation lists.
 .INTRO_SPR_XY
   EQUB LO(L5_9090)
+
+; Pointer words differ by the moved targets: JP L5_BD02, D5_A4E3, L5_B0F2+2 / US L5_BC8F+1, D5_A490, L5_B090.
 .D5_AEAB
   EQUB HI(L5_9090)
 IF REGION_JP
@@ -5043,14 +5103,16 @@ ENDIF
   EQUB &88,&B8
 .INTRO_FRAME_PTR
   EQUB LO(D5_AEC2)
+
+; JP intro pointer lows JP_INTRO_LO / JP_INTRO_NEXT. US lows D5_AEC4 / D5_AEC6.
 .D5_AEB7
   EQUB HI(D5_AEC2)
 IF REGION_JP
-  EQUW JD5_AE60
-  EQUW JD5_AE60
-  EQUW JD5_AE60
-  EQUW JD5_AE60
-  EQUW JD5_AE62
+  EQUW JP_INTRO_LO
+  EQUW JP_INTRO_LO
+  EQUW JP_INTRO_LO
+  EQUW JP_INTRO_LO
+  EQUW JP_INTRO_NEXT
 ELSE
   EQUW D5_AEC4
   EQUW D5_AEC4
@@ -5058,12 +5120,16 @@ ELSE
   EQUW D5_AEC4
   EQUW D5_AEC6
 ENDIF
+
+; JP packs JP_INTRO_LO before the shared intro metas. US starts at D5_AEC4. Following pointer bytes: JP A7 and E8, US 78 and A9, and US has three extra words.
 .D5_AEC2
   EQUW INTRO_META_0
 IF REGION_JP
-.JD5_AE60
+
+; JP low bytes of intro metasprite pointers. US lows are D5_AEC4.
+.JP_INTRO_LO
   EQUB &A1,&AE
-.JD5_AE62
+.JP_INTRO_NEXT
   EQUB &E2,&AE,&F3,&AE,&14,&AF
 .D5_AEC6
   EQUW INTRO_META_3
@@ -5181,9 +5247,9 @@ ENDIF
   LDA #HI(ENDING_SPR_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&10
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&FF
 .L5_B0F2
@@ -5193,9 +5259,9 @@ ENDIF
   LDA #HI(PLAY_BG_CHR)
   STA DATA_PTR_HI
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&00
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&A0
   JSR UPLOAD_CHR_RLE
@@ -5204,9 +5270,9 @@ ENDIF
   LDA #HI(ENDING_EXTRA_BG_CHR)
   STA DATA_PTR_HI
   LDA #&30
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&0A
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDX #&01
   LDY #&50
   JSR UPLOAD_CHR_RLE
@@ -5357,6 +5423,8 @@ ENDIF
   JMP PPU_OFF
 
 ; Draw the versus-result nametable. UI tile pointers plus map VS_RESULT_LAY, then JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP.
 .DRAW_VS_RESULT_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -5454,6 +5522,8 @@ ELSE
 
 ; 6 words. Versus-result metasprites. Index is (VS_PICTURE*2 + W_0562)*2.
 ; US bytes still raw for the entries merge cannot take as pointers. See the notes.
+
+; Pointer low byte. JP 86 / US EA. Later result-sprite words also move.
 .VS_RESULT_SPR_PTR
   EQUB &EA
 ENDIF
@@ -5614,6 +5684,8 @@ ENDIF
   RTS
 
 ; Draw the win-count nametable from WIN_COUNT_LAY plus the shared UI tile pointers. JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP.
 .DRAW_WIN_MENU_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -5695,6 +5767,8 @@ ENDIF
   JMP PPU_OFF
 
 ; Draw the battle-card nametable from BATTLE_CARD_LAY. JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP.
 .DRAW_BATTLE_CARD_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -5870,6 +5944,8 @@ ENDIF
   JMP PPU_OFF
 
 ; Draw the versus-card nametable from VS_CARD_LAY. JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP.
 .DRAW_VS_CARD_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -6047,6 +6123,8 @@ IF REGION_JP
 .L5_B8A4
   LDA #&06
 ELSE
+
+; JP: column 06, tile 86, width 04 via QUEUE_TILE_SPAN / US: column 05 and string D5_B8EF via QUEUE_STRING_TILES. US string is FC FD FE FF 38 39 00.
 .L5_B8A4
   LDA #&05
 ENDIF
@@ -6127,6 +6205,8 @@ ENDIF
   JMP PPU_OFF
 
 ; Draw the stage-card nametable from STORY_CARD_LAY. JMP L7_CD89.
+
+; JP binds UI_META_MAP_JP / US binds UI_META_MAP.
 .DRAW_STAGE_CARD_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
@@ -6178,6 +6258,8 @@ ENDIF
 .DRAW_CARD_SCORE
   LDX #&07
   LDY #&00
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .L5_B968
   LDA SCORE_NOW,X
   ORA #&30
@@ -6213,6 +6295,8 @@ ENDIF
   JMP QUEUE_PPU_RUN
 
 ; Copy LIVES into LIVES_SHOWN and draw it as one digit (OR 30h) at column 12h, row 15h.
+
+; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_CARD_LIVES
   LDA LIVES
   STA LIVES_SHOWN
@@ -6256,7 +6340,7 @@ ENDIF
   BPL L5_B9D1
   RTS
 
-; Place a bomb at RLE_BYTE/RLE_BITS. L7_CF96 enters here.
+; Place a bomb at TEMP1/TEMP2. L7_CF96 enters here.
 ; ALLOC_BOMB_SLOT must return C=1. Writes the BOMB_FLAG slot, fuse FUSE_INIT, map bit 10h, and plays sound 02h.
 ; A map byte with bit 7 also sets BOMB_KICK bit 7 and fuse 2, and copies the actor id from FIND_ACTOR_CELL.
 .PLACE_BOMB
@@ -6265,10 +6349,10 @@ ENDIF
   STX Z_2C
   LDA #&01
   STA BOMB_FLAG,X
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
   STA BOMB_COL,X
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
   STA BOMB_ROW,X
   LDA #&00
@@ -6278,12 +6362,12 @@ ENDIF
   STA BOMB_OWNER,X
   LDA FUSE_INIT
   STA BOMB_FUSE,X
-  LDX RLE_BYTE
-  LDY RLE_BITS
+  LDX TEMP1
+  LDY TEMP2
   LDA BOMB_ANIM_TILE
   JSR QUEUE_TILE_Y2
-  LDX RLE_BYTE
-  LDY RLE_BITS
+  LDX TEMP1
+  LDY TEMP2
   JSR PEEK_MAP_BYTE
   PHA
   AND #&80
@@ -6299,7 +6383,7 @@ ENDIF
   LDA FLAME_OWNER,Y
   STA BOMB_OWNER,X
 .L5_BA3C
-  LDY RLE_BYTE
+  LDY TEMP1
   PLA
   ORA #&10
   STA (MAP_PTR),Y
@@ -6406,11 +6490,11 @@ ENDIF
   JSR FIND_FREE_FLAME
   BCC L5_BABA
   LDY BOMB_ROW,X
-  STY RLE_BITS
+  STY TEMP2
   STY CELL_ROW
   JSR MAP_ROW_PTR
   LDY BOMB_COL,X
-  STY RLE_BYTE
+  STY TEMP1
   STY CELL_COL
   LDA #&00
   STA (MAP_PTR),Y
@@ -6431,14 +6515,14 @@ ENDIF
   TAY
   INC FLAME_ANIM,X
   LDA FLAME_ANIM,X
-  STA RLE_BYTE
+  STA TEMP1
   AND #&01
   BNE L5_BB65
   LDA FLAME_COL,X
   STA CELL_COL
   LDA FLAME_ROW,X
   STA CELL_ROW
-  LDA RLE_BYTE
+  LDA TEMP1
   LSR A
   ORA FLAME_TILE_BASE,Y
   TAY
@@ -6446,7 +6530,7 @@ ENDIF
   LDY CELL_ROW
   LDX CELL_COL
   JSR QUEUE_TILE_Y2
-  LDA RLE_BYTE
+  LDA TEMP1
   CMP #&0E
   BCC L5_BB65
   LDA #&00
@@ -6485,8 +6569,8 @@ ENDIF
 ; Empty map cell (bits 0..6 clear) required. Packs that player's 8 BOMB_FLAG slots down from BOMB_SLOT_BASE.
 ; C=1 if the free index is in range and ACT_W_FIRE >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
 .ALLOC_BOMB_SLOT
-  LDX RLE_BYTE
-  LDY RLE_BITS
+  LDX TEMP1
+  LDY TEMP2
   JSR PEEK_MAP_BYTE
   AND #&7F
   BNE L5_BC24
@@ -6557,7 +6641,7 @@ ENDIF
   SEC
   RTS
 
-; Spread a blast from RLE_BYTE/RLE_BITS. L7_D018 stores the direction mask in FLAME_DIR and calls this.
+; Spread a blast from TEMP1/TEMP2. L7_D018 stores the direction mask in FLAME_DIR and calls this.
 ; Range is BLAST_RADIUS. LSR FLAME_DIR drops a direction when its bit was set: up, down, left, right.
 ; Each step calls BLAST_CELL and stops on C=0 or when the range count expires.
 .SPREAD_FLAME
@@ -6567,17 +6651,17 @@ ENDIF
 .L5_BC57
   LDA BLAST_RADIUS
   STA RAY_LEFT
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
   LDA #&00
   JSR BLAST_CELL
   LSR FLAME_DIR
   BCS L5_BC8D
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
 .FLAME_UP
   DEC CELL_ROW
@@ -6597,9 +6681,9 @@ ENDIF
   BCS L5_BCB4
   LDA BLAST_RADIUS
   STA RAY_LEFT
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
 .FLAME_DOWN
   INC CELL_ROW
@@ -6617,9 +6701,9 @@ ENDIF
   BCS L5_BCDD
   LDA BLAST_RADIUS
   STA RAY_LEFT
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
 .FLAME_LEFT
   DEC CELL_COL
@@ -6638,9 +6722,9 @@ ENDIF
   BCS L5_BD04
   LDA BLAST_RADIUS
   STA RAY_LEFT
-  LDA RLE_BYTE
+  LDA TEMP1
   STA CELL_COL
-  LDA RLE_BITS
+  LDA TEMP2
   STA CELL_ROW
 .FLAME_RIGHT
   INC CELL_COL
@@ -6662,7 +6746,7 @@ ENDIF
 ; Low bits 1 or 2 go to BLAST_CONTENTS and stop. Value 20h opens a buried tile, then uses type 09h.
 ; Low bits 0 spawn a flame.
 .BLAST_CELL
-  STA RLE_LEFT
+  STA TEMP3
   LDY CELL_ROW
   LDA MAP_ROW_LO,Y
   STA MAP_PTR
@@ -6694,7 +6778,7 @@ ENDIF
   JSR OPEN_BURIED
   BCC L5_BD84
   LDA #&09
-  STA RLE_LEFT
+  STA TEMP3
   JSR SPAWN_FLAME
   BCC L5_BD84
   DEC SOFT_COUNT
@@ -6715,7 +6799,7 @@ ENDIF
   STA FLAME_ROW,Y
   LDA #&FF
   STA FLAME_ANIM,Y
-  LDA RLE_LEFT
+  LDA TEMP3
   ORA #&80
   STA FLAME_FLAG,Y
   LDA BLAST_OWNER
@@ -6743,7 +6827,7 @@ ENDIF
   BNE L5_BDBA
   LDA BOMB_KICK,X
   BMI L5_BDBA
-  LDY RLE_LEFT
+  LDY TEMP3
   ORA KICK_DIR_MASK,Y
   STA BOMB_KICK,X
   LDA BLAST_OWNER
@@ -6779,7 +6863,7 @@ ENDIF
   STA (MAP_PTR),Y
   STA MAP_BYTE
   LDA #&0A
-  STA RLE_LEFT
+  STA TEMP3
   JSR SPAWN_FLAME
   JMP L7_D11B
 .L5_BDE4
@@ -6809,9 +6893,9 @@ ENDIF
   RTS
 
 ; If this cell already has a flame actor whose low type nibble is not 9, clear that FLAME_FLAG flag.
-; Skipped when RLE_LEFT is not 0 and the map byte MAP_BYTE is 0.
+; Skipped when TEMP3 is not 0 and the map byte MAP_BYTE is 0.
 .CLEAR_FLAME_HERE
-  LDA RLE_LEFT
+  LDA TEMP3
   CMP #&00
   BEQ L5_BE0F
   LDA MAP_BYTE
@@ -6840,7 +6924,7 @@ ENDIF
 .L5_BE36
   RTS
 
-; 9 masks ORed into BOMB_KICK when a flame of that type hits a bomb. Index is the flame type in RLE_LEFT.
+; 9 masks ORed into BOMB_KICK when a flame of that type hits a bomb. Index is the flame type in TEMP3.
 .KICK_DIR_MASK
   EQUB &F0,&02,&02,&08,&08,&01,&01,&04,&04
 

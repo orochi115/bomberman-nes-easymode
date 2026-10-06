@@ -7,6 +7,8 @@
 ; Common playfield BG CHR (font and map tiles), bank 1, RLE via DECODE_CHR.
 ; LOAD_AREA_CHR and LOAD_MENU_CHR upload C0h tiles to PPU 0000h. That stream ends at ENDING_EXTRA_BG_CHR.
 ; Ending LOAD_ENDING_CHR uploads only the first A0h tiles of this block.
+
+; JP: playfield CHR ends at the shared tail / US: eight extra CHR rows (C2 18 ...) before TITLE_BG_CHR.
 .PLAY_BG_CHR
   EQUB &00,&00,&F0,&E0,&78,&7C,&FE,&78,&A0,&B8,&7C,&FC,&F0,&07,&1F,&3F
   EQUB &7F,&70,&07,&1F,&3F,&D0,&B0,&C8,&FC,&59,&B0,&C8,&F8,&F0,&F9,&E0
@@ -976,6 +978,8 @@ ENDIF
 
 ; Ending sprite CHR. LOAD_ENDING_CHR uploads FFh tiles to PPU 1000h.
 ; The stream uses the rest of bank 1, then fixed-bank bytes through 7:C122 (see shift_ignore).
+
+; JP: FF pad before the bank stub / US: no pad. The sprite CHR bytes above the pad match.
 .ENDING_SPR_CHR
   EQUB &00,&00,&80,&FF,&00,&80,&FF,&C0,&FF,&00,&B1,&FF,&00,&7F,&FF,&51
   EQUB &FF,&80,&FF,&B0,&FF,&01,&FF,&51,&FF,&01,&FF,&00,&80,&FF,&88,&FF

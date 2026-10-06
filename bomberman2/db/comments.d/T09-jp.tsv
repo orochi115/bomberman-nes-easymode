@@ -1,0 +1,120 @@
+jp:0:A683	>	JP walk-frame words for enemy type 1. US uses ENEMY_WALK_01.
+jp:0:A6C7	>	JP walk-frame words for enemy type 8. US uses ENEMY_WALK_08.
+jp:0:A6E9	>	JP walk-frame words for enemy type 9. US uses ENEMY_WALK_09.
+jp:0:A70B	>	JP walk-frame words for enemy type 10. US uses ENEMY_WALK_10.
+jp:0:A72D	>	JP walk-frame words for enemy type 11. US uses ENEMY_WALK_11.
+jp:0:A74F	>	JP walk-frame words for enemy type 5. US uses ENEMY_WALK_05.
+jp:0:A771	>	JP walk-frame words for enemy type 12. US uses ENEMY_WALK_12.
+jp:0:A793	>	JP walk-frame words for enemy type 13. US uses ENEMY_WALK_13.
+jp:0:A7B5	>	JP walk-frame words for enemy type 14. US uses ENEMY_WALK_14.
+jp:0:A7D7	>	JP walk-frame words for enemy type 15. US uses ENEMY_WALK_15.
+jp:0:A7F9	>	JP walk-frame words for enemy type 6. US uses ENEMY_WALK_06.
+jp:0:A247	>	JP death metasprite 0 (count byte then tile, x, y, attr). US uses D0_9D2A.
+jp:0:A258	>	JP death metasprite 1. US uses D0_9D3B.
+jp:0:A269	>	JP death metasprite 2. US uses D0_9D4C.
+jp:0:A27A	>	JP death metasprite 3. US uses D0_9D5D.
+jp:0:A28B	>	JP death metasprite 4. US uses D0_9D6E.
+jp:0:A883	>	JP area-0 spawn pointer list. US list is D0_AD7E.
+jp:0:A8A3	>	JP spawn list pointer target. US uses D0_AD9E.
+jp:0:A8B3	>	JP spawn list pointer target. US uses D0_ADAE.
+jp:0:A8C3	>	JP spawn list pointer target. US uses D0_ADBE.
+jp:0:A8D3	>	JP spawn list pointer target. US uses D0_ADCE.
+jp:5:9609	>	JP password tile ids, 16 bytes: 50 43 4B 4E 46 4F 48 49 47 45 42 41 44 4A 4C 4D.\nUS shows a different order in PASS_GLYPHS and keeps this order in PASS_GLYPH_US.
+jp:5:A14E	>	JP sound-room string records for DRAW_SND_ROOM_TEXT. US reads D5_A15E.
+jp:5:A2B1	>	JP bytes after the title PPU run setup: 28, 19, 08, 19. US draws TITLE_NT_RLE_2 instead.
+jp:5:A533	>	JP second title-shake byte list. US shake bytes are D5_A586.
+jp:5:AE60	>	JP low bytes of intro metasprite pointers. US lows are D5_AEC4.
+0:87EF	>	JP: DATA_PTR = D0_AB20 / US: DATA_PTR = ENEMY_WALK_00. Same draw routine, different frame table.
+0:8861	>	JP: DATA_PTR = JP_WALK_01 / US: DATA_PTR = ENEMY_WALK_01.
+0:88FF	>	JP: DATA_PTR = D0_AB16 / US: DATA_PTR = ENEMY_WALK_03.
+0:89CF	>	JP: DATA_PTR = D0_AB28 / US: DATA_PTR = ENEMY_WALK_04.
+0:8A5C	>	JP: DATA_PTR = JP_WALK_05 / US: DATA_PTR = ENEMY_WALK_05.
+0:8BEE	>	JP: frame pointer JP_WALK_06 / US: ENEMY_WALK_06.
+0:8C93	>	JP: DATA_PTR = D0_AB38 / US: DATA_PTR = ENEMY_WALK_07.
+0:8E03	>	JP: DATA_PTR = JP_WALK_08 / US: DATA_PTR = ENEMY_WALK_08.
+0:8E72	>	JP: DATA_PTR = JP_WALK_09 / US: DATA_PTR = ENEMY_WALK_09.
+0:8EAC	>	JP: DATA_PTR = JP_WALK_10 / US: DATA_PTR = ENEMY_WALK_10.
+0:8FBC	>	JP: DATA_PTR = JP_WALK_11 / US: DATA_PTR = ENEMY_WALK_11.
+0:9068	>	JP: DATA_PTR = JP_WALK_12 / US: DATA_PTR = ENEMY_WALK_12.
+0:90C5	>	JP: DATA_PTR = JP_WALK_13 / US: DATA_PTR = ENEMY_WALK_13.
+0:915B	>	JP: DATA_PTR = JP_WALK_14 / US: DATA_PTR = ENEMY_WALK_14.
+0:9177	>	JP: DATA_PTR = JP_WALK_15 / US: DATA_PTR = ENEMY_WALK_15.
+0:9229	>	JP: EQUW JP_SPR_A203 / US: EQUW D0_9E18. Same slot, table moved.
+0:931D	>	JP and US store different metasprite addresses. US values sit higher after extra US frames.
+0:94DD	>	JP pointer bytes page A3 / US page A8. Address shift of the same frame list.
+0:9D08	>	US-only metasprite bytes. JP has no gap here.
+0:9E18	>	US-only metasprite bytes between shared frames.
+0:9EB1	>	Metasprite tile ids differ. JP uses 67 68 77 and inserts JP_SPR_9DF6. US uses 6A and shorter records.
+0:9EC2	>	JP tile pair 69 78 / US 6C, then US-only frames before the next shared record.
+0:9FD2	>	US-only 4-sprite record (tiles CD DD). JP continues in the earlier JP metasprite.
+0:A0D1	>	US-only 4-sprite record (tiles CE DE).
+0:A16A	>	US-only 4-sprite record (tiles C6 D6).
+0:A1F2	>	US-only frame D0_A203. JP points this phase at JP_SPR_A1F2.
+0:A29C	>	JP-only metasprite bytes (tiles C3 C7 D3 and later). US has no bytes in this gap.
+0:A2BE	>	Single tile-id bytes differ: JP A9 B9 83 93 E3 F3, US 6C 7C 6D 7D 6E 7E. US then has extra frames the JP table skips.
+us:0:AACA	>	Same 16 walk tables. JP targets D0_AB16, D0_AB20, D0_AB28, JP_WALK_* . US targets ENEMY_WALK_00 through ENEMY_WALK_15.
+0:AAEA	>	JP: JP_DEATH_0 through JP_DEATH_4 / US: D0_9D2A, D0_9D3B, D0_9D4C, D0_9D5D, D0_9D6E.
+0:AAF6	>	JP appends bytes 36 A2 after the 16 frame words. US does not.
+0:AB16	>	Walk-frame words are interleaved because JP and US tables have different lengths. JP type 3/0/4/1/7 words use D0_AB16, D0_AB20, D0_AB28, JP_WALK_01, D0_AB38.
+0:AD3C	>	JP area pointers: JP_SPAWN_0, D0_AD90, JP_SPAWN_2..5 and raw A87D. US: D0_AD7E, D0_AD8E, D0_AD9E, D0_ADAE, D0_ADBE, D0_ADCE and raw AD78 / AD7A.
+0:AD7B	>	JP list starts at JP_SPAWN_0. US list starts at D0_AD7E. Later stage words differ where the lists moved.
+0:AF9B	>	Raw pointer bytes. JP AA D7 / AA E0 / AA E9 / AA F2 / AB 04. US AF D2 / AF DB / AF E4 / AF ED / AF FF.
+0:B07E	>	Credits line pointer base. JP adds 1C then AC (table at AC1C). US adds 17 then B1 (table at B117).
+0:B0F0	>	Credits line-pointer table. JP stores raw words, mostly AD94. US stores EQUW D0_B28F and the other D0_B2xx lines. jpmap maps 0:AD94 onto D0_B28F.
+0:B463	>	Credits alphabet tiles. JP 50 43 44 45 46 47 41 42 (PCDEFGAB). US 4B 33 34 35 36 37 31 32 (K3456712). 40 is space, 41 is A, 31 is 1.
+0:B497	>	Copyright year tile. JP 31 (1991) / US 32 (1992). The surrounding tiles are COPYRIGHT and HUDSON SOFT.
+1:8000	>	JP: playfield CHR ends at the shared tail / US: eight extra CHR rows (C2 18 ...) before TITLE_BG_CHR.
+1:B724	>	JP: FF pad before the bank stub / US: no pad. The sprite CHR bytes above the pad match.
+2:8AB9	>	JP: LDA L7_C61D+1,X / US: LDA UPLOAD_CHR_RLE,X. The rest of the routine is shared. Not seen executing.
+4:9241	>	JP: eight 00 CHR bytes / US: tiles 65 6A 5E 7A 6B 13 7B 13, plus 16 extra bytes before UI_META_ATTR.
+4:9641	>	JP: attribute nibble 00 / US: 33, then two more 33 bytes. US UI_META_MAP starts four bytes before UI_META_MAP_JP.
+4:97C1	>	JP keeps letter tiles 41, 45, 49 and 4C-50. US inserts digit tiles 31-38 and omits those JP tiles. US PASS_META_ATTR starts before PASS_META_ATTR_JP.
+4:A8B5	>	US-only title nametable bytes (logo row E7 F3 ...). JP has no bytes in this gap.
+4:A900	>	One attribute byte. JP 01 / US 00.
+4:AC9E	>	Two picture bytes. JP 14 then 15 / US 28 then 29.
+4:AE17	>	Opening picture bytes are JP = US+1 (16/15 through F5/F4, then FF/F7). JP also has one extra 39.
+4:B159	>	Both sides FILLTO B800+SHIFT. The fill length differs because the bytes above are not the same length.
+4:BACB	>	JP: column 0, XY_TO_NT_ADDR, then UPLOAD_RLE_NAMETABLE / US: column 20h via SET_NAMETABLE_XY. US also has DRAW_NAMETABLE_RLE_1 at column 0.
+4:BB40	>	Attribute origin after the nametable upload. JP: X,Y = 0,0 / US: NT_SAVE_COL, NT_SAVE_ROW.
+4:BBF7	>	JP words A108, A1BA, A22D are AREA1_LAYOUT_B, AREA2_LAYOUT_B, AREA3_LAYOUT_B (jpmap 4:A108, 4:A1BA, 4:A22D). US names those labels directly.
+5:8000	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05 on both.
+5:9365	>	JP: PASS_META_ATTR_JP and PASS_META_MAP_JP / US: PASS_META_ATTR and PASS_META_MAP.
+5:9531	>	PPU-run source low byte for the eight password tiles. JP 38 / US 3A. High byte is 05.
+5:954C	>	JP indexes JP_PASS_GLYPHS / US indexes PASS_GLYPHS.
+5:9562	>	Same 38/3A PPU-run low byte as DRAW_PASS_LINE.
+5:96D4	>	JP reads JP_PASS_GLYPHS,X / US reads PASS_GLYPH_US,X.
+5:9703	>	US-only PASS_GLYPH_US (50 43 4B ...). That order is the JP glyph order.
+5:98F5	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:99A2	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:99D2	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:A0C2	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:A10D	>	JP string table JP_SND_ROOM_TEXT / US D5_A15E. JP records insert extra 40 tile bytes.
+5:A18E	>	JP stores TITLE_PHASE = 1 with no SCROLL_X write, then JP_TITLE_PAL, JP_TITLE_MAP_A and JP_DRAW_BANNER.\nUS clears SCROLL_X, uses LOAD_TITLE_PAL and DRAW_TITLE_MAP, and skips the banner call. US title loop also waits while TITLE_PHASE is nonzero.
+5:A237	>	Title CHR upload diverges: JP queues a short run from TITLE_LOGO_TILES (bytes at JP_TITLE_Q1). US uploads TITLE_NT_RLE_2 plus TITLE_ATTR through DRAW_NAMETABLE_RLE_2.
+5:A2EA	>	JP tile byte EB / US F9, and US has TITLE_BANNER_BOT which JP omits.
+5:A32D	>	Row count. JP Y = 16 / US Y = 15.
+5:A34A	>	Row count. JP Y = 16 / US Y = 15.
+5:A53C	>	JP shake bytes JP_TITLE_SHAKE and JP_TITLE_DY, and JP_DRAW_BANNER2. US uses TITLE_SHAKE, D5_A586 and DRAW_TITLE_BANNER.
+5:A586	>	Shake bytes differ: JP FB FF then FD FF FA FF FA FF FD FF / US 01 00 pairs and a longer tail.
+5:A5EF	>	Two map bytes. JP 00 00 / US E7 F3.
+5:A855	>	US only: if the confirmed mode is 02 and JOY_SIG_OK is 0, play sound 04 and keep waiting. JP accepts mode 02 with no probe.
+5:A949	>	One map byte. JP 3B / US 49.
+5:AAAE	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP. The following attribute setup matches.
+5:AC9E	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:AEAB	>	Pointer words differ by the moved targets: JP L5_BD02, D5_A4E3, L5_B0F2+2 / US L5_BC8F+1, D5_A490, L5_B090.
+5:AEB7	>	JP intro pointer lows JP_INTRO_LO / JP_INTRO_NEXT. US lows D5_AEC4 / D5_AEC6.
+5:B24C	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP.
+5:B2DE	>	Pointer low byte. JP 86 / US EA. Later result-sprite words also move.
+5:B572	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP.
+5:B60B	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP.
+5:B734	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP.
+5:B8A4	>	JP: column 06, tile 86, width 04 via QUEUE_TILE_SPAN / US: column 05 and string D5_B8EF via QUEUE_STRING_TILES. US string is FC FD FE FF 38 39 00.
+5:B921	>	JP binds UI_META_MAP_JP / US binds UI_META_MAP.
+5:B968	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+5:B9A4	>	PPU-run source low byte. JP 28 / US 2A. High byte is 05.
+7:C370	>	JP: strobe with 01 and fall into READ_JOY_STD / US: clear JOY_SIG_OK, probe for 10h and 20h, then READ_JOY_ALT or READ_JOY_STD. US READ_JOY_STD returns before the _NEW merge. JP merges inside the same routine.
+7:D2F7	>	Both sides FILLTO D800+SHIFT. The fill length differs with the bytes above.
+7:FFFC	>	Title bytes at FFE0. JP: BOMBER MAN 2, spaces, then 04 F8. US: BOMBERMAN 2, ASCII 92817, then A7 94. Vectors NMI/RESET/IRQ follow the shared 00 00 38 84 01 0F 18 1C.
+5:AEC2	>	JP packs JP_INTRO_LO before the shared intro metas. US starts at D5_AEC4. Following pointer bytes: JP A7 and E8, US 78 and A9, and US has three extra words.
+jp:0:9DF6	>	JP-only metasprite record. The US frame list uses a different tile id in this slot.
+jp:0:A203	>	JP-only frame word target. US points the same slot at D0_9E18.

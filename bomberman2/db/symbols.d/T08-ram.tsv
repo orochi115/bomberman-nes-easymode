@@ -60,14 +60,14 @@ ram:00B9	DEMO_PTR	Pointer to the demo pad record selected by DEMO_SLOT.
 ram:00BA	DEMO_PTR_HI	High byte of DEMO_PTR.
 ram:0016	PAL_SRC	Source pointer for COPY_PAL_ROWS.
 ram:0017	PAL_SRC_HI	High byte of PAL_SRC.
-ram:001C	RLE_BYTE	CHR RLE literal. Also reused as a one-byte scratch.
-ram:001D	RLE_BITS	CHR RLE control bits, MSB first.
-ram:001E	RLE_LEFT	Tiles left for UPLOAD_CHR. BLAST_CELL also stores the flame type here.
+ram:001C	TEMP1	Scratch byte: CHR RLE literal (DECODE_CHR), strip and loop counters, other short-lived values.
+ram:001D	TEMP2	Scratch byte: CHR RLE control bits (DECODE_CHR), other short-lived values.
+ram:001E	TEMP3	Scratch byte: tiles left in UPLOAD_CHR_RLE; flame type in BLAST_CELL.
 ram:001F	MAP_BYTE	Map cell latched by BLAST_CELL.
 ram:0020	DATA_PTR	General data pointer: CHR, strings, queued bytes.
 ram:0021	DATA_PTR_HI	High byte of DATA_PTR.
-ram:0022	PPU_ADDR	PPU address low for CHR and nametable uploads.
-ram:0023	PPU_ADDR_HI	PPU address high.
+ram:0022	DEST_PTR	Destination pointer: PPU address for CHR and nametable uploads; second data pointer elsewhere.
+ram:0023	DEST_PTR_HI	High byte of DEST_PTR.
 ram:0024	DATA_PTR2	Second data pointer. Nametable upload reads 64 attribute bytes through it.
 ram:0025	DATA_PTR2_HI	High byte of DATA_PTR2.
 ram:0028	CELL_COL	Current map column.

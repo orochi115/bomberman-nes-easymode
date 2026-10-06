@@ -1424,6 +1424,8 @@ ELSE
 ; (not seen executing during the coverage runs)
 
 ; SFX 0A. Player overlaps an actor with ENEMY_TYPE = 10, and LIVES increments.
+
+; JP: LDA L7_C61D+1,X / US: LDA UPLOAD_CHR_RLE,X. The rest of the routine is shared. Not seen executing.
 .SFX0A_PROG
   LDA UPLOAD_CHR_RLE,X
 ENDIF

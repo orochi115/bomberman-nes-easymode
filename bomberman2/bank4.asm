@@ -439,6 +439,8 @@
 ; Shared UI metatiles, 4 CHR bytes per id, 100h ids.
 ; Used by the password, game-over, mode, win-count and pre-stage cards.
 ; UI_META_ATTR is 80h bytes (2 ids each). UI_META_MAP is one map byte per id.
+
+; JP: eight 00 CHR bytes / US: tiles 65 6A 5E 7A 6B 13 7B 13, plus 16 extra bytes before UI_META_ATTR.
 .UI_META_GFX
   EQUB &00,&00,&00,&00,&00,&01,&00,&10,&02,&02,&13,&13,&03,&00,&10,&00
   EQUB &00,&10,&00,&10,&10,&00,&10,&00,&00,&10,&00,&11,&13,&13,&02,&02
@@ -514,6 +516,8 @@ ELSE
 ENDIF
 
 ; UI attribute nibbles, 2 metatile ids per byte. Pair with UI_META_GFX.
+
+; JP: attribute nibble 00 / US: 33, then two more 33 bytes. US UI_META_MAP starts four bytes before UI_META_MAP_JP.
 .UI_META_ATTR
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&30,&33,&33,&33,&30,&33,&33,&33
@@ -559,6 +563,8 @@ ENDIF
 
 ; Password-screen metatile CHR. BIND_PASS_LAYOUT points TILE_GFX here and DATA_PTR at PASSWORD_LAY.
 ; US attributes start at PASS_META_ATTR. JP attributes start 3 bytes later.
+
+; JP keeps letter tiles 41, 45, 49 and 4C-50. US inserts digit tiles 31-38 and omits those JP tiles. US PASS_META_ATTR starts before PASS_META_ATTR_JP.
 .PASS_META_GFX
   EQUB &00,&00,&00,&00,&00,&00,&01,&02,&00,&00,&02,&02,&00,&00,&03,&00
   EQUB &10,&13,&10,&13,&10,&00,&10,&00,&11,&02,&00,&00,&02,&02,&00,&00
@@ -954,6 +960,8 @@ ENDIF
 
 ; Title nametable RLE for the second screen on US (column 20h).
 ; UPLOAD_RLE_NAMETABLE reads it. FF starts a repeat. Title attributes are TITLE_ATTR, 40h bytes.
+
+; US-only title nametable bytes (logo row E7 F3 ...). JP has no bytes in this gap.
 .TITLE_NT_RLE_2
   EQUB &FF,&FF,&00,&FF,&FF,&00,&FF,&FF,&00,&FF
 IF REGION_JP
@@ -970,6 +978,8 @@ ENDIF
   EQUB &FF,&00
 
 ; 64 attribute bytes for both title nametable uploads.
+
+; One attribute byte. JP 01 / US 00.
 .TITLE_ATTR
   EQUB &50,&50,&50,&00,&00,&50,&50,&10,&55,&55,&55,&55,&55,&55,&55,&15
   EQUB &04,&05,&05,&85,&25,&05,&05
@@ -1055,6 +1065,8 @@ ENDIF
   EQUB &05,&8C,&05,&08,&00
 
 ; Password / continue picture. Strip format. Drawn by BIND_PASS_LAYOUT with PASS_META_GFX.
+
+; Two picture bytes. JP 14 then 15 / US 28 then 29.
 .PASSWORD_LAY
   EQUB &40,&00,&40,&00,&40,&00,&42,&00,&49,&00,&54,&00,&5E,&00,&6A,&00
   EQUB &74,&00,&7F,&00,&8A,&00,&96,&00,&A1,&00,&A8,&00,&40,&00,&40,&00
@@ -1096,6 +1108,8 @@ ENDIF
   EQUB &09,&07,&00,&30,&F1,&F5,&8C,&F5,&F3,&00
 
 ; Opening picture, also used by the ending screen DRAW_ENDING_MAP. Strip format. END_META_GFX tiles.
+
+; Opening picture bytes are JP = US+1 (16/15 through F5/F4, then FF/F7). JP also has one extra 39.
 .OPENING_LAYOUT
   EQUB &40,&00,&4F,&00,&5E,&00,&6B,&00,&78,&00,&85,&00,&94,&00,&A1,&00
   EQUB &AE,&00,&BC,&00,&CA,&00,&DA,&00,&E9,&00,&F7,&00,&05,&01
@@ -1301,6 +1315,8 @@ ENDIF
   EQUB &21,&10,&20,&0F,&21,&38,&28,&0F,&21,&3A,&2A,&0F,&21,&36,&26,&0F
 
 ; 16 ending sprite palette bytes. LOAD_ENDING_CHR copies them to PAL_BUF row 4.
+
+; Both sides FILLTO B800+SHIFT. The fill length differs because the bytes above are not the same length.
 .ENDING_SPR_PAL
   EQUB &0F,&0F,&35,&00,&0F,&0F,&26,&30,&0F,&0F,&10,&20,&0F,&0F,&21,&20
 IF REGION_JP
@@ -1335,26 +1351,26 @@ ENDIF
 ; 32 strips. Each strip offset is added to DATA_PTR. Then jumps to L7_CF6F.
 .DECODE_LAYOUT
   LDA #&00
-  STA RLE_BYTE
+  STA TEMP1
 .NEXT_LAYOUT_STRIP
-  LDA RLE_BYTE
+  LDA TEMP1
   ASL A
   TAY
   LDA (DATA_PTR),Y
   CLC
   ADC DATA_PTR
-  STA PPU_ADDR
+  STA DEST_PTR
   INY
   LDA (DATA_PTR),Y
   ADC DATA_PTR_HI
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDY #&00
   LDX #&00
   JSR UNPACK_STRIP_BYTES
   JSR UNPACK_STRIP_BYTES
   JSR PAINT_LAYOUT_STRIP
-  INC RLE_BYTE
-  LDA RLE_BYTE
+  INC TEMP1
+  LDA TEMP1
   CMP #&20
   BCC NEXT_LAYOUT_STRIP
   JMP L7_CF6F
@@ -1364,14 +1380,14 @@ ENDIF
 .UNPACK_STRIP_BYTES
   LDA #&08
   STA Z_2A
-  LDA (PPU_ADDR),Y
+  LDA (DEST_PTR),Y
   INY
-  STA RLE_BITS
+  STA TEMP2
   LDA #&00
 .L4_B85F
-  ASL RLE_BITS
+  ASL TEMP2
   BCC L4_B866
-  LDA (PPU_ADDR),Y
+  LDA (DEST_PTR),Y
   INY
 .L4_B866
   STA LAYOUT_ID,X
@@ -1381,11 +1397,11 @@ ENDIF
   RTS
 
 ; Paint 15 cells of one strip.
-; Map column is RLE_BYTE. Map row is the cell index minus 2, and COPY_LAYOUT_CELL drops rows past 12.
+; Map column is TEMP1. Map row is the cell index minus 2, and COPY_LAYOUT_CELL drops rows past 12.
 ; Tile id indexes TILE_GFX by 4 and TILE_ATTR as a 2-bit attribute. Columns below 15 call QUEUE_TILE.
 .PAINT_LAYOUT_STRIP
   LDX #&00
-  STX RLE_BITS
+  STX TEMP2
 .PAINT_STRIP_CELL
   STX Z_2A
   LDA #&00
@@ -1415,8 +1431,8 @@ ENDIF
   LDA (DATA_PTR2),Y
   STA TILE_CHR3
   LDA LAYOUT_ID,X
-  LDX RLE_BYTE
-  LDY RLE_BITS
+  LDX TEMP1
+  LDY TEMP2
   STX TILE_COL
   STY TILE_ROW
   DEY
@@ -1434,12 +1450,12 @@ ENDIF
 .L4_B8C4
   AND #&03
   STA TILE_PAL
-  LDA RLE_BITS
+  LDA TEMP2
   CMP #&0F
   BCS L4_B8D2
   JSR QUEUE_TILE
 .L4_B8D2
-  INC RLE_BITS
+  INC TEMP2
   LDX Z_2A
   INX
   CPX #&0F
@@ -1755,6 +1771,8 @@ ENDIF
 
 ; NMI off, upload the RLE nametable at column 20h (second screen on US), NMI on.
 ; JP starts at column 0. In: DATA_PTR RLE bytes, DATA_PTR2 64 attribute bytes.
+
+; JP: column 0, XY_TO_NT_ADDR, then UPLOAD_RLE_NAMETABLE / US: column 20h via SET_NAMETABLE_XY. US also has DRAW_NAMETABLE_RLE_1 at column 0.
 .DRAW_NAMETABLE_RLE_2
   JSR NMI_OFF
 IF REGION_JP
@@ -1791,21 +1809,21 @@ ENDIF
 ; Write 400h nametable bytes from DATA_PTR, then 40h attribute bytes from DATA_PTR2.
 ; FF, count, tile repeats that tile count+1 times. Attributes also go to ATTR_BUF.
 .UPLOAD_RLE_NAMETABLE
-  LDA PPU_ADDR_HI
+  LDA DEST_PTR_HI
   STA PPU_ADDRESS
-  LDA PPU_ADDR
+  LDA DEST_PTR
   STA PPU_ADDRESS
   LDA #&00
-  STA PPU_ADDR
+  STA DEST_PTR
   LDA #&04
-  STA PPU_ADDR_HI
+  STA DEST_PTR_HI
   LDY #&00
   LDX #&00
 .RLE_WRITE_BYTE
   CPX #&00
   BEQ L4_BB14
   DEX
-  LDA RLE_BYTE
+  LDA TEMP1
   JMP L4_BB33
 .L4_BB14
   LDA (DATA_PTR),Y
@@ -1830,17 +1848,19 @@ ENDIF
   BNE L4_BB31
   INC DATA_PTR_HI
 .L4_BB31
-  STA RLE_BYTE
+  STA TEMP1
 .L4_BB33
   STA PPU_DATA
-  DEC PPU_ADDR
-  LDA PPU_ADDR
+  DEC DEST_PTR
+  LDA DEST_PTR
   CMP #&FF
   BNE L4_BB40
-  DEC PPU_ADDR_HI
+  DEC DEST_PTR_HI
+
+; Attribute origin after the nametable upload. JP: X,Y = 0,0 / US: NT_SAVE_COL, NT_SAVE_ROW.
 .L4_BB40
-  LDA PPU_ADDR
-  ORA PPU_ADDR_HI
+  LDA DEST_PTR
+  ORA DEST_PTR_HI
   BNE RLE_WRITE_BYTE
 IF REGION_JP
   LDX #&00
@@ -1850,9 +1870,9 @@ ELSE
   LDY NT_SAVE_ROW
 ENDIF
   JSR XY_TO_ATTR
-  LDA PPU_ADDR_HI
+  LDA DEST_PTR_HI
   STA PPU_ADDRESS
-  LDA PPU_ADDR
+  LDA DEST_PTR
   STA PPU_ADDRESS
   LDY #&00
 .L4_BB5B
@@ -1909,6 +1929,8 @@ ENDIF
 
 ; 14 words. Layout pointer for (area * 2 + variant). Areas 0-6, variant from LAYOUT_VARIANT.
 ; Area 6 uses AREA6_LAYOUT for both variants. Area 5 variant A is AREA5_LAYOUT_A inside the area-4 blob.
+
+; JP words A108, A1BA, A22D are AREA1_LAYOUT_B, AREA2_LAYOUT_B, AREA3_LAYOUT_B (jpmap 4:A108, 4:A1BA, 4:A22D). US names those labels directly.
 .STAGE_LAYOUT_PTR
   EQUB LO(AREA0_LAYOUT_A)
 .STAGE_LAYOUT_PTR_HI
