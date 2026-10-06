@@ -69,7 +69,9 @@ while ! done_yet && [ $round -le "${BM2_ROUNDS:-8}" ]; do
 done
 done_yet && echo "== task reports CHECK PASSED" | tee -a "$MAIN/harness/logs/$TASK.log"
 
-# Collect results into the main tree
+# Collect results into the main tree (one task at a time)
+until mkdir "$MAIN/harness/logs/.lock" 2>/dev/null; do sleep 5; done
+trap 'rmdir "$MAIN/harness/logs/.lock"' EXIT
 for f in symbols comments pointers notptr; do
   [ -f "$W/db/$f.d/$TASK.tsv" ] && mkdir -p "$MAIN/db/$f.d" && cp "$W/db/$f.d/$TASK.tsv" "$MAIN/db/$f.d/"
 done
