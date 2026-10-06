@@ -4,18 +4,18 @@
 
   PAD SHIFT                               ; relocation test, see make.sh
 
-; Spawn the stage enemies. Z_4E places eight type-0 enemies on FIXED_SPAWN_COL/ROW. Z_49 nonzero returns. Otherwise LOAD_SPAWN_LIST and place each type until a negative byte.
+; Spawn the stage enemies. SPECIAL_STAGE places eight type-0 enemies on FIXED_SPAWN_COL/ROW. GAME_MODE nonzero returns. Otherwise LOAD_SPAWN_LIST and place each type until a negative byte.
 .SPAWN_STAGE_ENEMIES
-  ABS_LDA Z_4E
+  ABS_LDA SPECIAL_STAGE
   BNE L0_8066
-  ABS_LDY Z_49
+  ABS_LDY GAME_MODE
   BNE L0_8020
   JSR LOAD_SPAWN_LIST
   LDY #&00
   STY Z_2A
 .L0_8011
   LDY Z_2A
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   BMI L0_801F
   JSR SPAWN_ENEMY_ON_EMPTY
   INC Z_2A
@@ -25,32 +25,32 @@
 .L0_8020
   RTS
 
-; A is the enemy type. Random column Z_28 is 0-31. Row comes from SPAWN_ROW_PICK. Rows under 5 need column at least 5. Map cell must be 0. Then PLACE_ENEMY.
+; A is the enemy type. Random column CELL_COL is 0-31. Row comes from SPAWN_ROW_PICK. Rows under 5 need column at least 5. Map cell must be 0. Then PLACE_ENEMY.
 .SPAWN_ENEMY_ON_EMPTY
-  STA X_62E1
+  STA ENEMY_SPAWN
 .L0_8024
   JSR NEXT_RNG
   AND #&1F
-  STA Z_28
+  STA CELL_COL
   JSR NEXT_RNG
   AND #&0F
   TAX
   LDY SPAWN_ROW_PICK,X
-  STY Z_29
+  STY CELL_ROW
   CPY #&05
   BCS L0_8040
-  LDA Z_28
+  LDA CELL_COL
   CMP #&05
   BCC L0_8024
 .L0_8040
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY Z_28
-  LDA (Z_2F),Y
+  STA MAP_PTR_HI
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   BNE L0_8024
-  LDA X_62E1
+  LDA ENEMY_SPAWN
   JMP PLACE_ENEMY
 
 ; 16 row numbers. SPAWN_ENEMY_ON_EMPTY indexes this with RNG and 0F.
@@ -64,36 +64,36 @@
 .L0_806A
   LDX Z_2A
   LDA FIXED_SPAWN_COL,X
-  STA Z_28
+  STA CELL_COL
   LDA FIXED_SPAWN_ROW,X
-  STA Z_29
+  STA CELL_ROW
   LDA #&00
   JSR PLACE_ENEMY
   DEC Z_2A
   BPL L0_806A
   RTS
 
-; Eight columns for the Z_4E fixed spawns. Paired with FIXED_SPAWN_ROW. Not pointers.
+; Eight columns for the SPECIAL_STAGE fixed spawns. Paired with FIXED_SPAWN_ROW. Not pointers.
 .FIXED_SPAWN_COL
   EQUB &03,&03,&05,&07,&07,&09,&09,&0B
 
-; Eight rows for the Z_4E fixed spawns. Paired with FIXED_SPAWN_COL.
+; Eight rows for the SPECIAL_STAGE fixed spawns. Paired with FIXED_SPAWN_COL.
 .FIXED_SPAWN_ROW
   EQUB &03,&07,&05,&05,&09,&03,&07,&07
 
 ; (not seen executing during the coverage runs)
 
-; Every 4th frame, place a type-0 enemy on the next PARADE_SPAWN_COL/ROW point. X_62E6 walks 0 through 64. Also runs SPAWN_TYPE_10.
+; Every 4th frame, place a type-0 enemy on the next PARADE_SPAWN_COL/ROW point. PARADE_IDX walks 0 through 64. Also runs SPAWN_TYPE_10.
 .SPAWN_PARADE
   JSR SPAWN_TYPE_10
   LDA FRAME_CNT
   AND #&03
   BNE L0_80B5
-  LDY X_62E6
+  LDY PARADE_IDX
   LDA PARADE_SPAWN_COL,Y
-  STA Z_28
+  STA CELL_COL
   LDA PARADE_SPAWN_ROW,Y
-  STA Z_29
+  STA CELL_ROW
   LDA #&00
   JSR PLACE_ENEMY
   INY
@@ -101,13 +101,13 @@
   BCC L0_80B2
   LDY #&00
 .L0_80B2
-  STY X_62E6
+  STY PARADE_IDX
 .L0_80B5
   RTS
 
-; Place enemy type 16. X_62E7 at least 16 tries once, then stores FF on success. If X_62E7 is negative and X_62E8 is positive, count X_62E9 down and try again.
+; Place enemy type 16. TYPE10_TRY at least 16 tries once, then stores FF on success. If TYPE10_TRY is negative and TYPE10_ARM is positive, count TYPE10_TIME down and try again.
 .SPAWN_TYPE_10
-  LDA X_62E7
+  LDA TYPE10_TRY
   BMI L0_80CC
   CMP #&10
   BCC L0_80CB
@@ -115,33 +115,33 @@
   JSR PLACE_ENEMY
   BCC L0_80CB
   LDA #&FF
-  STA X_62E7
+  STA TYPE10_TRY
 .L0_80CB
   RTS
 .L0_80CC
-  LDA X_62E8
+  LDA TYPE10_ARM
   BEQ L0_80E4
   BMI L0_80E4
-  DEC X_62E9
+  DEC TYPE10_TIME
   BNE L0_80E4
   LDA #&10
   JSR PLACE_ENEMY
   BCC L0_80E5
   LDA #&FF
-  STA X_62E8
+  STA TYPE10_ARM
 .L0_80E4
   RTS
 .L0_80E5
-  INC X_62E9
+  INC TYPE10_TIME
   RTS
 
-; If X_62E8 is 0, set it to 1 and X_62E9 to F0. The type 10 hex AI bytes call this when the phase is 0.
+; If TYPE10_ARM is 0, set it to 1 and TYPE10_TIME to F0. The type 10 hex AI bytes call this when the phase is 0.
 .ARM_TYPE10_TIMER
-  LDA X_62E8
+  LDA TYPE10_ARM
   BNE L0_80F6
-  INC X_62E8
+  INC TYPE10_ARM
   LDA #&F0
-  STA X_62E9
+  STA TYPE10_TIME
 .L0_80F6
   RTS
 
@@ -153,7 +153,7 @@
   EQUB &15,&15,&17,&17,&17,&17,&17,&19,&19,&19,&19,&19,&1B,&1B,&1B,&1B
   EQUB &1B
 
-; 65 rows for SPAWN_PARADE. Index is X_62E6, same index as PARADE_SPAWN_COL.
+; 65 rows for SPAWN_PARADE. Index is PARADE_IDX, same index as PARADE_SPAWN_COL.
 .PARADE_SPAWN_ROW
   EQUB &01,&03,&05,&07,&09,&0B,&09,&07,&05,&03,&01,&03,&05,&07,&09,&0B
   EQUB &09,&07,&05,&03,&01,&03,&05,&07,&09,&0B,&09,&07,&05,&03,&01,&03
@@ -161,18 +161,18 @@
   EQUB &05,&03,&01,&03,&05,&07,&09,&0B,&09,&07,&05,&03,&01,&03,&05,&07
   EQUB &09
 
-; When X_62EB hits 0, place eight copies of one type from BURST_TYPE_LIST (types 1-4), chosen by RNG, at cell X_62EC / X_62ED.
+; When BURST_TIME hits 0, place eight copies of one type from BURST_TYPE_LIST (types 1-4), chosen by RNG, at cell BURST_COL / BURST_ROW.
 .SPAWN_BURST
-  LDA X_62EB
+  LDA BURST_TIME
   BEQ L0_81A1
 
 ; (not seen executing during the coverage runs)
-  DEC X_62EB
+  DEC BURST_TIME
   BNE L0_81A1
-  LDA X_62EC
-  STA Z_28
-  LDA X_62ED
-  STA Z_29
+  LDA BURST_COL
+  STA CELL_COL
+  LDA BURST_ROW
+  STA CELL_ROW
   LDA #&08
   STA Z_2A
   JSR NEXT_RNG
@@ -190,59 +190,59 @@
 .BURST_TYPE_LIST
   EQUB &01,&02,&03,&04
 
-; When X_62EE hits 0, place one type-4 enemy at cell X_62EF / X_62F0.
+; When TYPE4_TIME hits 0, place one type-4 enemy at cell TYPE4_COL / TYPE4_ROW.
 .SPAWN_TYPE_4
-  LDA X_62EE
+  LDA TYPE4_TIME
   BEQ L0_81BF
 
 ; (not seen executing during the coverage runs)
-  DEC X_62EE
+  DEC TYPE4_TIME
   BNE L0_81BF
-  LDA X_62EF
-  STA Z_28
-  LDA X_62F0
-  STA Z_29
+  LDA TYPE4_COL
+  STA CELL_COL
+  LDA TYPE4_ROW
+  STA CELL_ROW
   LDA #&04
   JMP PLACE_ENEMY
 .L0_81BF
   RTS
 
-; Place enemy type A at cell Z_28, Z_29. Pixel is cell*16+8. Clears the slot timers. Carry set when a slot was free.
+; Place enemy type A at cell CELL_COL, CELL_ROW. Pixel is cell*16+8. Clears the slot timers. Carry set when a slot was free.
 .PLACE_ENEMY
-  STA X_62DF
+  STA ENEMY_PLACE
   JSR FIND_FREE_ENEMY
   BCS L0_820E
-  LDA Z_28
-  STA X_6282,X
+  LDA CELL_COL
+  STA ENEMY_COL,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6264,X
+  STA ENEMY_X,X
   ROL A
   AND #&01
-  STA X_626E,X
-  LDA Z_29
-  STA X_628C,X
+  STA ENEMY_X_HI,X
+  LDA CELL_ROW
+  STA ENEMY_ROW,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6278,X
-  LDA X_62DF
-  STA X_625A,X
+  STA ENEMY_Y,X
+  LDA ENEMY_PLACE
+  STA ENEMY_TYPE,X
   LDA #&01
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   LDA #&00
-  STA X_6296,X
-  STA X_62A0,X
-  STA X_62AA,X
-  STA X_62B4,X
-  STA X_62BE,X
-  STA X_62C8,X
-  STA X_62D2,X
+  STA ENEMY_SCORE,X
+  STA ENEMY_PHASE,X
+  STA ENEMY_ACC,X
+  STA ENEMY_TIMER,X
+  STA ENEMY_DIR,X
+  STA ENEMY_SUBT,X
+  STA ENEMY_SCRIPT,X
   SEC
   RTS
 
@@ -251,11 +251,11 @@
   CLC
   RTS
 
-; Find slot 9..0 whose X_6250 is 0. X is the slot and carry is clear. Carry set if all 10 slots are used.
+; Find slot 9..0 whose ENEMY_FLAGS is 0. X is the slot and carry is clear. Carry set if all 10 slots are used.
 .FIND_FREE_ENEMY
   LDX #&09
 .L0_8212
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BEQ L0_821C
   DEX
   BPL L0_8212
@@ -267,50 +267,50 @@
   CLC
   RTS
 
-; Clear X_62DE if any slot is active, not negative, and not type 17. If every slot is empty or type 17, set X_62DE once. X_62EB or X_62EE also clears it.
+; Clear ENEMIES_GONE if any slot is active, not negative, and not type 17. If every slot is empty or type 17, set ENEMIES_GONE once. BURST_TIME or TYPE4_TIME also clears it.
 .NOTE_ENEMIES_CLEARED
-  LDA X_62EB
-  ORA X_62EE
+  LDA BURST_TIME
+  ORA TYPE4_TIME
   BNE L0_8249
   LDX #&09
 .L0_8228
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BEQ L0_8236
   BMI L0_8236
-  LDA X_625A,X
+  LDA ENEMY_TYPE,X
   CMP #&11
   BNE L0_8249
 .L0_8236
   DEX
   BPL L0_8228
-  LDA X_62DE
+  LDA ENEMIES_GONE
   BNE L0_8248
   LDA #&01
-  STA X_62DE
-  ABS_LDA Z_4E
+  STA ENEMIES_GONE
+  ABS_LDA SPECIAL_STAGE
   BNE L0_8248
 .L0_8248
   RTS
 .L0_8249
   LDA #&00
-  STA X_62DE
+  STA ENEMIES_GONE
   RTS
 
-; Enemy logic for slot X. Negative X_6250 goes to ENEMY_DEATH_STEP. Otherwise jump through ENEMY_AI_LO indexed by X_625A.
+; Enemy logic for slot X. Negative ENEMY_FLAGS goes to ENEMY_DEATH_STEP. Otherwise jump through ENEMY_AI_LO indexed by ENEMY_TYPE.
 .DISPATCH_ENEMY_AI
   BMI L0_8263
-  LDA X_625A,X
+  LDA ENEMY_TYPE,X
   ASL A
   TAY
   LDA ENEMY_AI_LO,Y
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8267,Y
-  STA Z_21
-  JMP (Z_20)
+  STA DATA_PTR_HI
+  JMP (DATA_PTR)
 .L0_8263
   JMP ENEMY_DEATH_STEP
 
-; Logic entry for each enemy type, little-endian. Index is X_625A. A few entries are still raw words inside the table.
+; Logic entry for each enemy type, little-endian. Index is ENEMY_TYPE. A few entries are still raw words inside the table.
 .ENEMY_AI_LO
   EQUB LO(ENEMY_AI_00)
 .D0_8267
@@ -346,28 +346,28 @@ ENDIF
   EQUW ENEMY_AI_25
   EQUW ENEMY_AI_26
 
-; Draw enemy X_62E0. Skip if X_6250 is 0 or bit 4 is set. Bit 3 draws on even frames only. Jump through ENEMY_DRAW_LO indexed by type.
+; Draw enemy ENEMY_INDEX. Skip if ENEMY_FLAGS is 0 or bit 4 is set. Bit 3 draws on even frames only. Jump through ENEMY_DRAW_LO indexed by type.
 .DISPATCH_ENEMY_DRAW
-  LDX X_62E0
-  LDA X_6250,X
+  LDX ENEMY_INDEX
+  LDA ENEMY_FLAGS,X
   BEQ L0_82C6
   AND #&10
   BNE L0_82C6
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&08
   BEQ L0_82B4
   LDA FRAME_CNT
   LSR A
   BCC L0_82C6
 .L0_82B4
-  LDA X_625A,X
+  LDA ENEMY_TYPE,X
   ASL A
   TAY
   LDA ENEMY_DRAW_LO,Y
-  STA Z_20
+  STA DATA_PTR
   LDA D0_82C8,Y
-  STA Z_21
-  JMP (Z_20)
+  STA DATA_PTR_HI
+  JMP (DATA_PTR)
 .L0_82C6
   RTS
 
@@ -405,76 +405,76 @@ ENDIF
 .L0_82FD
   RTS
 
-; Slot X_62E0. Bit 0 of X_62DD clear: a map cell with bit 7 starts death (X_6250 = 80, timer 30) unless bit 6 is set, and adds ENEMY_SCORE_INDEX. Bit 0 set: overlap with the player. Type 16 gives a life and sound 0A. Other types jump L7_CEC4. Z_4E only allows type 16.
+; Slot ENEMY_INDEX. Bit 0 of ENEMY_REACT clear: a map cell with bit 7 starts death (ENEMY_FLAGS = 80, timer 30) unless bit 6 is set, and adds ENEMY_SCORE_INDEX. Bit 0 set: overlap with the player. Type 16 gives a life and sound 0A. Other types jump L7_CEC4. SPECIAL_STAGE only allows type 16.
 .ENEMY_BLAST_OR_PLAYER
-  LDX X_62E0
-  LDA X_62DD
+  LDX ENEMY_INDEX
+  LDA ENEMY_REACT
   LSR A
   BCS L0_835F
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BEQ L0_82FD
   BMI L0_82FD
   AND #&40
   BNE L0_835E
-  LDY X_628C,X
-  STY Z_29
+  LDY ENEMY_ROW,X
+  STY CELL_ROW
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
-  STY Z_28
-  LDA (Z_2F),Y
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
+  STY CELL_COL
+  LDA (MAP_PTR),Y
   AND #&80
   BEQ L0_835E
   LDA #&80
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   LDA #&00
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   LDA #&30
-  STA X_62AA,X
+  STA ENEMY_ACC,X
   JSR FIND_ACTOR_CELL
-  LDA X_620E,Y
+  LDA FLAME_OWNER,Y
   TAY
-  LDA X_60C1,Y
+  LDA RING_SLOT,Y
   PHA
   CMP #&03
   BCS L0_8350
   CLC
   ADC #&01
-  STA X_60C1,Y
+  STA RING_SLOT,Y
 .L0_8350
   PLA
-  LDY X_625A,X
+  LDY ENEMY_TYPE,X
   CLC
   ADC ENEMY_SCORE_INDEX,Y
-  STA X_6296,X
-  LDA X_60C1,Y
+  STA ENEMY_SCORE,X
+  LDA RING_SLOT,Y
 .L0_835E
   RTS
 .L0_835F
-  LDA Z_84
+  LDA ACTOR_DEATH
   BNE L0_8392
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BEQ L0_8392
   BMI L0_8392
   AND #&20
   BNE L0_8392
-  ABS_LDA Z_4E
+  ABS_LDA SPECIAL_STAGE
   BEQ L0_837A
 
 ; (not seen executing during the coverage runs)
-  LDA X_625A,X
+  LDA ENEMY_TYPE,X
   CMP #&10
   BNE L0_8392
 .L0_837A
-  LDA X_6264,X
+  LDA ENEMY_X,X
   SEC
-  ABS_SBC Z_72
+  ABS_SBC ACTOR_X
   TAY
 .L0_8382
-  LDA X_626E,X
-  ABS_SBC Z_75
+  LDA ENEMY_X_HI,X
+  ABS_SBC ACTOR_XSUB
   BEQ L0_8393
   CMP #&FF
   BNE L0_8392
@@ -486,54 +486,54 @@ ENDIF
   CPY #&0A
   BCS L0_8392
 .L0_8397
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   SEC
-  ABS_SBC Z_78
+  ABS_SBC ACTOR_Y
   CMP #&0A
   BCC L0_83A6
   CMP #&F6
   BCC L0_83BD
 .L0_83A6
-  LDA X_625A,X
+  LDA ENEMY_TYPE,X
   CMP #&10
   BEQ L0_83B0
   JMP L7_CEC4
 
 ; (not seen executing during the coverage runs)
 .L0_83B0
-  INC W_04E5
+  INC LIVES
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   LDA #&0A
   JSR AUDIO_CALL
 .L0_83BD
   RTS
 
-; Draw all 10 enemies. X_62DC = 0 uses order phase 0. Otherwise FRAME_CNT picks one of four rotations in ENEMY_DRAW_ORDER.
+; Draw all 10 enemies. ENEMY_ORDER = 0 uses order phase 0. Otherwise FRAME_CNT picks one of four rotations in ENEMY_DRAW_ORDER.
 .DRAW_ALL_ENEMIES
-  LDA X_62DC
+  LDA ENEMY_ORDER
   BEQ L0_83C5
   LDA FRAME_CNT
 .L0_83C5
   AND #&03
   TAX
   LDA ENEMY_ORDER_BASE,X
-  STA X_62F1
+  STA DRAW_PHASE
   LDA #&09
   STA Z_2A
 .L0_83D2
   LDA Z_2A
   CLC
-  ADC X_62F1
+  ADC DRAW_PHASE
   TAX
   LDA ENEMY_DRAW_ORDER,X
-  STA X_62E0
+  STA ENEMY_INDEX
   JSR DISPATCH_ENEMY_DRAW
   DEC Z_2A
   BPL L0_83D2
   RTS
 
-; Four offsets into ENEMY_DRAW_ORDER: 0, 10, 20, 30. DRAW_ALL_ENEMIES picks one with FRAME_CNT bits 0 and 1, unless X_62DC is 0.
+; Four offsets into ENEMY_DRAW_ORDER: 0, 10, 20, 30. DRAW_ALL_ENEMIES picks one with FRAME_CNT bits 0 and 1, unless ENEMY_ORDER is 0.
 .ENEMY_ORDER_BASE
   EQUB &00,&0A,&14,&1E
 
@@ -545,35 +545,35 @@ ENDIF
 
 ; Slot X: tile column from the 16-bit pixel X, tile row from pixel Y shifted right 4.
 .ENEMY_PIX_TO_CELL
-  LDA X_626E,X
+  LDA ENEMY_X_HI,X
   LSR A
-  LDA X_6264,X
+  LDA ENEMY_X,X
   ROR A
   LSR A
   LSR A
   LSR A
-  STA X_6282,X
-  LDA X_6278,X
+  STA ENEMY_COL,X
+  LDA ENEMY_Y,X
   LSR A
   LSR A
   LSR A
   LSR A
-  STA X_628C,X
+  STA ENEMY_ROW,X
   RTS
 
-; Copy the enemy pixel X and Y+32 into Z_56-Z_58 for DRAW_METASPRITE.
+; Copy the enemy pixel X and Y+32 into SPR_X-SPR_Y for DRAW_METASPRITE.
 .ENEMY_LOAD_DRAW_POS
-  LDA X_6264,X
-  ABS_STA Z_56
-  LDA X_626E,X
-  ABS_STA Z_57
-  LDA X_6278,X
+  LDA ENEMY_X,X
+  ABS_STA SPR_X
+  LDA ENEMY_X_HI,X
+  ABS_STA SPR_X_HI
+  LDA ENEMY_Y,X
   CLC
   ADC #&20
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   RTS
 
-; Move slot X one pixel. A is 0 up, 1 left, 2 down, 3 right. Left and right use the high byte X_626E.
+; Move slot X one pixel. A is 0 up, 1 left, 2 down, 3 right. Left and right use the high byte ENEMY_X_HI.
 .ENEMY_MOVE_1
   TAY
   BEQ L0_844F
@@ -587,27 +587,27 @@ ENDIF
 ; (not seen executing during the coverage runs)
   RTS
 .L0_844F
-  DEC X_6278,X
+  DEC ENEMY_Y,X
   RTS
 .L0_8453
-  INC X_6278,X
+  INC ENEMY_Y,X
   RTS
 .L0_8457
-  INC X_6264,X
+  INC ENEMY_X,X
   BNE L0_845F
-  INC X_626E,X
+  INC ENEMY_X_HI,X
 .L0_845F
   RTS
 .L0_8460
-  DEC X_6264,X
-  LDA X_6264,X
+  DEC ENEMY_X,X
+  LDA ENEMY_X,X
   CMP #&FF
   BNE L0_846D
-  DEC X_626E,X
+  DEC ENEMY_X_HI,X
 .L0_846D
   RTS
 
-; Same directions as ENEMY_MOVE_1, stepping by X_62E3 pixels.
+; Same directions as ENEMY_MOVE_1, stepping by ENEMY_STEP pixels.
 .ENEMY_MOVE_SPEED
   TAY
   BEQ L0_847B
@@ -621,39 +621,39 @@ ENDIF
   BEQ L0_84A4
   RTS
 .L0_847B
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   SEC
-  SBC X_62E3
-  STA X_6278,X
+  SBC ENEMY_STEP
+  STA ENEMY_Y,X
   RTS
 .L0_8486
-  LDA X_6264,X
+  LDA ENEMY_X,X
   SEC
-  SBC X_62E3
-  STA X_6264,X
-  LDA X_626E,X
+  SBC ENEMY_STEP
+  STA ENEMY_X,X
+  LDA ENEMY_X_HI,X
   SBC #&00
-  STA X_626E,X
+  STA ENEMY_X_HI,X
   RTS
 
 ; (not seen executing during the coverage runs)
 .L0_8499
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   CLC
-  ADC X_62E3
-  STA X_6278,X
+  ADC ENEMY_STEP
+  STA ENEMY_Y,X
   RTS
 .L0_84A4
-  LDA X_6264,X
+  LDA ENEMY_X,X
   CLC
-  ADC X_62E3
-  STA X_6264,X
-  LDA X_626E,X
+  ADC ENEMY_STEP
+  STA ENEMY_X,X
+  LDA ENEMY_X_HI,X
   ADC #&00
-  STA X_626E,X
+  STA ENEMY_X_HI,X
   RTS
 
-; Carry set if direction A is blocked for slot X. The enemy must be near a cell edge. Then the map cell ahead is masked with X_62E2.
+; Carry set if direction A is blocked for slot X. The enemy must be near a cell edge. Then the map cell ahead is masked with ENEMY_MASK.
 .ENEMY_DIR_BLOCKED
   TAY
   BNE L0_84BD
@@ -663,100 +663,100 @@ ENDIF
   BEQ L0_84F9
   DEY
   BEQ L0_8525
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
   BEQ L0_84CF
   JMP L0_857D
 .L0_84CF
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&0F
   CMP #&08
   BCS ENEMY_BLOCK_RIGHT
   JMP L0_857B
 
-; Carry set if the map cell to the right, masked by X_62E2, is nonzero.
+; Carry set if the map cell to the right, masked by ENEMY_MASK, is nonzero.
 .ENEMY_BLOCK_RIGHT
-  LDY X_628C,X
+  LDY ENEMY_ROW,X
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
   INY
-  LDA (Z_2F),Y
-  AND X_62E2
+  LDA (MAP_PTR),Y
+  AND ENEMY_MASK
   BNE L0_84F6
   JMP L0_857B
 .L0_84F6
   JMP L0_857D
 .L0_84F9
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
   BNE L0_857D
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&0F
   CMP #&09
   BCS L0_857B
 
-; Carry set if the map cell to the left, masked by X_62E2, is nonzero.
+; Carry set if the map cell to the left, masked by ENEMY_MASK, is nonzero.
 .ENEMY_BLOCK_LEFT
-  LDY X_628C,X
+  LDY ENEMY_ROW,X
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
   DEY
-  LDA (Z_2F),Y
-  AND X_62E2
+  LDA (MAP_PTR),Y
+  AND ENEMY_MASK
   BEQ L0_857B
   BNE L0_857D
 .L0_8525
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_857D
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&0F
   CMP #&08
   BCC L0_857B
 
-; Carry set if the map cell below, masked by X_62E2, is nonzero.
+; Carry set if the map cell below, masked by ENEMY_MASK, is nonzero.
 .ENEMY_BLOCK_DOWN
-  LDY X_628C,X
+  LDY ENEMY_ROW,X
   INY
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
-  LDA (Z_2F),Y
-  AND X_62E2
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
+  LDA (MAP_PTR),Y
+  AND ENEMY_MASK
   BEQ L0_857B
   BNE L0_857D
 .L0_8551
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_857D
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&0F
   CMP #&09
   BCS L0_857B
 
-; Carry set if the map cell above, masked by X_62E2, is nonzero.
+; Carry set if the map cell above, masked by ENEMY_MASK, is nonzero.
 .ENEMY_BLOCK_UP
-  LDY X_628C,X
+  LDY ENEMY_ROW,X
   DEY
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
-  LDA (Z_2F),Y
-  AND X_62E2
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
+  LDA (MAP_PTR),Y
+  AND ENEMY_MASK
   BNE L0_857D
 .L0_857B
   CLC
@@ -765,54 +765,54 @@ ENDIF
   SEC
   RTS
 
-; Direction toward the player cell Z_6C / Z_6F. The larger axis wins. 0 up, 1 left, 2 down, 3 right.
+; Direction toward the player cell ACTOR_COL / ACTOR_ROW. The larger axis wins. 0 up, 1 left, 2 down, 3 right.
 .ENEMY_AIM_PLAYER
   LDY #&03
-  LDA Z_6C
+  LDA ACTOR_COL
   SEC
 .L0_8584
-  SBC X_6282,X
+  SBC ENEMY_COL,X
   BPL L0_8590
   LDY #&01
   EOR #&FF
   CLC
   ADC #&01
 .L0_8590
-  STA Z_1C
-  STY Z_1D
+  STA RLE_BYTE
+  STY RLE_BITS
   LDY #&02
-  LDA Z_6F
+  LDA ACTOR_ROW
   SEC
-  SBC X_628C,X
+  SBC ENEMY_ROW,X
   BPL L0_85A5
   LDY #&00
   EOR #&FF
   CLC
   ADC #&01
 .L0_85A5
-  CMP Z_1C
+  CMP RLE_BYTE
   BCS L0_85AB
-  LDY Z_1D
+  LDY RLE_BITS
 .L0_85AB
   TYA
   RTS
 
-; If the current direction is horizontal, return up or down toward Z_6F. If vertical, return left or right toward Z_6C.
+; If the current direction is horizontal, return up or down toward ACTOR_ROW. If vertical, return left or right toward ACTOR_COL.
 .ENEMY_STRAFE_AXIS
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   AND #&01
   BEQ L0_85C0
   LDA #&00
-  LDY X_628C,X
-  CPY Z_6F
+  LDY ENEMY_ROW,X
+  CPY ACTOR_ROW
   BCS L0_85BF
   LDA #&02
 .L0_85BF
   RTS
 .L0_85C0
   LDA #&01
-  LDY X_6282,X
-  CPY Z_6C
+  LDY ENEMY_COL,X
+  CPY ACTOR_COL
   BCS L0_85CB
   LDA #&03
 .L0_85CB
@@ -820,11 +820,11 @@ ENDIF
 
 ; Z set when both pixel X and Y are 18 hex mod 20 hex, the center of an odd cell.
 .ENEMY_AT_ODD_CENTER
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_85DC
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
 .L0_85DC
@@ -832,82 +832,82 @@ ENDIF
 
 ; Z set when both pixel X and Y are 8 mod 16, the center of any cell.
 .ENEMY_AT_CELL_CENTER
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&0F
   CMP #&08
   BNE L0_85DC
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&0F
   CMP #&08
   RTS
 
-; Set bit 6 of X_6250 so ENEMY_BLAST_OR_PLAYER skips the blast reaction.
+; Set bit 6 of ENEMY_FLAGS so ENEMY_BLAST_OR_PLAYER skips the blast reaction.
 .ENEMY_SET_NOBLAST
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   ORA #&40
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
 ; (not seen executing during the coverage runs)
 
-; Clear bit 6 of X_6250.
+; Clear bit 6 of ENEMY_FLAGS.
 .ENEMY_CLR_NOBLAST
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&BF
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
-; Clear bits 3 and 4 of X_6250 (flicker and no-draw).
+; Clear bits 3 and 4 of ENEMY_FLAGS (flicker and no-draw).
 .ENEMY_CLR_VIS_BITS
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&E7
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
-; Set bit 3 and clear bit 4 of X_6250. Draw runs on even frames only.
+; Set bit 3 and clear bit 4 of ENEMY_FLAGS. Draw runs on even frames only.
 .ENEMY_SET_FLICKER
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&EF
   ORA #&08
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
-; Set bit 4 and clear bit 3 of X_6250. DISPATCH_ENEMY_DRAW skips the slot.
+; Set bit 4 and clear bit 3 of ENEMY_FLAGS. DISPATCH_ENEMY_DRAW skips the slot.
 .ENEMY_SET_NODRAW
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&F7
   ORA #&10
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
 ; (not seen executing during the coverage runs)
 .L0_861F
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   AND #&DF
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 .L0_8628
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   ORA #&20
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 
 ; Try directions 0, 1, 3, then 2. Keep the first one ENEMY_DIR_BLOCKED accepts.
 .ENEMY_TRY_FOUR_DIRS
   LDA #&00
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8657
   LDA #&01
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8657
   LDA #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8657
   LDA #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
 .L0_8657
   RTS
@@ -916,39 +916,39 @@ ENDIF
 .ENEMY_RANDOM_OPEN_DIR
   JSR NEXT_RNG
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_868E
   LDA #&00
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_BLOCK_UP
   BCC L0_868E
   LDA #&01
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_BLOCK_LEFT
   BCC L0_868E
   LDA #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_BLOCK_RIGHT
   BCC L0_868E
   LDA #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_BLOCK_DOWN
   BCC L0_868E
   RTS
 .L0_868E
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   RTS
 
-; If the reverse of X_62BE is open, store it.
+; If the reverse of ENEMY_DIR is open, store it.
 .ENEMY_REVERSE_IF_OPEN
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
   PHA
   JSR ENEMY_DIR_BLOCKED
   PLA
   BCS L0_86A1
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_86A1
   RTS
 
@@ -958,29 +958,29 @@ ENDIF
   AND #&07
   ASL A
   ASL A
-  STA Z_1C
+  STA RLE_BYTE
   LDA #&04
-  STA Z_1D
+  STA RLE_BITS
 .L0_86AF
-  LDY Z_1C
+  LDY RLE_BYTE
   LDA ENEMY_TURN_DELTAS,Y
   CLC
-  ADC X_62BE,X
+  ADC ENEMY_DIR,X
   AND #&03
-  STA Z_1E
+  STA RLE_LEFT
   JSR ENEMY_DIR_BLOCKED
   BCC L0_86CD
-  INC Z_1C
-  DEC Z_1D
+  INC RLE_BYTE
+  DEC RLE_BITS
   BNE L0_86AF
 
 ; (not seen executing during the coverage runs)
   LDA #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_86CD
-  LDA Z_1E
-  STA X_62BE,X
+  LDA RLE_LEFT
+  STA ENEMY_DIR,X
   RTS
 
 ; 32 direction deltas. ENEMY_PICK_TURN chooses one of eight groups of four with RNG, then keeps the first open direction.
@@ -988,17 +988,17 @@ ENDIF
   EQUB &00,&01,&03,&02,&00,&03,&01,&02,&01,&00,&03,&02,&01,&03,&00,&02
   EQUB &03,&00,&01,&02,&03,&01,&00,&02,&03,&01,&00,&02,&01,&03,&00,&02
 
-; Carry set if any blast slot X_6001 shares this enemy column or row.
+; Carry set if any blast slot BOMB_FLAG shares this enemy column or row.
 .ENEMY_ON_BLAST_LINE
   LDY #&17
 .L0_86F5
-  LDA X_6001,Y
+  LDA BOMB_FLAG,Y
   BEQ L0_870A
-  LDA X_6282,X
-  CMP X_6019,Y
+  LDA ENEMY_COL,X
+  CMP BOMB_COL,Y
   BEQ L0_870F
-  LDA X_628C,X
-  CMP X_6031,Y
+  LDA ENEMY_ROW,X
+  CMP BOMB_ROW,Y
   BEQ L0_870F
 .L0_870A
   DEY
@@ -1009,25 +1009,25 @@ ENDIF
   SEC
   RTS
 
-; Death timer. After six steps, X_6250 becomes 61 hex, the old type is saved, the type becomes 17, then L7_D192.
+; Death timer. After six steps, ENEMY_FLAGS becomes 61 hex, the old type is saved, the type becomes 17, then L7_D192.
 .ENEMY_DEATH_STEP
-  DEC X_62AA,X
+  DEC ENEMY_ACC,X
   BNE L0_8740
   LDA #&0A
-  STA X_62AA,X
-  INC X_62A0,X
-  LDA X_62A0,X
+  STA ENEMY_ACC,X
+  INC ENEMY_PHASE,X
+  LDA ENEMY_PHASE,X
   CMP #&06
   BCC L0_8740
   LDA #&61
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   LDA #&00
-  STA X_62AA,X
-  LDA X_625A,X
-  STA X_62A0,X
+  STA ENEMY_ACC,X
+  LDA ENEMY_TYPE,X
+  STA ENEMY_PHASE,X
   LDA #&11
-  STA X_625A,X
-  LDY X_6296,X
+  STA ENEMY_TYPE,X
+  LDY ENEMY_SCORE,X
   JMP L7_D192
 .L0_8740
   RTS
@@ -1035,14 +1035,14 @@ ENDIF
 ; Type 0. Mask 70 hex. Picks a vertical or horizontal direction from the sign of its pixel position and walks one pixel, reversing at walls.
 .ENEMY_AI_00
   LDA #&70
-  STA X_62E2
+  STA ENEMY_MASK
 .L0_8746
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_875F
-  LDY X_62A0,X
+  LDY ENEMY_PHASE,X
   BEQ L0_8760
   DEY
   BEQ L0_8797
@@ -1054,18 +1054,18 @@ ENDIF
   RTS
 .L0_8760
   LDY #&00
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   BMI L0_8769
   INY
   INY
 .L0_8769
   TYA
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_878E
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_878E
   LDA #&01
@@ -1078,59 +1078,59 @@ ENDIF
   RTS
 .L0_878E
   LDA #&00
-  STA X_62B4,X
-  INC X_62A0,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
   RTS
 .L0_8797
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_87A8
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_87A8
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   CMP #&05
   BCS L0_87BB
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_87BB
   LDA #&00
-  STA X_62B4,X
-  INC X_62A0,X
-  LDA X_62A0,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
+  LDA ENEMY_PHASE,X
   AND #&03
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   RTS
 .L0_87CC
   LDY #&01
-  LDA X_6264,X
+  LDA ENEMY_X,X
   BMI L0_87D5
   INY
   INY
 .L0_87D5
   TYA
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_87E6
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_87E6
   LDA #&00
-  STA X_62B4,X
-  INC X_62A0,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
   RTS
 
-; Type 0 draw. Point Z_20 at ENEMY_WALK_00 and jump DRAW_ENEMY_WALK. The JP ROM uses D0_AB20.
+; Type 0 draw. Point DATA_PTR at ENEMY_WALK_00 and jump DRAW_ENEMY_WALK. The JP ROM uses D0_AB20.
 .DRAW_ENEMY_00
   LDA D0_87FC
-  STA Z_20
+  STA DATA_PTR
   LDA D0_87FD
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_87FC
@@ -1147,39 +1147,39 @@ ENDIF
 ; Type 1. Mask 70 hex, speed accumulator C0. On a wall, turn by +1 or -1.
 .ENEMY_AI_01
   LDA #&70
-  STA X_62E2
+  STA ENEMY_MASK
   LDA #&C0
   STA X_62E4
 .L0_8808
-  LDY X_62A0,X
+  LDY ENEMY_PHASE,X
   BEQ L0_8851
   LDA X_62E4
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_884E
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_882A
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_882A
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   AND #&0F
   BNE L0_883F
-  STA X_62B4,X
-  LDA X_62C8,X
+  STA ENEMY_TIMER,X
+  LDA ENEMY_SUBT,X
   EOR #&01
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
 .L0_883F
-  LDY X_62C8,X
+  LDY ENEMY_SUBT,X
   LDA D0_884F,Y
   CLC
-  ADC X_62BE,X
+  ADC ENEMY_DIR,X
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_884E
   RTS
 .D0_884F
@@ -1187,17 +1187,17 @@ ENDIF
 .L0_8851
   JSR NEXT_RNG
   AND #&07
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   AND #&01
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
   JMP ENEMY_RANDOM_OPEN_DIR
 
-; Type 1 draw. Point Z_20 at ENEMY_WALK_01 and jump DRAW_ENEMY_WALK. The JP ROM uses another table.
+; Type 1 draw. Point DATA_PTR at ENEMY_WALK_01 and jump DRAW_ENEMY_WALK. The JP ROM uses another table.
 .DRAW_ENEMY_01
   LDA D0_886E
-  STA Z_20
+  STA DATA_PTR
   LDA D0_886F
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_886E
@@ -1214,18 +1214,18 @@ ENDIF
 ; Type 2. Mask 70 hex and two speed bytes of C0, then the shared walker at L0_8FDA.
 .ENEMY_AI_02
   LDA #&70
-  STA X_62E2
+  STA ENEMY_MASK
   LDA #&C0
   STA X_62E4
   STA X_62E5
   JMP L0_8FDA
 
-; Type 2 draw. Point Z_20 at ENEMY_WALK_02 and jump DRAW_ENEMY_WALK.
+; Type 2 draw. Point DATA_PTR at ENEMY_WALK_02 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_02
   LDA D0_888D
-  STA Z_20
+  STA DATA_PTR
   LDA D0_888E
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 .D0_888D
   EQUB LO(ENEMY_WALK_02)
@@ -1235,62 +1235,62 @@ ENDIF
 ; Type 3. Mask 50 hex. After two odd-cell centers, face the player with ENEMY_AIM_PLAYER.
 .ENEMY_AI_03
   LDA #&50
-  STA X_62E2
-  LDA X_62AA,X
+  STA ENEMY_MASK
+  LDA ENEMY_ACC,X
   CLC
   ADC #&80
-  STA X_62AA,X
+  STA ENEMY_ACC,X
   BCC L0_88DC
-  LDA X_62A0,X
+  LDA ENEMY_PHASE,X
   BEQ L0_88EE
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_88DD
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_88DC
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
   BNE L0_88DC
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   CMP #&02
   BCC L0_88DC
   JSR ENEMY_AIM_PLAYER
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   LDA #&00
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
 .L0_88DC
   RTS
 .L0_88DD
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   CLC
   ADC #&01
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   LDA #&00
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   RTS
 .L0_88EE
   JSR NEXT_RNG
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   AND #&01
-  STA X_62B4,X
-  INC X_62A0,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
   RTS
 
-; Type 3 draw. Point Z_20 at ENEMY_WALK_03 and jump DRAW_ENEMY_WALK.
+; Type 3 draw. Point DATA_PTR at ENEMY_WALK_03 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_03
   LDA D0_890C
-  STA Z_20
+  STA DATA_PTR
   LDA D0_890D
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_890C
@@ -1307,27 +1307,27 @@ ENDIF
 ; Type 4. Mask 70 hex. Walks, then charges the player at speed 1 when the row or column matches.
 .ENEMY_AI_04
   LDA #&70
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BEQ L0_8944
   DEY
   BEQ L0_8947
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_8931
   LDA #&01
-  STA X_62E3
-  LDA X_62BE,X
+  STA ENEMY_STEP
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_SPEED
   JMP ENEMY_PIX_TO_CELL
 .L0_8931
   LDA #&01
-  STA X_62A0,X
-  LDA X_62BE,X
+  STA ENEMY_PHASE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   LDA #&20
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
 .L0_8943
   RTS
 .L0_8944
@@ -1335,33 +1335,33 @@ ENDIF
 .L0_8947
   LDA #&C0
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8943
-  LDA X_62C8,X
+  LDA ENEMY_SUBT,X
   BEQ L0_895C
-  DEC X_62C8,X
+  DEC ENEMY_SUBT,X
   BNE L0_897C
 .L0_895C
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_897C
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
   BNE L0_897C
-  LDA Z_6C
-  CMP X_6282,X
+  LDA ACTOR_COL
+  CMP ENEMY_COL,X
   BEQ L0_89A3
-  LDA Z_6F
-  CMP X_628C,X
+  LDA ACTOR_ROW
+  CMP ENEMY_ROW,X
   BEQ L0_89B0
 .L0_897C
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_898D
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_898D
@@ -1369,17 +1369,17 @@ ENDIF
   CMP #&32
   BCS L0_899A
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_899A
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_89A3
   LDY #&00
-  LDA Z_6F
-  CMP X_628C,X
+  LDA ACTOR_ROW
+  CMP ENEMY_ROW,X
   BCC L0_89BB
 
 ; (not seen executing during the coverage runs)
@@ -1387,8 +1387,8 @@ ENDIF
   BNE L0_89BB
 .L0_89B0
   LDY #&01
-  LDA Z_6C
-  CMP X_6282,X
+  LDA ACTOR_COL
+  CMP ENEMY_COL,X
   BCC L0_89BB
 
 ; (not seen executing during the coverage runs)
@@ -1399,19 +1399,19 @@ ENDIF
   JSR ENEMY_DIR_BLOCKED
   PLA
   BCS L0_89C9
-  STA X_62BE,X
-  INC X_62A0,X
+  STA ENEMY_DIR,X
+  INC ENEMY_PHASE,X
 .L0_89C9
   LDA #&20
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
   RTS
 
-; Type 4 draw. Point Z_20 at ENEMY_WALK_04 and jump DRAW_ENEMY_WALK.
+; Type 4 draw. Point DATA_PTR at ENEMY_WALK_04 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_04
   LDA D0_89DC
-  STA Z_20
+  STA DATA_PTR
   LDA D0_89DD
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_89DC
@@ -1428,68 +1428,68 @@ ENDIF
 ; Type 5. Mask 40 hex. On an odd-cell center, chooses a random direction and keeps it. If the cell is 10 hex, plants a blast.
 .ENEMY_AI_05
   LDA #&40
-  STA X_62E2
-  LDA X_62A0,X
+  STA ENEMY_MASK
+  LDA ENEMY_PHASE,X
   BEQ L0_8A54
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8A4C
-  LDA X_62B4,X
+  LDA ENEMY_TIMER,X
   BNE L0_8A0A
   JSR ENEMY_AT_ODD_CENTER
   BNE L0_8A0D
   JSR NEXT_RNG
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   LDA #&3C
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
 .L0_8A0A
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
 .L0_8A0D
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_8A4D
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
   JSR ENEMY_AT_CELL_CENTER
   BNE L0_8A4C
-  LDY X_628C,X
-  STY Z_29
+  LDY ENEMY_ROW,X
+  STY CELL_ROW
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
-  STY Z_28
-  LDA (Z_2F),Y
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
+  STY CELL_COL
+  LDA (MAP_PTR),Y
   CMP #&10
   BNE L0_8A4C
   JSR FIND_BLAST
   BCC L0_8A4C
   LDA #&81
-  STA X_6001,Y
+  STA BOMB_FLAG,Y
   LDA #&78
-  STA X_60A9,Y
+  STA BOMB_REARM,Y
 .L0_8A4C
   RTS
 .L0_8A4D
   JSR ENEMY_AIM_PLAYER
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_8A54
   LDA #&3C
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   JMP ENEMY_RANDOM_OPEN_DIR
 
-; Type 5 draw. Point Z_20 at ENEMY_WALK_05 and jump DRAW_ENEMY_WALK.
+; Type 5 draw. Point DATA_PTR at ENEMY_WALK_05 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_05
   LDA D0_8A69
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8A6A
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8A69
@@ -1506,8 +1506,8 @@ ENDIF
 ; Type 6. Mask 70 hex. Wanders, pauses, then calls L7_D018 and sets bit 6.
 .ENEMY_AI_06
   LDA #&70
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BEQ L0_8A94
   DEY
   BEQ L0_8AAC
@@ -1534,151 +1534,151 @@ ENDIF
   RTS
 .L0_8A94
   LDA #&78
-  STA X_62B4,X
-  INC X_62AA,X
-  LDA X_62AA,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_ACC,X
+  LDA ENEMY_ACC,X
   BEQ L0_8AA4
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_8AA4
   LDA #&02
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   JMP L0_8B1E
 .L0_8AAC
   LDA FRAME_CNT
   AND #&03
   BNE L0_8AB7
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BEQ L0_8AF4
 .L0_8AB7
   LDA #&C0
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8AF3
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_8AD3
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_8AD3
-  INC X_62C8,X
-  LDA X_62C8,X
+  INC ENEMY_SUBT,X
+  LDA ENEMY_SUBT,X
   CMP #&05
   BCC L0_8AEB
   LDA #&00
-  STA X_62C8,X
-  LDA X_62BE,X
+  STA ENEMY_SUBT,X
+  LDA ENEMY_DIR,X
   EOR #&01
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_8AEB
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_8AF3
   RTS
 .L0_8AF4
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   RTS
 .L0_8AF8
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&0F
   CMP #&08
   BNE L0_8AB7
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&0F
   CMP #&08
   BNE L0_8AB7
-  LDY X_628C,X
+  LDY ENEMY_ROW,X
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY X_6282,X
-  LDA (Z_2F),Y
+  STA MAP_PTR_HI
+  LDY ENEMY_COL,X
+  LDA (MAP_PTR),Y
   BNE L0_8AB7
 .L0_8B1E
   LDA #&08
-  STA X_62B4,X
-  INC X_62A0,X
-  LDA X_6250,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
+  LDA ENEMY_FLAGS,X
   ORA #&40
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 .L0_8B2F
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_8B50
   LDA #&08
-  STA X_62B4,X
-  INC X_62D2,X
-  LDA X_62D2,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_SCRIPT,X
+  LDA ENEMY_SCRIPT,X
   CMP #&05
   BCC L0_8B50
   LDA #&00
-  STA X_62D2,X
-  INC X_62A0,X
+  STA ENEMY_SCRIPT,X
+  INC ENEMY_PHASE,X
   LDA #&5A
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
 .L0_8B50
   RTS
 .L0_8B51
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_8B5E
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   LDA #&3C
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
 .L0_8B5E
   RTS
 .L0_8B5F
   LDA FRAME_CNT
   AND #&07
   BNE L0_8B70
-  INC X_62D2,X
-  LDA X_62D2,X
+  INC ENEMY_SCRIPT,X
+  LDA ENEMY_SCRIPT,X
   AND #&03
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
 .L0_8B70
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BEQ L0_8B76
   RTS
 .L0_8B76
   LDA #&28
-  STA X_62B4,X
-  INC X_62A0,X
-  ABS_LDA Z_93
-  STA X_624A
-  LDA X_6282,X
-  STA Z_1C
-  LDA X_628C,X
-  STA Z_1D
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
+  ABS_LDA ACTOR_BOMBS
+  STA RAY_LEFT
+  LDA ENEMY_COL,X
+  STA RLE_BYTE
+  LDA ENEMY_ROW,X
+  STA RLE_BITS
   JSR FREE_RING_SLOT
-  STA X_624C
+  STA BLAST_OWNER
   LDA #&00
   JMP L7_D018
 .L0_8B99
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_8BB0
   LDA #&00
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   LDA #&78
-  STA X_62B4,X
-  LDA X_6250,X
+  STA ENEMY_TIMER,X
+  LDA ENEMY_FLAGS,X
   AND #&BF
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
 .L0_8BB0
   RTS
 
-; Type 6 draw. Phases 3 through 5 pick a metasprite from the walk table plus 11 hex or 16 hex. Other phases use DRAW_ENEMY_WALK. A negative X_6250 also uses the walker.
+; Type 6 draw. Phases 3 through 5 pick a metasprite from the walk table plus 11 hex or 16 hex. Other phases use DRAW_ENEMY_WALK. A negative ENEMY_FLAGS also uses the walker.
 .DRAW_ENEMY_06
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BMI L0_8BEE
-  LDY X_62A0,X
+  LDY ENEMY_PHASE,X
   CPY #&03
   BCC L0_8BEE
   CPY #&06
   BEQ L0_8BB0
-  LDA X_62D2,X
+  LDA ENEMY_SCRIPT,X
   CLC
   ADC #&11
   CPY #&03
@@ -1689,23 +1689,23 @@ ENDIF
   ASL A
   TAY
   LDA D0_8BFB
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8BFC
-  STA Z_21
-  LDA (Z_20),Y
-  STA Z_54
+  STA DATA_PTR_HI
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   LDA #&20
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   JSR ENEMY_LOAD_DRAW_POS
   JMP DRAW_METASPRITE
 .L0_8BEE
   LDA D0_8BFB
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8BFC
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8BFB
@@ -1722,13 +1722,13 @@ ENDIF
 ; Type 7. Mask 50 hex, speed accumulator C0. Reverses on a wall, then on the odd-cell grid turns toward the player on the other axis.
 .ENEMY_AI_07
   LDA #&50
-  STA X_62E2
+  STA ENEMY_MASK
   LDA #&C0
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8C18
-  LDY X_62A0,X
+  LDY ENEMY_PHASE,X
   BEQ L0_8C19
   DEY
   BEQ L0_8C29
@@ -1737,69 +1737,69 @@ ENDIF
 .L0_8C18
   RTS
 .L0_8C19
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   LDA #&08
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
   LDA #&40
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_8C29
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8C3C
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JMP L0_8C45
 .L0_8C3C
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
 .L0_8C45
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_8C6B
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
-  DEC X_62C8,X
+  STA ENEMY_DIR,X
+  DEC ENEMY_SUBT,X
   BNE L0_8C5F
   LDA #&08
-  STA X_62C8,X
-  INC X_62A0,X
+  STA ENEMY_SUBT,X
+  INC ENEMY_PHASE,X
 .L0_8C5F
-  LDA X_62C8,X
+  LDA ENEMY_SUBT,X
   AND #&01
   TAY
   LDA D0_8C6C,Y
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
 .L0_8C6B
   RTS
 .D0_8C6C
   EQUB &40,&30
 .L0_8C6E
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&1F
   CMP #&18
   BNE L0_8C8A
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&1F
   CMP #&18
   BNE L0_8C8A
   JSR ENEMY_STRAFE_AXIS
-  STA X_62BE,X
-  DEC X_62A0,X
+  STA ENEMY_DIR,X
+  DEC ENEMY_PHASE,X
   RTS
 .L0_8C8A
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 
-; Type 7 draw. Point Z_20 at ENEMY_WALK_07 and jump DRAW_ENEMY_WALK.
+; Type 7 draw. Point DATA_PTR at ENEMY_WALK_07 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_07
   LDA D0_8CA0
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8CA1
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8CA0
@@ -1816,8 +1816,8 @@ ENDIF
 ; Type 8. Mask 50 hex. Random open direction, then retargets every few odd-cell centers.
 .ENEMY_AI_08
   LDA #&50
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BEQ L0_8CC2
   DEY
   BEQ L0_8CD6
@@ -1839,144 +1839,144 @@ ENDIF
 .L0_8CC2
   JSR NEXT_RNG
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8CD2
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_8CD2
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
 .L0_8CD5
   RTS
 .L0_8CD6
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8CD5
   JSR ENEMY_AT_ODD_CENTER
   BNE L0_8D42
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   CMP #&02
   BEQ L0_8D42
   LDA #&00
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   JSR NEXT_RNG
   AND #&03
-  STA X_62BE,X
-  INC X_62C8,X
-  LDA X_62C8,X
+  STA ENEMY_DIR,X
+  INC ENEMY_SUBT,X
+  LDA ENEMY_SUBT,X
   CMP #&08
   BCC L0_8D42
-  LDA X_6264,X
+  LDA ENEMY_X,X
   CMP SCROLL_X
-  LDA X_626E,X
+  LDA ENEMY_X_HI,X
   SBC SCROLL_NT
   BNE L0_8D42
-  LDA X_6282,X
+  LDA ENEMY_COL,X
   SEC
-  SBC Z_6C
+  SBC ACTOR_COL
   CMP #&03
   BCC L0_8D42
   CMP #&FE
   BCS L0_8D42
-  LDA X_628C,X
+  LDA ENEMY_ROW,X
   SEC
-  SBC Z_6F
+  SBC ACTOR_ROW
   CMP #&03
   BCC L0_8D42
   CMP #&FE
   BCS L0_8D42
   LDA #&3C
-  STA X_62D2,X
-  INC X_62A0,X
+  STA ENEMY_SCRIPT,X
+  INC ENEMY_PHASE,X
   JSR ENEMY_SET_FLICKER
   JSR ENEMY_SET_NOBLAST
   JMP L0_8628
 .L0_8D42
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8D58
   JSR ENEMY_STRAFE_AXIS
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8D58
   JMP ENEMY_TRY_FOUR_DIRS
 .L0_8D58
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_8D61
-  DEC X_62D2,X
+  DEC ENEMY_SCRIPT,X
   BNE L0_8D71
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   LDA #&3C
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
   JSR ENEMY_SET_NODRAW
 .L0_8D71
   RTS
 .L0_8D72
-  DEC X_62D2,X
+  DEC ENEMY_SCRIPT,X
   BNE L0_8D71
 
 ; (not seen executing during the coverage runs)
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   LDA #&3C
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
   LDA #&04
-  STA Z_1D
+  STA RLE_BITS
   JSR NEXT_RNG
 .L0_8D86
   AND #&03
-  STA Z_1C
+  STA RLE_BYTE
   TAX
-  LDA Z_6F
+  LDA ACTOR_ROW
   CLC
   ADC D0_8DE7,X
-  STA Z_29
+  STA CELL_ROW
   TAY
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDA Z_6C
+  STA MAP_PTR_HI
+  LDA ACTOR_COL
   CLC
   ADC D0_8DEB,X
-  STA Z_28
+  STA CELL_COL
   TAY
-  LDA (Z_2F),Y
+  LDA (MAP_PTR),Y
   AND #&50
   BEQ L0_8DB7
-  DEC Z_1D
+  DEC RLE_BITS
   BEQ L0_8DDC
-  INC Z_1C
-  LDA Z_1C
+  INC RLE_BYTE
+  LDA RLE_BYTE
   BNE L0_8D86
 .L0_8DB7
-  LDX X_62E0
-  LDA Z_28
-  STA X_6282,X
+  LDX ENEMY_INDEX
+  LDA CELL_COL
+  STA ENEMY_COL,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6264,X
+  STA ENEMY_X,X
   ROL A
   AND #&01
-  STA X_626E,X
-  LDA Z_29
-  STA X_628C,X
+  STA ENEMY_X_HI,X
+  LDA CELL_ROW
+  STA ENEMY_ROW,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6278,X
+  STA ENEMY_Y,X
 .L0_8DDC
-  LDX X_62E0
+  LDX ENEMY_INDEX
   LDA #&00
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
   JMP ENEMY_SET_FLICKER
 .D0_8DE7
   EQUB &FF,&00,&01,&00
@@ -1985,22 +1985,22 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 .L0_8DEF
-  DEC X_62D2,X
+  DEC ENEMY_SCRIPT,X
   BNE L0_8E02
   LDA #&00
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   JSR ENEMY_CLR_VIS_BITS
   JSR ENEMY_CLR_NOBLAST
   JMP L0_861F
 .L0_8E02
   RTS
 
-; Type 8 draw. Point Z_20 at ENEMY_WALK_08 and jump DRAW_ENEMY_WALK. The JP ROM uses a different table.
+; Type 8 draw. Point DATA_PTR at ENEMY_WALK_08 and jump DRAW_ENEMY_WALK. The JP ROM uses a different table.
 .DRAW_ENEMY_08
   LDA D0_8E10
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8E11
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8E10
@@ -2017,29 +2017,29 @@ ENDIF
 ; Type 9. Mask 50 hex, speed accumulator 80. On the odd-cell grid, if the player is more than one cell away on the facing axis, turn with ENEMY_STRAFE_AXIS.
 .ENEMY_AI_09
   LDA #&50
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BEQ L0_8E5D
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8E60
   JSR ENEMY_AT_ODD_CENTER
   BNE L0_8E61
   JSR ENEMY_CMP_PLAYER_AXIS
   BCC L0_8E61
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   AND #&01
   BNE L0_8E41
-  LDA Z_6F
+  LDA ACTOR_ROW
   SEC
-  SBC X_628C,X
+  SBC ENEMY_ROW,X
   JMP L0_8E47
 .L0_8E41
-  LDA Z_6C
+  LDA ACTOR_COL
   SEC
-  SBC X_6282,X
+  SBC ENEMY_COL,X
 .L0_8E47
   CMP #&FF
   BCS L0_8E61
@@ -2047,7 +2047,7 @@ ENDIF
   BCC L0_8E61
 .L0_8E4F
   JSR ENEMY_STRAFE_AXIS
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8E69
   JMP ENEMY_TRY_FOUR_DIRS
@@ -2056,20 +2056,20 @@ ENDIF
 .L0_8E60
   RTS
 .L0_8E61
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_8E4F
 .L0_8E69
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 
-; Type 9 draw. Point Z_20 at ENEMY_WALK_09 and jump DRAW_ENEMY_WALK.
+; Type 9 draw. Point DATA_PTR at ENEMY_WALK_09 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_09
   LDA D0_8E7F
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8E80
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8E7F
@@ -2083,42 +2083,42 @@ ELSE
   EQUB HI(ENEMY_WALK_09)
 ENDIF
 
-; Compare the player cell to this enemy on the axis of X_62BE. Result is left in the flags.
+; Compare the player cell to this enemy on the axis of ENEMY_DIR. Result is left in the flags.
 .ENEMY_CMP_PLAYER_AXIS
-  LDY X_62BE,X
+  LDY ENEMY_DIR,X
   BEQ L0_8E92
   DEY
   BEQ L0_8E98
   DEY
   BEQ L0_8E9E
-  LDA X_6282,X
-  CMP Z_6C
+  LDA ENEMY_COL,X
+  CMP ACTOR_COL
   RTS
 .L0_8E92
-  LDA Z_6F
-  CMP X_628C,X
+  LDA ACTOR_ROW
+  CMP ENEMY_ROW,X
   RTS
 .L0_8E98
-  LDA Z_6C
-  CMP X_6282,X
+  LDA ACTOR_COL
+  CMP ENEMY_COL,X
   RTS
 .L0_8E9E
-  LDA X_628C,X
-  CMP Z_6F
+  LDA ENEMY_ROW,X
+  CMP ACTOR_ROW
   RTS
 
 ; Type 0A hex. Mask F0, then the same walker as type 0.
 .ENEMY_AI_10
   LDA #&F0
-  STA X_62E2
+  STA ENEMY_MASK
   JMP L0_8746
 
-; Type 0A hex draw. Point Z_20 at ENEMY_WALK_10 and jump DRAW_ENEMY_WALK.
+; Type 0A hex draw. Point DATA_PTR at ENEMY_WALK_10 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_10
   LDA D0_8EB9
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8EBA
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8EB9
@@ -2135,35 +2135,35 @@ ENDIF
 ; Type 0B hex. Mask 70 hex. Walks and, on the odd-cell grid, turns toward the player's row or column.
 .ENEMY_AI_11
   LDA #&70
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BEQ L0_8EE1
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_8EE0
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCC L0_8EE4
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_8EE0
   RTS
 .L0_8EE1
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_8EE4
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
   JSR ENEMY_AT_ODD_CENTER
   BNE L0_8F06
-  LDA X_6282,X
-  CMP Z_6C
+  LDA ENEMY_COL,X
+  CMP ACTOR_COL
   BEQ L0_8F07
-  LDA X_628C,X
-  CMP Z_6F
+  LDA ENEMY_ROW,X
+  CMP ACTOR_ROW
   BNE L0_8F03
   JMP L0_8F60
 .L0_8F03
@@ -2172,19 +2172,19 @@ ENDIF
   RTS
 .L0_8F07
   LDA #&00
-  STA Z_1C
+  STA RLE_BYTE
   JSR ENEMY_BLOCK_RIGHT
   BCS L0_8F12
-  INC Z_1C
+  INC RLE_BYTE
 .L0_8F12
   JSR ENEMY_BLOCK_LEFT
   BCS L0_8F1B
 
 ; (not seen executing during the coverage runs)
-  INC Z_1C
-  INC Z_1C
+  INC RLE_BYTE
+  INC RLE_BYTE
 .L0_8F1B
-  LDY Z_1C
+  LDY RLE_BYTE
   BEQ L0_8F3B
   DEY
   BEQ L0_8F34
@@ -2196,24 +2196,24 @@ ENDIF
   AND #&01
   TAY
   LDA D0_8F5E,Y
-  CMP X_62BE,X
+  CMP ENEMY_DIR,X
   BNE L0_8F34
   INY
 .L0_8F34
   LDA D0_8F5D,Y
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 
 ; (not seen executing during the coverage runs)
 .L0_8F3B
-  LDA X_628C,X
-  CMP Z_6F
+  LDA ENEMY_ROW,X
+  CMP ACTOR_ROW
   BCS L0_8F4D
   JSR ENEMY_BLOCK_UP
   BCS L0_8F57
 .L0_8F47
   LDA #&00
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_8F4D
   JSR ENEMY_BLOCK_DOWN
@@ -2222,7 +2222,7 @@ ENDIF
   BCC L0_8F47
 .L0_8F57
   LDA #&02
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .D0_8F5D
   EQUB &01
@@ -2230,17 +2230,17 @@ ENDIF
   EQUB &03,&01
 .L0_8F60
   LDA #&00
-  STA Z_1C
+  STA RLE_BYTE
   JSR ENEMY_BLOCK_UP
   BCS L0_8F6B
-  INC Z_1C
+  INC RLE_BYTE
 .L0_8F6B
   JSR ENEMY_BLOCK_DOWN
   BCS L0_8F74
-  INC Z_1C
-  INC Z_1C
+  INC RLE_BYTE
+  INC RLE_BYTE
 .L0_8F74
-  LDY Z_1C
+  LDY RLE_BYTE
   BEQ L0_8F94
   DEY
   BEQ L0_8F8D
@@ -2250,18 +2250,18 @@ ENDIF
   AND #&01
   TAY
   LDA D0_8FBA,Y
-  CMP X_62BE,X
+  CMP ENEMY_DIR,X
   BNE L0_8F8D
 
 ; (not seen executing during the coverage runs)
   INY
 .L0_8F8D
   LDA D0_8FB9,Y
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_8F94
-  LDA X_6282,X
-  CMP Z_6C
+  LDA ENEMY_COL,X
+  CMP ACTOR_COL
   BCS L0_8FA6
 
 ; (not seen executing during the coverage runs)
@@ -2269,7 +2269,7 @@ ENDIF
   BCS L0_8F57
 .L0_8FA0
   LDA #&01
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .L0_8FA6
   JSR ENEMY_BLOCK_RIGHT
@@ -2281,19 +2281,19 @@ ENDIF
   JMP L0_8F57
 .L0_8FB3
   LDA #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   RTS
 .D0_8FB9
   EQUB &02
 .D0_8FBA
   EQUB &00,&02
 
-; Type 0B hex draw. Point Z_20 at ENEMY_WALK_11 and jump DRAW_ENEMY_WALK.
+; Type 0B hex draw. Point DATA_PTR at ENEMY_WALK_11 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_11
   LDA D0_8FC9
-  STA Z_20
+  STA DATA_PTR
   LDA D0_8FCA
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_8FC9
@@ -2310,34 +2310,34 @@ ENDIF
 ; Type 0C hex. Mask 70 hex. Horizontal and vertical use different speed accumulators, C0 and 80. At a cell center in the player's column, may turn up or down.
 .ENEMY_AI_12
   LDA #&70
-  STA X_62E2
+  STA ENEMY_MASK
   LDA #&C0
   STA X_62E4
   LDA #&80
   STA X_62E5
 .L0_8FDA
-  LDA X_62A0,X
+  LDA ENEMY_PHASE,X
   BEQ L0_902A
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   LSR A
   BCC L0_902D
   LDA X_62E4
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_9064
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_9065
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
-  LDA X_6264,X
+  LDA ENEMY_X,X
   AND #&0F
   CMP #&08
   BNE L0_9064
-  LDA X_6282,X
-  CMP Z_6C
+  LDA ENEMY_COL,X
+  CMP ACTOR_COL
   BNE L0_9064
   JSR ENEMY_BLOCK_UP
   BCC L0_901C
@@ -2347,29 +2347,29 @@ ENDIF
   JSR NEXT_RNG
   AND #&02
   ORA #&01
-  EOR X_62BE,X
-  STA X_62BE,X
+  EOR ENEMY_DIR,X
+  STA ENEMY_DIR,X
   RTS
 .L0_902A
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_902D
   LDA X_62E5
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_9064
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_9065
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   AND #&0F
   CMP #&08
   BNE L0_9064
-  LDA X_628C,X
-  CMP Z_6F
+  LDA ENEMY_ROW,X
+  CMP ACTOR_ROW
   BNE L0_9064
   JSR ENEMY_BLOCK_LEFT
   BCC L0_901C
@@ -2380,12 +2380,12 @@ ENDIF
 .L0_9065
   JMP ENEMY_REVERSE_IF_OPEN
 
-; Type 0C hex draw. Point Z_20 at ENEMY_WALK_12 and jump DRAW_ENEMY_WALK.
+; Type 0C hex draw. Point DATA_PTR at ENEMY_WALK_12 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_12
   LDA D0_9075
-  STA Z_20
+  STA DATA_PTR
   LDA D0_9076
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_9075
@@ -2402,30 +2402,30 @@ ENDIF
 ; Type 0D hex. Mask 70 hex. Pauses when ENEMY_ON_BLAST_LINE is set, otherwise walks and reverses at walls.
 .ENEMY_AI_13
   LDA #&70
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BNE L0_9084
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_9084
   DEY
   BEQ L0_9092
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_90B8
-  DEC X_62A0,X
+  DEC ENEMY_PHASE,X
   JMP ENEMY_PICK_TURN
 .L0_9092
   JSR ENEMY_ON_BLAST_LINE
   BCS L0_90A2
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_90B8
 .L0_90A2
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_90B9
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
   JSR ENEMY_AT_ODD_CENTER
@@ -2435,17 +2435,17 @@ ENDIF
 .L0_90B9
   JMP ENEMY_REVERSE_IF_OPEN
 .L0_90BC
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   LDA #&3C
-  STA X_62B4,X
+  STA ENEMY_TIMER,X
   RTS
 
-; Type 0D hex draw. Point Z_20 at ENEMY_WALK_13 and jump DRAW_ENEMY_WALK.
+; Type 0D hex draw. Point DATA_PTR at ENEMY_WALK_13 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_13
   LDA D0_90D2
-  STA Z_20
+  STA DATA_PTR
   LDA D0_90D3
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_90D2
@@ -2462,8 +2462,8 @@ ENDIF
 ; Type 0E hex. Mask 70 hex. Walks two odd-cell centers, aims at the player, then charges.
 .ENEMY_AI_14
   LDA #&70
-  STA X_62E2
-  LDY X_62A0,X
+  STA ENEMY_MASK
+  LDY ENEMY_PHASE,X
   BNE L0_90E1
   JMP ENEMY_RANDOM_OPEN_DIR
 .L0_90E1
@@ -2479,62 +2479,62 @@ ENDIF
 .L0_90EB
   LDA #&80
   CLC
-  ADC X_62AA,X
-  STA X_62AA,X
+  ADC ENEMY_ACC,X
+  STA ENEMY_ACC,X
   BCC L0_911E
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_9158
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JSR ENEMY_PIX_TO_CELL
   JSR ENEMY_AT_ODD_CENTER
   BNE L0_911E
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   CMP #&02
   BCC L0_911E
   LDA #&3C
-  STA X_62B4,X
-  INC X_62A0,X
+  STA ENEMY_TIMER,X
+  INC ENEMY_PHASE,X
 .L0_911E
   RTS
 .L0_911F
-  DEC X_62B4,X
+  DEC ENEMY_TIMER,X
   BNE L0_911E
-  LDA X_6282,X
-  CMP Z_6C
+  LDA ENEMY_COL,X
+  CMP ACTOR_COL
   BEQ L0_9132
-  LDA X_628C,X
-  CMP Z_6F
+  LDA ENEMY_ROW,X
+  CMP ACTOR_ROW
   BNE L0_913C
 .L0_9132
   JSR ENEMY_AIM_PLAYER
-  STA X_62BE,X
-  INC X_62A0,X
+  STA ENEMY_DIR,X
+  INC ENEMY_PHASE,X
   RTS
 .L0_913C
-  DEC X_62A0,X
+  DEC ENEMY_PHASE,X
   JMP ENEMY_PICK_TURN
 .L0_9142
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_9153
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_1
   JMP ENEMY_PIX_TO_CELL
 .L0_9153
   LDA #&01
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
 .L0_9158
   JMP ENEMY_REVERSE_IF_OPEN
 
-; Type 0E hex draw. Point Z_20 at ENEMY_WALK_14 and jump DRAW_ENEMY_WALK.
+; Type 0E hex draw. Point DATA_PTR at ENEMY_WALK_14 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_14
   LDA D0_9168
-  STA Z_20
+  STA DATA_PTR
   LDA D0_9169
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .D0_9168
@@ -2551,7 +2551,7 @@ ENDIF
 ; Type 0F hex. Same walker as type 1 with speed accumulator FF.
 .ENEMY_AI_15
   LDA #&70
-  STA X_62E2
+  STA ENEMY_MASK
   LDA #&FF
   STA X_62E4
   JMP L0_8808
@@ -2560,17 +2560,17 @@ IF REGION_JP
   LDA JD0_9184
 ELSE
 
-; Type 0F hex draw. Point Z_20 at ENEMY_WALK_15 and jump DRAW_ENEMY_WALK.
+; Type 0F hex draw. Point DATA_PTR at ENEMY_WALK_15 and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_15
   LDA D0_9184
 ENDIF
-  STA Z_20
+  STA DATA_PTR
 IF REGION_JP
   LDA JD0_9185
 ELSE
   LDA D0_9185
 ENDIF
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 IF REGION_JP
 .JD0_9184
@@ -2597,26 +2597,26 @@ ELSE
 ; Type 10 hex. Coverage did not run this. If the phase is 0, clear the slot and JSR ARM_TYPE10_TIMER. Otherwise move at speed 2 when the facing cell is open, then place the enemy on a cell from the three 10-byte lists that follow.
 .ENEMY_AI_16
   LDA #&40
-  STA X_62E2
-  LDA X_62A0,X
+  STA ENEMY_MASK
+  LDA ENEMY_PHASE,X
   BEQ L0_91AF
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   JSR ENEMY_DIR_BLOCKED
   BCS L0_91A6
   LDA #&02
-  STA X_62E3
-  LDA X_62BE,X
+  STA ENEMY_STEP
+  LDA ENEMY_DIR,X
   JSR ENEMY_MOVE_SPEED
   JMP ENEMY_PIX_TO_CELL
 .L0_91A6
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   JSR ARM_TYPE10_TIMER
   RTS
 .L0_91AF
-  LDA X_62E8
+  LDA TYPE10_ARM
   BNE L0_91BD
-  LDA W_03D2
+  LDA SCORE_NOW_2
   STA X_62EA
   JMP L0_91C9
 .L0_91BD
@@ -2630,29 +2630,29 @@ ENDIF
 .L0_91C9
   TAY
   LDA D0_9200,Y
-  STA X_6282,X
+  STA ENEMY_COL,X
   LDA D0_920A,Y
-  STA X_628C,X
+  STA ENEMY_ROW,X
   LDA D0_9214,Y
-  STA X_62BE,X
-  LDA X_6282,X
+  STA ENEMY_DIR,X
+  LDA ENEMY_COL,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6264,X
+  STA ENEMY_X,X
   ROL A
   AND #&01
-  STA X_626E,X
-  LDA X_628C,X
+  STA ENEMY_X_HI,X
+  LDA ENEMY_ROW,X
   ASL A
   ASL A
   ASL A
   ASL A
   ORA #&08
-  STA X_6278,X
-  INC X_62A0,X
+  STA ENEMY_Y,X
+  INC ENEMY_PHASE,X
   JMP ENEMY_SET_NOBLAST
 .D0_9200
   EQUB &01,&01,&01,&01,&01,&1D,&1D,&1D,&1D,&1D
@@ -2663,12 +2663,12 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Type 10 hex draw. Point Z_20 at the word table that follows and jump DRAW_ENEMY_WALK.
+; Type 10 hex draw. Point DATA_PTR at the word table that follows and jump DRAW_ENEMY_WALK.
 .DRAW_ENEMY_16
   LDA #LO(D0_9229)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(D0_9229)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_ENEMY_WALK
 .D0_9229
   EQUW D0_9924
@@ -2695,49 +2695,49 @@ ENDIF
 
 ; Type 11 hex. Clears the slot after 78 hex frames.
 .ENEMY_AI_17
-  INC X_62AA,X
-  LDA X_62AA,X
+  INC ENEMY_ACC,X
+  LDA ENEMY_ACC,X
   CMP #&78
   BCC L0_925A
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
 .L0_925A
   RTS
 
-; Type 11 hex draw. Metasprite from ITEM_SPRITE_PTRS indexed by X_6296, no flip, then DRAW_METASPRITE.
+; Type 11 hex draw. Metasprite from ITEM_SPRITE_PTRS indexed by ENEMY_SCORE, no flip, then DRAW_METASPRITE.
 .DRAW_ENEMY_17
-  LDA X_6296,X
+  LDA ENEMY_SCORE,X
   ASL A
   TAY
   LDA ITEM_SPRITE_PTRS,Y
-  STA Z_54
+  STA SPR_PTR
   LDA D0_AF9B,Y
-  STA Z_55
+  STA SPR_PTR_HI
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   JSR ENEMY_LOAD_DRAW_POS
   JMP DRAW_METASPRITE
 
 ; (not seen executing during the coverage runs)
 
-; Type 12 hex. Point Z_20 at 935D and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
+; Type 12 hex. Point DATA_PTR at 935D and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
 .ENEMY_AI_18
   LDA #&5D
-  STA Z_20
+  STA DATA_PTR
   LDA #&93
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
-; Shared framer. Z_20 is a word table. Frame is direction times 4 plus a frame index. ENEMY_PHASE_ANIM indexed by the phase selects a still frame or FRAME_CNT/8 mod 4. D0_92CD is the flip byte.
+; Shared framer. DATA_PTR is a word table. Frame is direction times 4 plus a frame index. ENEMY_PHASE_ANIM indexed by the phase selects a still frame or FRAME_CNT/8 mod 4. D0_92CD is the flip byte.
 .DRAW_ENEMY_FRAME
   LDA #LO(ENEMY_FRAME_PTRS_18)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_FRAME_PTRS_18)
-  STA Z_21
+  STA DATA_PTR_HI
 .L0_9288
   LDA #&01
-  STA Z_1C
-  LDY X_62A0,X
+  STA RLE_BYTE
+  LDY ENEMY_PHASE,X
   LDA ENEMY_PHASE_ANIM,Y
   BEQ L0_929D
   LDA FRAME_CNT
@@ -2745,28 +2745,28 @@ ENDIF
   LSR A
   LSR A
   AND #&03
-  STA Z_1C
+  STA RLE_BYTE
 .L0_929D
-  LDA X_6264,X
-  ABS_STA Z_56
-  LDA X_626E,X
-  ABS_STA Z_57
-  LDA X_6278,X
-  ABS_STA Z_58
-  LDY X_62BE,X
+  LDA ENEMY_X,X
+  ABS_STA SPR_X
+  LDA ENEMY_X_HI,X
+  ABS_STA SPR_X_HI
+  LDA ENEMY_Y,X
+  ABS_STA SPR_Y
+  LDY ENEMY_DIR,X
   LDA D0_92CD,Y
-  ABS_STA Z_5A
-  LDA X_62BE,X
+  ABS_STA SPR_FLIP
+  LDA ENEMY_DIR,X
   ASL A
   ASL A
-  ORA Z_1C
+  ORA RLE_BYTE
   ASL A
   TAY
-  LDA (Z_20),Y
-  STA Z_54
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .D0_92CD
   EQUB &00,&00,&00,&40,&00,&00,&00,&00
@@ -2837,36 +2837,36 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Type 13 hex. Bytes load Z_20 with 938C and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
+; Type 13 hex. Bytes load DATA_PTR with 938C and jump RUN_ENEMY_SCRIPT. Coverage did not run this.
 .ENEMY_AI_19
   LDA #&8C
-  STA Z_20
+  STA DATA_PTR
   LDA #&93
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
-; Type 13 hex draw. Point Z_20 at ENEMY_FRAME_PTRS_19 and jump the shared framer at L0_9288.
+; Type 13 hex draw. Point DATA_PTR at ENEMY_FRAME_PTRS_19 and jump the shared framer at L0_9288.
 .DRAW_ENEMY_18
   LDA #LO(ENEMY_FRAME_PTRS_19)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_FRAME_PTRS_19)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L0_9288
 
 ; Type 14 hex. Runs ENEMY_SCRIPT_20.
 .ENEMY_AI_20
   LDA #LO(ENEMY_SCRIPT_20)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_SCRIPT_20)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
 ; Type 15 hex. Runs ENEMY_SCRIPT_21.
 .ENEMY_AI_21
   LDA #LO(ENEMY_SCRIPT_21)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_SCRIPT_21)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
 ; Type 14 hex draw. Jump DRAW_ENEMY_FRAME, which uses ENEMY_FRAME_PTRS_18.
@@ -2881,75 +2881,75 @@ ENDIF
 
 ; Type 16 hex. Coverage did not run this. Phase 0 rotates the direction every 9 frames and, after 78 hex ticks, advances the phase and JSRs into the fixed bank. Later phases step a 6-byte placement list.
 .ENEMY_AI_22
-  LDA X_62A0,X
+  LDA ENEMY_PHASE,X
   BNE L0_9422
-  INC X_62AA,X
-  LDA X_62AA,X
+  INC ENEMY_ACC,X
+  LDA ENEMY_ACC,X
   CMP #&09
   BCC L0_9404
   LDA #&00
-  STA X_62AA,X
-  LDA X_62BE,X
+  STA ENEMY_ACC,X
+  LDA ENEMY_DIR,X
   CLC
   ADC #&01
   AND #&03
-  STA X_62BE,X
+  STA ENEMY_DIR,X
 .L0_9404
-  INC X_62B4,X
-  LDA X_62B4,X
+  INC ENEMY_TIMER,X
+  LDA ENEMY_TIMER,X
   CMP #&78
   BCC L0_9421
-  INC X_62A0,X
+  INC ENEMY_PHASE,X
   LDA #&00
-  STA X_62AA,X
-  STA X_62B4,X
-  STA X_62BE,X
+  STA ENEMY_ACC,X
+  STA ENEMY_TIMER,X
+  STA ENEMY_DIR,X
   LDA #&27
   JSR AUDIO_CALL
 .L0_9421
   RTS
 .L0_9422
-  INC X_62AA,X
-  LDA X_62AA,X
+  INC ENEMY_ACC,X
+  LDA ENEMY_ACC,X
   CMP #&08
   BCC L0_9440
   LDA #&00
-  STA X_62AA,X
-  INC X_62BE,X
-  LDA X_62BE,X
+  STA ENEMY_ACC,X
+  INC ENEMY_DIR,X
+  LDA ENEMY_DIR,X
   CMP #&06
   BCC L0_9441
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
 .L0_9440
   RTS
 .L0_9441
   SEC
   SBC #&01
-  STA X_62C8,X
+  STA ENEMY_SUBT,X
   ASL A
-  STA Z_1C
+  STA RLE_BYTE
   ASL A
   CLC
-  ADC Z_1C
+  ADC RLE_BYTE
   STA Z_2A
   LDA #&00
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
 .L0_9455
-  LDY X_62D2,X
+  LDY ENEMY_SCRIPT,X
   LDA D0_947E,Y
-  STA Z_28
+  STA CELL_COL
   LDA D0_9484,Y
-  STA Z_29
+  STA CELL_ROW
   LDY Z_2A
   LDA D0_948A,Y
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
   INC Z_2A
-  LDX X_62E0
-  INC X_62D2,X
-  LDA X_62D2,X
+  LDX ENEMY_INDEX
+  INC ENEMY_SCRIPT,X
+  LDA ENEMY_SCRIPT,X
   CMP #&06
   BCC L0_9455
   RTS
@@ -2970,23 +2970,23 @@ ENDIF
 ; Type 16 hex draw. Coverage did not run this. Stores a fixed X and Y, then a metasprite chosen by phase plus direction, and jumps DRAW_METASPRITE. ZP addresses differ on the JP ROM.
 .DRAW_ENEMY_22
   LDA D0_94D7
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D0_94D8
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  LDY X_62A0,X
+  ABS_STA SPR_X_HI
+  LDY ENEMY_PHASE,X
   LDA D0_94DD,Y
   CLC
-  ADC X_62BE,X
+  ADC ENEMY_DIR,X
   ASL A
   TAY
   LDA D0_94DF,Y
-  STA Z_54
+  STA SPR_PTR
   LDA D0_94E0,Y
-  STA Z_55
+  STA SPR_PTR_HI
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 .D0_94D7
   EQUB &8C
@@ -3018,38 +3018,38 @@ ENDIF
 
 ; Type 17 hex. Clears the slot after 3C hex frames.
 .ENEMY_AI_23
-  INC X_62A0,X
-  LDA X_62A0,X
+  INC ENEMY_PHASE,X
+  LDA ENEMY_PHASE,X
   CMP #&3C
   BCC L0_9502
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
 .L0_9502
   RTS
 
 ; Type 17 hex draw. One metasprite at a fixed X and Y from D0_94D9 and D0_94DA.
 .DRAW_ENEMY_23
   LDA #LO(D0_A883)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(D0_A883)
-  STA Z_55
+  STA SPR_PTR_HI
   LDA D0_94D9
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D0_94DA
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 
 ; Type 18 hex. Clears the slot after 78 hex frames.
 .ENEMY_AI_24
-  INC X_62A0,X
-  LDA X_62A0,X
+  INC ENEMY_PHASE,X
+  LDA ENEMY_PHASE,X
   CMP #&78
   BCC L0_9531
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
 .L0_9531
   RTS
 
@@ -3062,16 +3062,16 @@ ENDIF
   AND #&03
   BEQ L0_955A
   LDA #LO(D0_A894)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(D0_A894)
-  STA Z_55
+  STA SPR_PTR_HI
   LDA D0_94DB
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D0_94DC
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 .L0_955A
   RTS
@@ -3102,47 +3102,47 @@ ENDIF
 ; Type 1A hex. Runs ENEMY_SCRIPT_26.
 .ENEMY_AI_26
   LDA #LO(ENEMY_SCRIPT_26)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_SCRIPT_26)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
 ; Type 1A hex draw. Enemy pixel position, no flip, one metasprite at D0_AAB9.
 .DRAW_ENEMY_26
-  LDA X_6264,X
-  ABS_STA Z_56
-  LDA X_626E,X
-  ABS_STA Z_57
-  LDA X_6278,X
-  ABS_STA Z_58
+  LDA ENEMY_X,X
+  ABS_STA SPR_X
+  LDA ENEMY_X_HI,X
+  ABS_STA SPR_X_HI
+  LDA ENEMY_Y,X
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDA #LO(D0_AAB9)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(D0_AAB9)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; Type 19 hex. Runs ENEMY_SCRIPT_25.
 .ENEMY_AI_25
   LDA #LO(ENEMY_SCRIPT_25)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENEMY_SCRIPT_25)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP RUN_ENEMY_SCRIPT
 
 ; Type 19 hex draw. Enemy pixel position, no flip. Phase 5 picks D0_AA6F or D0_AA94 from FRAME_CNT bit 2. Any other phase uses D0_AA6F.
 .DRAW_ENEMY_25
-  LDA X_6264,X
-  ABS_STA Z_56
-  LDA X_626E,X
-  ABS_STA Z_57
-  LDA X_6278,X
-  ABS_STA Z_58
+  LDA ENEMY_X,X
+  ABS_STA SPR_X
+  LDA ENEMY_X_HI,X
+  ABS_STA SPR_X_HI
+  LDA ENEMY_Y,X
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDY #&00
-  LDA X_62A0,X
+  LDA ENEMY_PHASE,X
   CMP #&05
   BNE L0_9643
   LDA FRAME_CNT
@@ -3152,9 +3152,9 @@ ENDIF
   TAY
 .L0_9643
   LDA D0_9650,Y
-  STA Z_54
+  STA SPR_PTR
   LDA D0_9651,Y
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .D0_9650
   EQUB LO(D0_AA6F)
@@ -3166,7 +3166,7 @@ ENDIF
 .ENEMY_PHASE_ANIM
   EQUB &00,&00,&00,&00,&01,&01,&01,&01,&01,&00,&00,&00,&00,&00,&00,&00
 
-; 13 words, phase 0 through 0C. RUN_ENEMY_SCRIPT indexes this with X_62A0. Phase 0 is ENEMY_SCRIPT_STEP. The other phases are move and wait handlers.
+; 13 words, phase 0 through 0C. RUN_ENEMY_SCRIPT indexes this with ENEMY_PHASE. Phase 0 is ENEMY_SCRIPT_STEP. The other phases are move and wait handlers.
 .ENEMY_SCRIPT_OPS
   EQUB LO(ENEMY_SCRIPT_STEP)
 .D0_9665
@@ -3187,42 +3187,42 @@ ENDIF
   EQUW L0_969E
   EQUW L0_969E
 
-; Script dispatcher. While X_62A0 is below 0D, jump ENEMY_SCRIPT_OPS indexed by the phase.
+; Script dispatcher. While ENEMY_PHASE is below 0D, jump ENEMY_SCRIPT_OPS indexed by the phase.
 .RUN_ENEMY_SCRIPT
   LDA #&01
-  STA Z_1C
-  LDA X_62A0,X
+  STA RLE_BYTE
+  LDA ENEMY_PHASE,X
   CMP #&0D
   BCS L0_969E
   ASL A
   TAY
   LDA ENEMY_SCRIPT_OPS,Y
-  STA Z_22
+  STA PPU_ADDR
   LDA D0_9665,Y
-  STA Z_23
-  JMP (Z_22)
+  STA PPU_ADDR_HI
+  JMP (PPU_ADDR)
 
 ; (not seen executing during the coverage runs)
 .L0_969E
   RTS
 .L0_969F
   INY
-  LDA (Z_20),Y
-  STA X_626E,X
+  LDA (DATA_PTR),Y
+  STA ENEMY_X_HI,X
   INY
-  LDA (Z_20),Y
-  STA X_6264,X
+  LDA (DATA_PTR),Y
+  STA ENEMY_X,X
   INY
-  LDA (Z_20),Y
-  STA X_6278,X
+  LDA (DATA_PTR),Y
+  STA ENEMY_Y,X
   INY
   TYA
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
 
-; Read the script at Z_20, index X_62D2. 01 sets X and Y. 09, 0A, and 0B set X_62F2. 0E places an enemy. 0F calls AUDIO_CALL. 0D removes the slot. FF loops back 3 bytes. Any other byte is a phase, direction, and timer.
+; Read the script at DATA_PTR, index ENEMY_SCRIPT. 01 sets X and Y. 09, 0A, and 0B set SCRIPT_FLAG. 0E places an enemy. 0F calls AUDIO_CALL. 0D removes the slot. FF loops back 3 bytes. Any other byte is a phase, direction, and timer.
 .ENEMY_SCRIPT_STEP
-  LDY X_62D2,X
-  LDA (Z_20),Y
+  LDY ENEMY_SCRIPT,X
+  LDA (DATA_PTR),Y
   BMI L0_96FE
   CMP #&01
   BEQ L0_969F
@@ -3242,93 +3242,93 @@ ENDIF
   BNE L0_96DF
   JMP L0_9747
 .L0_96DF
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
   INY
-  LDA (Z_20),Y
-  STA X_62BE,X
+  LDA (DATA_PTR),Y
+  STA ENEMY_DIR,X
   INY
-  LDA (Z_20),Y
-  STA X_62C8,X
+  LDA (DATA_PTR),Y
+  STA ENEMY_SUBT,X
   INY
   TYA
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
   LDA #&00
-  STA X_62AA,X
-  STA X_62B4,X
+  STA ENEMY_ACC,X
+  STA ENEMY_TIMER,X
   JMP RUN_ENEMY_SCRIPT
 
 ; (not seen executing during the coverage runs)
 .L0_96FE
-  LDA X_62D2,X
+  LDA ENEMY_SCRIPT,X
   SEC
   SBC #&03
-  STA X_62D2,X
+  STA ENEMY_SCRIPT,X
   JMP ENEMY_SCRIPT_STEP
 .L0_970A
   LDA #&01
-  STA X_62F2
-  INC X_62D2,X
+  STA SCRIPT_FLAG
+  INC ENEMY_SCRIPT,X
   JMP ENEMY_SCRIPT_STEP
 .L0_9715
   LDA #&00
-  STA X_62F2
-  INC X_62D2,X
+  STA SCRIPT_FLAG
+  INC ENEMY_SCRIPT,X
   JMP ENEMY_SCRIPT_STEP
 .L0_9720
   LDA #&02
-  STA X_62F2
+  STA SCRIPT_FLAG
   RTS
 .L0_9726
   TXA
   PHA
   LDA #&14
-  STA Z_28
+  STA CELL_COL
   LDA #&00
-  STA Z_29
+  STA CELL_ROW
   INY
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   JSR PLACE_ENEMY
   PLA
   TAX
-  INC X_62D2,X
-  INC X_62D2,X
+  INC ENEMY_SCRIPT,X
+  INC ENEMY_SCRIPT,X
   JMP ENEMY_SCRIPT_STEP
 .L0_9741
   LDA #&00
-  STA X_6250,X
+  STA ENEMY_FLAGS,X
   RTS
 .L0_9747
   INY
   TXA
   PHA
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   JSR AUDIO_CALL
   PLA
   TAX
-  INC X_62D2,X
-  INC X_62D2,X
+  INC ENEMY_SCRIPT,X
+  INC ENEMY_SCRIPT,X
   JMP ENEMY_SCRIPT_STEP
 
 ; (not seen executing during the coverage runs)
 .L0_975A
-  LDY X_62AA,X
+  LDY ENEMY_ACC,X
   LDA D0_9783,Y
   BNE L0_9765
   JMP L0_97E9
 .L0_9765
   CLC
-  ADC X_6278,X
-  STA X_6278,X
-  INC X_62AA,X
+  ADC ENEMY_Y,X
+  STA ENEMY_Y,X
+  INC ENEMY_ACC,X
   RTS
 .L0_9770
-  LDY X_62AA,X
+  LDY ENEMY_ACC,X
   LDA D0_9791,Y
   BEQ L0_97E9
   CLC
-  ADC X_6278,X
-  STA X_6278,X
-  INC X_62AA,X
+  ADC ENEMY_Y,X
+  STA ENEMY_Y,X
+  INC ENEMY_ACC,X
   RTS
 .D0_9783
   EQUB &FB,&FB,&FC,&FC,&FC,&FD,&FD,&FE,&FE,&FF,&FF,&FF,&FF,&00
@@ -3340,41 +3340,41 @@ ENDIF
 .D0_97A4
   EQUB &E6,&1C
 .L0_97A6
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   BEQ L0_97C4
   CMP #&02
   BEQ L0_97C7
   CMP #&01
   BEQ L0_97D3
-  LDA X_6264,X
+  LDA ENEMY_X,X
   CLC
-  ADC Z_1C
-  STA X_6264,X
-  LDA X_626E,X
+  ADC RLE_BYTE
+  STA ENEMY_X,X
+  LDA ENEMY_X_HI,X
   ADC #&00
-  STA X_626E,X
+  STA ENEMY_X_HI,X
 .L0_97C4
   JMP L0_97E4
 .L0_97C7
-  LDA X_6278,X
+  LDA ENEMY_Y,X
   CLC
-  ADC Z_1C
-  STA X_6278,X
+  ADC RLE_BYTE
+  STA ENEMY_Y,X
   JMP L0_97E4
 .L0_97D3
-  LDA X_6264,X
+  LDA ENEMY_X,X
   SEC
-  SBC Z_1C
-  STA X_6264,X
-  LDA X_626E,X
+  SBC RLE_BYTE
+  STA ENEMY_X,X
+  LDA ENEMY_X_HI,X
   SBC #&00
-  STA X_626E,X
+  STA ENEMY_X_HI,X
 .L0_97E4
-  DEC X_62C8,X
+  DEC ENEMY_SUBT,X
   BNE L0_97EE
 .L0_97E9
   LDA #&00
-  STA X_62A0,X
+  STA ENEMY_PHASE,X
 .L0_97EE
   RTS
 .L0_97EF
@@ -3389,40 +3389,40 @@ ENDIF
   TAY
   LDA D0_980D,Y
   BEQ L0_97E4
-  LDA X_62BE,X
+  LDA ENEMY_DIR,X
   EOR #&01
-  STA X_62BE,X
+  STA ENEMY_DIR,X
   JMP L0_97E4
 .D0_980D
   EQUB &00,&01,&00,&01,&01,&00,&00,&01,&00,&00,&01,&01,&00,&01,&00,&01
 
-; Walking sprite. Frame is direction times 4 plus FRAME_CNT/8 mod 4, times 2, into the word table at Z_20. ENEMY_DIR_FLIP supplies Z_5A. A negative X_6250 uses the death frames at ENEMY_DEATH_FRAMES.
+; Walking sprite. Frame is direction times 4 plus FRAME_CNT/8 mod 4, times 2, into the word table at DATA_PTR. ENEMY_DIR_FLIP supplies SPR_FLIP. A negative ENEMY_FLAGS uses the death frames at ENEMY_DEATH_FRAMES.
 .DRAW_ENEMY_WALK
   JSR ENEMY_LOAD_DRAW_POS
-  LDA X_6250,X
+  LDA ENEMY_FLAGS,X
   BEQ L0_984E
   BMI L0_984F
-  LDY X_62BE,X
+  LDY ENEMY_DIR,X
   LDA ENEMY_DIR_FLIP,Y
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDA FRAME_CNT
   LSR A
   LSR A
   LSR A
   AND #&03
-  STA Z_1C
-  LDA X_62BE,X
+  STA RLE_BYTE
+  LDA ENEMY_DIR,X
   ASL A
   ASL A
-  ORA Z_1C
+  ORA RLE_BYTE
   ASL A
   TAY
 .L0_9842
-  LDA (Z_20),Y
-  STA Z_54
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; (not seen executing during the coverage runs)
@@ -3430,16 +3430,16 @@ ENDIF
   RTS
 .L0_984F
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDY #&20
-  LDA X_62A0,X
+  LDA ENEMY_PHASE,X
   BEQ L0_9842
   ASL A
   TAY
   LDA ENEMY_DEATH_FRAMES,Y
-  STA Z_54
+  STA SPR_PTR
   LDA D0_AAEB,Y
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; Four attribute bytes for directions 0-3. The fourth is horizontal flip 40 hex. Following bytes are metasprites: a count, then tile, X offset, Y offset, attribute for each sprite.
@@ -4771,23 +4771,23 @@ ENDIF
   EQUB &00,&00,&01,&00,&02,&02,&02,&02,&01,&02,&02,&06,&06,&02,&06,&06
   EQUB &00,&00,&00,&00
 
-; Point Z_20 at the spawn list for area Z_4B and stage Z_4C. Bytes are enemy types, ended by FF.
+; Point DATA_PTR at the spawn list for area AREA_NUM and stage STAGE_NUM. Bytes are enemy types, ended by FF.
 .LOAD_SPAWN_LIST
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA AREA_SPAWN_PTRS,X
-  STA Z_22
+  STA PPU_ADDR
   LDA D0_AD5B,X
-  STA Z_23
-  ABS_LDA Z_4C
+  STA PPU_ADDR_HI
+  ABS_LDA STAGE_NUM
   ASL A
   TAY
-  LDA (Z_22),Y
-  STA Z_20
+  LDA (PPU_ADDR),Y
+  STA DATA_PTR
   INY
-  LDA (Z_22),Y
-  STA Z_21
+  LDA (PPU_ADDR),Y
+  STA DATA_PTR_HI
   RTS
 IF REGION_JP
 .AREA_SPAWN_PTRS
@@ -5011,19 +5011,19 @@ ENDIF
 .D0_AF46
   EQUB &03,&04,&06,&04,&06,&06,&03,&04,&FF
 
-; Add SCORE_ADD_TABLE indexed by Z_1C into the decimal digits at W_03D0. Skipped while W_03EF is set. Caps at eight 9s.
+; Add SCORE_ADD_TABLE indexed by RLE_BYTE into the decimal digits at SCORE_NOW. Skipped while DEMO_MODE is set. Caps at eight 9s.
 .ADD_SCORE
-  LDA W_03EF
+  LDA DEMO_MODE
   BNE L0_AF8E
-  LDY Z_1C
+  LDY RLE_BYTE
   LDA SCORE_ADD_TABLE,Y
   LDX #&02
 .L0_AF5B
   CLC
-  ADC W_03D0,X
+  ADC SCORE_NOW,X
   LDY #&00
 .L0_AF61
-  STA W_03D0,X
+  STA SCORE_NOW,X
   SEC
   SBC #&0A
   BCC L0_AF6C
@@ -5040,22 +5040,22 @@ ENDIF
   CPX #&08
   BCC L0_AF5B
   LDA #&09
-  STA W_03D0
-  STA W_03D1
-  STA W_03D2
-  STA W_03D3
-  STA W_03D4
-  STA W_03D5
-  STA W_03D6
-  STA W_03D7
+  STA SCORE_NOW
+  STA SCORE_NOW_1
+  STA SCORE_NOW_2
+  STA SCORE_NOW_3
+  STA SCORE_NOW_4
+  STA SCORE_NOW_5
+  STA SCORE_NOW_6
+  STA SCORE_NOW_7
 .L0_AF8E
   RTS
 
-; Score added for Z_1C 0 through 10: 1, 2, 4, 8, 16, 32, 10, 20, 40, 80, 64.
+; Score added for RLE_BYTE 0 through 10: 1, 2, 4, 8, 16, 32, 10, 20, 40, 80, 64.
 .SCORE_ADD_TABLE
   EQUB &01,&02,&04,&08,&10,&20,&0A,&14,&28,&50,&40
 
-; Metasprite pointers for the type-17 pickup drawn by DRAW_ENEMY_17. Indexed by X_6296.
+; Metasprite pointers for the type-17 pickup drawn by DRAW_ENEMY_17. Indexed by ENEMY_SCORE.
 .ITEM_SPRITE_PTRS
   EQUB LO(D0_AFAE)
 .D0_AF9B
@@ -5101,10 +5101,10 @@ ENDIF
   JSR NMI_ON
   JSR CLEAR_SCROLL
   LDA #&00
-  STA W_0537
-  STA W_0538
+  STA CREDITS_TICK
+  STA CREDITS_ROW
   LDA #&01
-  STA W_0536
+  STA CREDITS_MODE
   JSR PPU_ON
   JSR MARK_PALETTE
   LDA #&18
@@ -5113,7 +5113,7 @@ ENDIF
   JSR WAIT_NMI
   JSR TICK_CREDITS
   JSR MARK_OAM
-  LDA W_0536
+  LDA CREDITS_MODE
   BNE L0_B037
   LDA JOY_NEW
   AND #&10
@@ -5124,13 +5124,13 @@ ENDIF
 ; Upload the RLE CHR at A486 and four palette rows from bank 4. The palette address differs on the JP ROM.
 .LOAD_CREDITS_GFX
   LDA #&86
-  STA Z_20
+  STA DATA_PTR
   LDA #&A4
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
@@ -5139,21 +5139,21 @@ IF REGION_JP
 ELSE
   LDA #&39
 ENDIF
-  STA Z_16
+  STA PAL_SRC
 IF REGION_JP
   LDA #&B0
 ELSE
   LDA #&B1
 ENDIF
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   JMP MIRROR_BG_COLOR
 
-; W_0536 = 1 scrolls up and queues the next credits line, 26 tiles, from the pointer table at B117. A 0000 pointer switches to mode 2, which waits and then queues the final line.
+; CREDITS_MODE = 1 scrolls up and queues the next credits line, 26 tiles, from the pointer table at B117. A 0000 pointer switches to mode 2, which waits and then queues the final line.
 .TICK_CREDITS
-  LDA W_0536
+  LDA CREDITS_MODE
   BEQ L0_B0E1
   CMP #&02
   BEQ L0_B0F0
@@ -5167,37 +5167,37 @@ ENDIF
   LDA #&00
   STA SCROLL_Y
 .L0_B09B
-  INC W_0537
-  LDA W_0537
+  INC CREDITS_TICK
+  LDA CREDITS_TICK
   AND #&07
   BNE L0_B0E1
   LDA #&00
-  STA Z_23
-  LDA W_0538
-  INC W_0538
+  STA PPU_ADDR_HI
+  LDA CREDITS_ROW
+  INC CREDITS_ROW
   ASL A
-  ROL Z_23
+  ROL PPU_ADDR_HI
   CLC
 IF REGION_JP
   ADC #&1C
 ELSE
   ADC #&17
 ENDIF
-  STA Z_22
-  LDA Z_23
+  STA PPU_ADDR
+  LDA PPU_ADDR_HI
 IF REGION_JP
   ADC #&AC
 ELSE
   ADC #&B1
 ENDIF
-  STA Z_23
+  STA PPU_ADDR_HI
   LDY #&00
-  LDA (Z_22),Y
-  STA Z_20
+  LDA (PPU_ADDR),Y
+  STA DATA_PTR
   INY
-  LDA (Z_22),Y
-  STA Z_21
-  ORA Z_20
+  LDA (PPU_ADDR),Y
+  STA DATA_PTR_HI
+  ORA DATA_PTR
   BEQ L0_B0E2
   LDX #&03
   LDA SCROLL_Y
@@ -5207,25 +5207,25 @@ ENDIF
   TAY
   JSR XY_TO_NT_ADDR
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&1A
   JMP QUEUE_PPU_RUN
 .L0_B0E1
   RTS
 .L0_B0E2
   LDA #&02
-  STA W_0536
+  STA CREDITS_MODE
   LDA #&00
-  STA W_0537
-  STA W_0538
+  STA CREDITS_TICK
+  STA CREDITS_ROW
   RTS
 .L0_B0F0
-  INC W_0537
-  LDA W_0537
+  INC CREDITS_TICK
+  LDA CREDITS_TICK
   CMP #&20
   BCC L0_B0E1
   LDA #&00
-  STA W_0536
+  STA CREDITS_MODE
   LDX #&03
   LDY #&17
   JSR XY_TO_NT_ADDR
@@ -5234,15 +5234,15 @@ IF REGION_JP
 ELSE
   LDA #&B1
 ENDIF
-  STA Z_20
+  STA DATA_PTR
 IF REGION_JP
   LDA #&AF
 ELSE
   LDA #&B4
 ENDIF
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&1A
   JMP QUEUE_PPU_RUN
 IF REGION_JP

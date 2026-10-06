@@ -4,18 +4,18 @@
 
   PAD SHIFT                               ; relocation test, see make.sh
 
-; Story mode only. If W_04E5 changed and is not negative, store it in W_04CB and queue that digit at nametable column 1Bh row 02h.
-; Skips when Z_49 is not 0. Called every frame from STAGE_LOOP.
+; Story mode only. If LIVES changed and is not negative, store it in LIVES_SHOWN and queue that digit at nametable column 1Bh row 02h.
+; Skips when GAME_MODE is not 0. Called every frame from STAGE_LOOP.
 .DRAW_LIVES
-  LDA Z_49
+  LDA GAME_MODE
   BNE L5_802E
-  LDA W_04E5
+  LDA LIVES
   BMI L5_802E
-  CMP W_04CB
+  CMP LIVES_SHOWN
   BEQ L5_802E
 
 ; (not seen executing during the coverage runs)
-  STA W_04CB
+  STA LIVES_SHOWN
   ORA #&30
   STA W_052A
   LDX #&1B
@@ -26,63 +26,63 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&01
   JMP QUEUE_PPU_RUN
 .L5_802E
   RTS
 
 ; Upload four CHR tiles to PPU 1800h.
-; Offset is LEVEL_CHR_OFF indexed by W_04E3, times 16, from LEVEL_OBJ_TILES. Calls CHOOSE_LEVEL_CHR first.
+; Offset is LEVEL_CHR_OFF indexed by TILESET, times 16, from LEVEL_OBJ_TILES. Calls CHOOSE_LEVEL_CHR first.
 .UPLOAD_LEVEL_CHR
   JSR CHOOSE_LEVEL_CHR
-  LDX W_04E3
+  LDX TILESET
   LDA #&00
-  STA Z_21
+  STA DATA_PTR_HI
   LDA LEVEL_CHR_OFF,X
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   CLC
   ADC #LO(LEVEL_OBJ_TILES)
-  STA Z_20
-  LDA Z_21
+  STA DATA_PTR
+  LDA DATA_PTR_HI
   ADC #HI(LEVEL_OBJ_TILES)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&18
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&06
   LDY #&04
   JMP UPLOAD_CHR_RAW
 
-; Pick W_04E3 for this area and stage from LEVEL_CHR_PICK.
-; In: Z_4B, Z_4C, W_04E4, Z_AD, Z_AE, Z_AF. Out: W_04E3. Uses NEXT_RNG.
+; Pick TILESET for this area and stage from LEVEL_CHR_PICK.
+; In: AREA_NUM, STAGE_NUM, POWER_STAGE, ACT_PASSBOMB, ACT_PASSWALL, ACT_REMOTE. Out: TILESET. Uses NEXT_RNG.
 .CHOOSE_LEVEL_CHR
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   ASL A
   ASL A
-  ABS_ORA Z_4C
-  STA Z_1C
+  ABS_ORA STAGE_NUM
+  STA RLE_BYTE
   ASL A
   CLC
-  ADC Z_1C
+  ADC RLE_BYTE
   TAX
   LDA D5_80CD,X
-  STA Z_1E
-  LDA W_04E4
-  CMP Z_1C
+  STA RLE_LEFT
+  LDA POWER_STAGE
+  CMP RLE_BYTE
   BNE L5_808D
 
 ; (not seen executing during the coverage runs)
@@ -93,16 +93,16 @@ ENDIF
   BNE L5_808D
 .L5_8089
   LDA #&19
-  STA Z_1E
+  STA RLE_LEFT
 .L5_808D
   JSR NEXT_RNG
-  CMP Z_1E
+  CMP RLE_LEFT
   BCC L5_8097
   BEQ L5_8097
   INX
 .L5_8097
   LDA LEVEL_CHR_PICK,X
-  STA W_04E3
+  STA TILESET
   CMP #&02
   BEQ L5_80C0
   CMP #&06
@@ -111,31 +111,31 @@ ENDIF
   BEQ L5_80AA
   RTS
 .L5_80AA
-  ABS_LDA Z_AE
+  ABS_LDA ACT_PASSWALL
   BEQ L5_80CA
 
 ; (not seen executing during the coverage runs)
   LDA #&09
-  STA W_04E3
+  STA TILESET
   RTS
 .L5_80B5
-  ABS_LDA Z_AD
+  ABS_LDA ACT_PASSBOMB
   BEQ L5_80CA
 
 ; (not seen executing during the coverage runs)
   LDA #&09
-  STA W_04E3
+  STA TILESET
   RTS
 .L5_80C0
-  ABS_LDA Z_AF
+  ABS_LDA ACT_REMOTE
   BEQ L5_80CA
   LDA #&0A
-  STA W_04E3
+  STA TILESET
 .L5_80CA
   RTS
 
 ; 48 stages, 3 bytes each: tile id, alternate id, RNG threshold.
-; Index is (area*8+stage)*3. CHOOSE_LEVEL_CHR reads the threshold two bytes later. Ids 02, 06 and 07 are replaced when Z_AF, Z_AD or Z_AE is set.
+; Index is (area*8+stage)*3. CHOOSE_LEVEL_CHR reads the threshold two bytes later. Ids 02, 06 and 07 are replaced when ACT_REMOTE, ACT_PASSBOMB or ACT_PASSWALL is set.
 .LEVEL_CHR_PICK
   EQUB &01,&09
 .D5_80CD
@@ -149,40 +149,40 @@ ENDIF
   EQUB &07,&09,&FF,&00,&09,&99,&02,&0A,&FF,&06,&09,&FF,&00,&09,&FF,&04
   EQUB &05,&FF,&01,&09,&C0,&08,&00,&FF,&00,&09,&80,&01,&09,&80
 
-; 13 bytes. W_04E3 selects an entry; the value times 16 is the CHR offset used by UPLOAD_LEVEL_CHR.
+; 13 bytes. TILESET selects an entry; the value times 16 is the CHR offset used by UPLOAD_LEVEL_CHR.
 .LEVEL_CHR_OFF
   EQUB &00,&00,&00,&04,&08,&0C,&10,&14,&18,&20,&1C,&00,&00
 
 ; Per-frame actor update. Called from UPDATE_PLAYERS.
-; Runs SERVICE_DEMO_PAD. If Z_B7 is set, advances it and draws slot 0 unless Z_4E is 0 and Z_B7 has reached 20h.
-; Otherwise walks the three Z_69 slots, then SHARE_ACTOR_A6, CHECK_ACTORS_LEFT and FOLLOW_ACTOR_SCROLL.
+; Runs SERVICE_DEMO_PAD. If CLEAR_PHASE is set, advances it and draws slot 0 unless SPECIAL_STAGE is 0 and CLEAR_PHASE has reached 20h.
+; Otherwise walks the three ACTOR_FLAG slots, then SHARE_ACTOR_A6, CHECK_ACTORS_LEFT and FOLLOW_ACTOR_SCROLL.
 .UPDATE_ACTORS
   JSR SERVICE_DEMO_PAD
-  LDA Z_B7
+  LDA CLEAR_PHASE
   BEQ L5_818F
-  INC Z_B7
-  ABS_LDA Z_4E
+  INC CLEAR_PHASE
+  ABS_LDA SPECIAL_STAGE
   BNE L5_817C
-  LDA Z_B7
+  LDA CLEAR_PHASE
   CMP #&20
   BCS L5_818E
 .L5_817C
   LDX #&00
-  STX W_04C2
-  STX W_04C1
-  STX Z_68
-  STX Z_7E
+  STX ACTOR_HELD
+  STX ACTOR_NEW
+  STX ACTOR_INDEX
+  STX ACTOR_FRAME
   JSR LOAD_ACTOR_WORK
   JMP DRAW_ACTOR
 .L5_818E
   RTS
 .L5_818F
   JSR UPDATE_ROUND
-  ABS_LDX Z_49
-  STX Z_68
+  ABS_LDX GAME_MODE
+  STX ACTOR_INDEX
 .L5_8197
-  LDX Z_68
-  LDA Z_69,X
+  LDX ACTOR_INDEX
+  LDA ACTOR_FLAG,X
   BEQ L5_81AF
   JSR LOAD_ACTOR_WORK
   JSR LOAD_ACTOR_PAD
@@ -191,159 +191,159 @@ ENDIF
   JSR DRAW_ACTOR
   JSR STORE_ACTOR_WORK
 .L5_81AF
-  DEC Z_68
+  DEC ACTOR_INDEX
   BPL L5_8197
   JSR SHARE_ACTOR_A6
   JSR CHECK_ACTORS_LEFT
   JMP FOLLOW_ACTOR_SCROLL
 
-; Copy the pad for actor X into W_04C2 and W_04C1.
-; Demo playback returns immediately. Story mode uses JOY_HELD and JOY_NEW. Other modes use JOYPAD1,X. If Z_A6 is negative and its low bits are 2, bit 7 of W_04C1 is set.
+; Copy the pad for actor X into ACTOR_HELD and ACTOR_NEW.
+; Demo playback returns immediately. Story mode uses JOY_HELD and JOY_NEW. Other modes use JOYPAD1,X. If ACT_W_TIMED is negative and its low bits are 2, bit 7 of ACTOR_NEW is set.
 .LOAD_ACTOR_PAD
-  LDA W_03EF
+  LDA DEMO_MODE
   BNE L5_81E4
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ L5_81E5
   LDA JOYPAD1,X
-  STA W_04C2
+  STA ACTOR_HELD
   LDA JOYPAD1_NEW,X
-  STA W_04C1
-  LDA Z_A6
+  STA ACTOR_NEW
+  LDA ACT_W_TIMED
   BPL L5_81E4
 
 ; (not seen executing during the coverage runs)
   AND #&03
   CMP #&02
   BNE L5_81E4
-  LDA W_04C1
+  LDA ACTOR_NEW
   ORA #&80
-  STA W_04C1
+  STA ACTOR_NEW
 .L5_81E4
   RTS
 .L5_81E5
   LDA JOY_HELD
-  STA W_04C2
+  STA ACTOR_HELD
   LDA JOY_NEW
-  STA W_04C1
+  STA ACTOR_NEW
   RTS
 
-; Copy actor slot Z_68 from Z_69 through Z_99 into the work bytes Z_9C through Z_AC.
+; Copy actor slot ACTOR_INDEX from ACTOR_FLAG through ACTOR_SPDHI into the work bytes ACT_W_FLAG through ACT_W_SPDHI.
 .LOAD_ACTOR_WORK
-  LDX Z_68
-  LDA Z_69,X
-  STA Z_9C
-  LDA Z_6C,X
-  STA Z_9D
-  LDA Z_6F,X
-  STA Z_9E
-  LDA Z_72,X
-  STA Z_9F
-  LDA Z_75,X
-  STA Z_A0
-  LDA Z_78,X
-  STA Z_A1
-  LDA Z_7B,X
-  STA Z_A2
-  LDA Z_7E,X
-  STA Z_A3
-  LDA Z_81,X
-  STA Z_A4
-  LDA Z_84,X
-  STA Z_A5
-  LDA Z_87,X
-  STA Z_A6
-  LDA Z_8A,X
-  STA Z_A7
-  LDA Z_8D,X
-  STA Z_A8
-  LDA Z_90,X
-  STA Z_A9
-  LDA Z_93,X
-  STA Z_AA
-  LDA Z_96,X
-  STA Z_AB
-  LDA Z_99,X
-  STA Z_AC
+  LDX ACTOR_INDEX
+  LDA ACTOR_FLAG,X
+  STA ACT_W_FLAG
+  LDA ACTOR_COL,X
+  STA ACT_W_COL
+  LDA ACTOR_ROW,X
+  STA ACT_W_ROW
+  LDA ACTOR_X,X
+  STA ACT_W_X
+  LDA ACTOR_XSUB,X
+  STA ACT_W_XSUB
+  LDA ACTOR_Y,X
+  STA ACT_W_Y
+  LDA ACTOR_DIR,X
+  STA ACT_W_DIR
+  LDA ACTOR_FRAME,X
+  STA ACT_W_FRAME
+  LDA ACTOR_FTIMER,X
+  STA ACT_W_FTMR
+  LDA ACTOR_DEATH,X
+  STA ACT_W_DEATH
+  LDA ACTOR_TIMED,X
+  STA ACT_W_TIMED
+  LDA ACTOR_TFRAME,X
+  STA ACT_W_TFR
+  LDA ACTOR_TSTEP,X
+  STA ACT_W_TSTEP
+  LDA ACTOR_FIRE,X
+  STA ACT_W_FIRE
+  LDA ACTOR_BOMBS,X
+  STA ACT_W_BOMBS
+  LDA ACTOR_SPDLO,X
+  STA ACT_W_SPDLO
+  LDA ACTOR_SPDHI,X
+  STA ACT_W_SPDHI
   RTS
 
-; Write work bytes Z_9C through Z_AC back to actor slot Z_68.
+; Write work bytes ACT_W_FLAG through ACT_W_SPDHI back to actor slot ACTOR_INDEX.
 .STORE_ACTOR_WORK
-  LDX Z_68
-  LDA Z_9C
-  STA Z_69,X
-  LDA Z_9D
-  STA Z_6C,X
-  LDA Z_9E
-  STA Z_6F,X
-  LDA Z_9F
-  STA Z_72,X
-  LDA Z_A0
-  STA Z_75,X
-  LDA Z_A1
-  STA Z_78,X
-  LDA Z_A2
-  STA Z_7B,X
-  LDA Z_A3
-  STA Z_7E,X
-  LDA Z_A4
-  STA Z_81,X
-  LDA Z_A5
-  STA Z_84,X
-  LDA Z_A6
-  STA Z_87,X
-  LDA Z_A7
-  STA Z_8A,X
-  LDA Z_A8
-  STA Z_8D,X
-  LDA Z_A9
-  STA Z_90,X
-  LDA Z_AA
-  STA Z_93,X
-  LDA Z_AB
-  STA Z_96,X
-  LDA Z_AC
-  STA Z_99,X
+  LDX ACTOR_INDEX
+  LDA ACT_W_FLAG
+  STA ACTOR_FLAG,X
+  LDA ACT_W_COL
+  STA ACTOR_COL,X
+  LDA ACT_W_ROW
+  STA ACTOR_ROW,X
+  LDA ACT_W_X
+  STA ACTOR_X,X
+  LDA ACT_W_XSUB
+  STA ACTOR_XSUB,X
+  LDA ACT_W_Y
+  STA ACTOR_Y,X
+  LDA ACT_W_DIR
+  STA ACTOR_DIR,X
+  LDA ACT_W_FRAME
+  STA ACTOR_FRAME,X
+  LDA ACT_W_FTMR
+  STA ACTOR_FTIMER,X
+  LDA ACT_W_DEATH
+  STA ACTOR_DEATH,X
+  LDA ACT_W_TIMED
+  STA ACTOR_TIMED,X
+  LDA ACT_W_TFR
+  STA ACTOR_TFRAME,X
+  LDA ACT_W_TSTEP
+  STA ACTOR_TSTEP,X
+  LDA ACT_W_FIRE
+  STA ACTOR_FIRE,X
+  LDA ACT_W_BOMBS
+  STA ACTOR_BOMBS,X
+  LDA ACT_W_SPDLO
+  STA ACTOR_SPDLO,X
+  LDA ACT_W_SPDHI
+  STA ACTOR_SPDHI,X
   RTS
 
 ; (not seen executing during the coverage runs)
 
-; Set bit 6 of Z_9C and store 8 in W_04E9. DRAW_ACTOR uses that bit with FLASH_DRAW_MASK.
+; Set bit 6 of ACT_W_FLAG and store 8 in FLASH_IDX. DRAW_ACTOR uses that bit with FLASH_DRAW_MASK.
 .SET_ACTOR_FLASH
-  LDA Z_9C
+  LDA ACT_W_FLAG
   ORA #&40
-  STA Z_9C
+  STA ACT_W_FLAG
   LDA #&08
-  STA W_04E9
+  STA FLASH_IDX
   LDA #&00
-  STA W_04EA
+  STA FLASH_ZERO
   RTS
 
-; Clear bit 6 of Z_9C.
+; Clear bit 6 of ACT_W_FLAG.
 .CLR_ACTOR_FLASH
-  LDA Z_9C
+  LDA ACT_W_FLAG
   AND #&BF
-  STA Z_9C
+  STA ACT_W_FLAG
   RTS
 
-; 16 bytes. DRAW_ACTOR indexes with (FRAME_CNT and 7) or W_04E9. A 0 skips the sprite while Z_9C bit 6 is set.
+; 16 bytes. DRAW_ACTOR indexes with (FRAME_CNT and 7) or FLASH_IDX. A 0 skips the sprite while ACT_W_FLAG bit 6 is set.
 .FLASH_DRAW_MASK
   EQUB &01,&01,&01,&01,&01,&01,&00,&00,&01,&00,&01,&00,&01,&00,&01,&00
 
-; If Z_A5 and Z_B0 are both 0, scan 3Ch slots at X_60E2.
-; A slot whose X_611E and X_615A match Z_9D and Z_9E jumps to L7_CEA4.
+; If ACT_W_DEATH and ITEM_KIND are both 0, scan 3Ch slots at FLAME_FLAG.
+; A slot whose FLAME_COL and FLAME_ROW match ACT_W_COL and ACT_W_ROW jumps to L7_CEA4.
 .ACTOR_HIT_TEST
-  LDA Z_A5
-  ORA Z_B0
+  LDA ACT_W_DEATH
+  ORA ITEM_KIND
   BNE L5_82C9
   LDX #&3B
 .L5_82B0
-  LDA X_60E2,X
+  LDA FLAME_FLAG,X
   BEQ L5_82C6
-  LDA X_611E,X
-  CMP Z_9D
+  LDA FLAME_COL,X
+  CMP ACT_W_COL
   BNE L5_82C6
-  LDA X_615A,X
-  CMP Z_9E
+  LDA FLAME_ROW,X
+  CMP ACT_W_ROW
   BNE L5_82C6
   JMP L7_CEA4
 .L5_82C6
@@ -352,17 +352,17 @@ ENDIF
 .L5_82C9
   RTS
 
-; If Z_53 and W_051B are 0: story mode sets Z_53 when slot 0 is empty.
-; Other modes count live Z_69 slots and, if fewer than 2 remain, increment W_051B and X_6000.
+; If STAGE_PHASE and ROUND_RES are 0: story mode sets STAGE_PHASE when slot 0 is empty.
+; Other modes count live ACTOR_FLAG slots and, if fewer than 2 remain, increment ROUND_RES and FUSE_LOCK.
 .CHECK_ACTORS_LEFT
-  ABS_LDA Z_53
-  ORA W_051B
+  ABS_LDA STAGE_PHASE
+  ORA ROUND_RES
   BNE L5_82EB
-  ABS_LDX Z_49
+  ABS_LDX GAME_MODE
   BEQ L5_82EC
   LDY #&00
 .L5_82D9
-  LDA Z_69,X
+  LDA ACTOR_FLAG,X
   BEQ L5_82DE
   INY
 .L5_82DE
@@ -370,22 +370,22 @@ ENDIF
   BPL L5_82D9
   CPY #&02
   BCS L5_82EB
-  INC W_051B
-  INC X_6000
+  INC ROUND_RES
+  INC FUSE_LOCK
 .L5_82EB
   RTS
 .L5_82EC
-  LDA Z_69,X
+  LDA ACTOR_FLAG,X
   BNE L5_82EB
-  ABS_INC Z_53
+  ABS_INC STAGE_PHASE
   RTS
 
-; One actor step. Z_A5 counts a death animation from DEATH_FRAME_TIME and then clears the slot.
-; A negative Z_B5 takes KNOCK_STEP. Otherwise updates the cell, moves, checks the cell, animates, and handles buttons.
+; One actor step. ACT_W_DEATH counts a death animation from DEATH_FRAME_TIME and then clears the slot.
+; A negative KNOCK_DIR takes KNOCK_STEP. Otherwise updates the cell, moves, checks the cell, animates, and handles buttons.
 .MOVE_ACTOR
-  LDA Z_A5
+  LDA ACT_W_DEATH
   BNE L5_8315
-  LDA Z_B5
+  LDA KNOCK_DIR
   BPL L5_82FF
 
 ; (not seen executing during the coverage runs)
@@ -400,77 +400,77 @@ ENDIF
   JSR TICK_ACTOR_A6
   RTS
 .L5_8315
-  DEC Z_A4
+  DEC ACT_W_FTMR
   BNE L5_8336
-  INC Z_A3
-  LDX Z_A3
+  INC ACT_W_FRAME
+  LDX ACT_W_FRAME
   LDA DEATH_FRAME_TIME,X
-  STA Z_A4
+  STA ACT_W_FTMR
   CPX #&0A
   BCC L5_8336
   LDA #&00
-  STA Z_9C
-  STA Z_A5
-  ABS_LDA Z_49
+  STA ACT_W_FLAG
+  STA ACT_W_DEATH
+  ABS_LDA GAME_MODE
   BNE L5_8336
   LDA #&12
   JSR AUDIO_CALL
 .L5_8336
   RTS
 
-; 10 bytes. Death-frame index added to 0Ch by DRAW_ACTOR while Z_A5 is set. MOVE_ACTOR clears the actor when the index reaches 0Ah.
+; 10 bytes. Death-frame index added to 0Ch by DRAW_ACTOR while ACT_W_DEATH is set. MOVE_ACTOR clears the actor when the index reaches 0Ah.
 .DEATH_FRAME_IDX
   EQUB &00,&01,&00,&01,&00,&02,&03,&04,&05,&06
 
-; 10 bytes. Frame time reloaded into Z_A4 for each death frame.
+; 10 bytes. Frame time reloaded into ACT_W_FTMR for each death frame.
 .DEATH_FRAME_TIME
   EQUB &08,&08,&08,&08,&0A,&0A,&0A,&0A,&0A,&0A
 
-; Cell from pixels. Z_9D is Z_9F with the high bit from Z_A0, divided by 16. Z_9E is Z_A1 divided by 16.
+; Cell from pixels. ACT_W_COL is ACT_W_X with the high bit from ACT_W_XSUB, divided by 16. ACT_W_ROW is ACT_W_Y divided by 16.
 .ACTOR_XY_TO_CELL
-  LDA Z_A0
+  LDA ACT_W_XSUB
   LSR A
-  LDA Z_9F
+  LDA ACT_W_X
   ROR A
   LSR A
   LSR A
   LSR A
-  STA Z_9D
-  LDA Z_A1
+  STA ACT_W_COL
+  LDA ACT_W_Y
   LSR A
   LSR A
   LSR A
   LSR A
-  STA Z_9E
+  STA ACT_W_ROW
   RTS
 
-; If a direction is held in W_04C2, advance Z_A4 mod 8 and Z_A3 mod 4. Otherwise zero both.
+; If a direction is held in ACTOR_HELD, advance ACT_W_FTMR mod 8 and ACT_W_FRAME mod 4. Otherwise zero both.
 .ANIM_ACTOR_WALK
-  LDA W_04C2
+  LDA ACTOR_HELD
   AND #&0F
   BEQ L5_8379
-  INC Z_A4
-  LDA Z_A4
+  INC ACT_W_FTMR
+  LDA ACT_W_FTMR
   AND #&07
-  STA Z_A4
+  STA ACT_W_FTMR
   BNE L5_8378
-  INC Z_A3
-  LDA Z_A3
+  INC ACT_W_FRAME
+  LDA ACT_W_FRAME
   AND #&03
-  STA Z_A3
+  STA ACT_W_FRAME
 .L5_8378
   RTS
 .L5_8379
   LDA #&00
-  STA Z_A4
-  STA Z_A3
+  STA ACT_W_FTMR
+  STA ACT_W_FRAME
   RTS
 
-; Add one speed pair from ACTOR_SPEED_LO to Z_AB and Z_AC.
-; Speed index is Z_B3, or Z_A6 low bits plus 5 when Z_A6 is negative and those bits are under 2.
-; Z_AC is how many single steps to take. Right, left, up, down in W_04C2, in that order.
+; Add one speed pair from ACTOR_SPEED_LO to ACT_W_SPDLO and ACT_W_SPDHI.
+; Speed index is ACT_SPEED, or ACT_W_TIMED low bits plus 5 when ACT_W_TIMED is negative and those bits are under 2.
+; ACT_W_SPDHI is how many single steps to take. Right, left, up, down in ACTOR_HELD, in that order.
 .APPLY_ACTOR_SPEED
-  LDA Z_A6
+  LDA ACT_W_TIMED
   BPL L5_838F
 
 ; (not seen executing during the coverage runs)
@@ -481,19 +481,19 @@ ENDIF
   ADC #&05
   BNE L5_8391
 .L5_838F
-  LDA Z_B3
+  LDA ACT_SPEED
 .L5_8391
   ASL A
   TAX
-  LDA Z_AB
+  LDA ACT_W_SPDLO
   CLC
   ADC ACTOR_SPEED_LO,X
-  STA Z_AB
+  STA ACT_W_SPDLO
   LDA ACTOR_SPEED_HI,X
   ADC #&00
-  STA Z_AC
+  STA ACT_W_SPDHI
   BEQ L5_83C1
-  LDX W_04C2
+  LDX ACTOR_HELD
   TXA
   AND #&01
   BNE L5_83C2
@@ -513,23 +513,23 @@ ENDIF
   RTS
 .L5_83C2
   LDA #&01
-  STA Z_A2
+  STA ACT_W_DIR
   JSR BIAS_CELL_Y
-  LDY Z_29
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
+  LDY CELL_COL
   INY
-  LDA (Z_2F),Y
+  LDA (MAP_PTR),Y
   STA W_051D
 .L5_83D6
   JSR STEP_ACTOR_EAST
-  DEC Z_AC
+  DEC ACT_W_SPDHI
   BNE L5_83D6
   RTS
 
-; One pixel east. Facing Z_A2 becomes 1. Blocked when the low nibble of Z_9F is at least 8 and CELL_BLOCKS_MOVE says the cell ahead is solid.
+; One pixel east. Facing ACT_W_DIR becomes 1. Blocked when the low nibble of ACT_W_X is at least 8 and CELL_BLOCKS_MOVE says the cell ahead is solid.
 .STEP_ACTOR_EAST
-  LDA Z_9F
+  LDA ACT_W_X
   AND #&0F
   CMP #&08
   BCC L5_83FB
@@ -542,32 +542,32 @@ ENDIF
   JSR CELL_BLOCKS_MOVE
   BNE L5_8401
 .L5_83FB
-  INC Z_9F
+  INC ACT_W_X
   BNE L5_8401
 
 ; (not seen executing during the coverage runs)
-  INC Z_A0
+  INC ACT_W_XSUB
 .L5_8401
   RTS
 .L5_8402
   LDA #&03
-  STA Z_A2
+  STA ACT_W_DIR
   JSR BIAS_CELL_Y
-  LDY Z_29
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
+  LDY CELL_COL
   DEY
-  LDA (Z_2F),Y
+  LDA (MAP_PTR),Y
   STA W_051D
 .L5_8416
   JSR STEP_ACTOR_WEST
-  DEC Z_AC
+  DEC ACT_W_SPDHI
   BNE L5_8416
   RTS
 
-; One pixel west. Facing Z_A2 becomes 3. Same solid test as STEP_ACTOR_EAST, using the west cell.
+; One pixel west. Facing ACT_W_DIR becomes 3. Same solid test as STEP_ACTOR_EAST, using the west cell.
 .STEP_ACTOR_WEST
-  LDA Z_9F
+  LDA ACT_W_X
   AND #&0F
   CMP #&09
   BCS L5_843B
@@ -580,34 +580,34 @@ ENDIF
   JSR CELL_BLOCKS_MOVE
   BNE L5_8445
 .L5_843B
-  DEC Z_9F
-  LDA Z_9F
+  DEC ACT_W_X
+  LDA ACT_W_X
   CMP #&FF
   BNE L5_8445
 
 ; (not seen executing during the coverage runs)
-  DEC Z_A0
+  DEC ACT_W_XSUB
 .L5_8445
   RTS
 .L5_8446
   LDA #&02
-  STA Z_A2
+  STA ACT_W_DIR
   JSR BIAS_CELL_X
-  LDY Z_29
+  LDY CELL_ROW
   DEY
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   STA W_051D
 .L5_845A
   JSR STEP_ACTOR_NORTH
-  DEC Z_AC
+  DEC ACT_W_SPDHI
   BNE L5_845A
   RTS
 
-; One pixel north. Facing Z_A2 becomes 2. Tests the cell above when the low nibble of Z_A1 is below 9.
+; One pixel north. Facing ACT_W_DIR becomes 2. Tests the cell above when the low nibble of ACT_W_Y is below 9.
 .STEP_ACTOR_NORTH
-  LDA Z_A1
+  LDA ACT_W_Y
   AND #&0F
   CMP #&09
   BCS L5_847F
@@ -620,28 +620,28 @@ ENDIF
   JSR CELL_BLOCKS_MOVE
   BNE L5_8481
 .L5_847F
-  DEC Z_A1
+  DEC ACT_W_Y
 .L5_8481
   RTS
 .L5_8482
   LDA #&00
-  STA Z_A2
+  STA ACT_W_DIR
   JSR BIAS_CELL_X
-  LDY Z_29
+  LDY CELL_ROW
   INY
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   STA W_051D
 .L5_8496
   JSR STEP_ACTOR_SOUTH
-  DEC Z_AC
+  DEC ACT_W_SPDHI
   BNE L5_8496
   RTS
 
-; One pixel south. Facing Z_A2 becomes 0. Tests the cell below when the low nibble of Z_A1 is at least 8.
+; One pixel south. Facing ACT_W_DIR becomes 0. Tests the cell below when the low nibble of ACT_W_Y is at least 8.
 .STEP_ACTOR_SOUTH
-  LDA Z_A1
+  LDA ACT_W_Y
   AND #&0F
   CMP #&08
   BCC L5_84BB
@@ -654,115 +654,115 @@ ENDIF
   JSR CELL_BLOCKS_MOVE
   BNE L5_84BD
 .L5_84BB
-  INC Z_A1
+  INC ACT_W_Y
 .L5_84BD
   RTS
 
-; Point Z_28 and Z_29 at the cell one tile east of the actor, then PEEK_CELL_28. Out: A is the map byte.
+; Point CELL_COL and CELL_ROW at the cell one tile east of the actor, then PEEK_CELL_28. Out: A is the map byte.
 .CELL_EAST_OF
-  LDA Z_9F
+  LDA ACT_W_X
   CLC
   ADC #&08
-  STA Z_20
-  LDA Z_A0
+  STA DATA_PTR
+  LDA ACT_W_XSUB
   ADC #&00
   LSR A
-  LDA Z_20
+  LDA DATA_PTR
   ROR A
   LSR A
   LSR A
   LSR A
-  STA Z_28
-  LDA Z_A1
+  STA CELL_COL
+  LDA ACT_W_Y
   LSR A
   LSR A
   LSR A
   LSR A
-  STA Z_29
+  STA CELL_ROW
   JMP PEEK_CELL_28
 
 ; Cell one tile west of the actor. Out: A from PEEK_CELL_28.
 .CELL_WEST_OF
-  LDA Z_9F
+  LDA ACT_W_X
   SEC
   SBC #&09
-  STA Z_20
-  LDA Z_A0
+  STA DATA_PTR
+  LDA ACT_W_XSUB
   SBC #&00
   LSR A
-  LDA Z_20
+  LDA DATA_PTR
   ROR A
   LSR A
   LSR A
   LSR A
-  STA Z_28
-  LDA Z_A1
+  STA CELL_COL
+  LDA ACT_W_Y
   LSR A
   LSR A
   LSR A
   LSR A
-  STA Z_29
+  STA CELL_ROW
   JMP PEEK_CELL_28
 
 ; Cell one tile north of the actor. Out: A from PEEK_CELL_28.
 .CELL_NORTH_OF
-  LDA Z_A0
+  LDA ACT_W_XSUB
   LSR A
-  LDA Z_9F
+  LDA ACT_W_X
   ROR A
   LSR A
   LSR A
   LSR A
-  STA Z_28
-  LDA Z_A1
+  STA CELL_COL
+  LDA ACT_W_Y
   SEC
   SBC #&09
   LSR A
   LSR A
   LSR A
   LSR A
-  STA Z_29
+  STA CELL_ROW
   JMP PEEK_CELL_28
 
 ; Cell one tile south of the actor. Out: A from PEEK_CELL_28.
 .CELL_SOUTH_OF
-  LDA Z_A0
+  LDA ACT_W_XSUB
   LSR A
-  LDA Z_9F
+  LDA ACT_W_X
   ROR A
   LSR A
   LSR A
   LSR A
-  STA Z_28
-  LDA Z_A1
+  STA CELL_COL
+  LDA ACT_W_Y
   CLC
   ADC #&08
   LSR A
   LSR A
   LSR A
   LSR A
-  STA Z_29
+  STA CELL_ROW
   JMP PEEK_CELL_28
 
-; Read the live map at column Z_28, row Z_29. Out: A. Uses MAP_ROW_PTR.
+; Read the live map at column CELL_COL, row CELL_ROW. Out: A. Uses MAP_ROW_PTR.
 .PEEK_CELL_28
-  LDY Z_29
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   RTS
 
 ; Seven little-endian speed pairs, low byte here and high byte at ACTOR_SPEED_HI: 0100 0140 0180 01C0 0200 0300 0080.
-; APPLY_ACTOR_SPEED indexes with the speed times 2. Added into Z_AB and Z_AC.
+; APPLY_ACTOR_SPEED indexes with the speed times 2. Added into ACT_W_SPDLO and ACT_W_SPDHI.
 .ACTOR_SPEED_LO
   EQUB &00
 .ACTOR_SPEED_HI
   EQUB &01,&40,&01,&80,&01,&C0,&01,&00,&02,&00,&03,&80,&00
 
-; For a vertical step, set Z_28 from Z_9D plus BIAS_DELTA. The delta index comes from SUBPIX_BIAS when the low 5 bits of Z_9F are below 10h, else 0. Z_29 is Z_9E.
+; For a vertical step, set CELL_COL from ACT_W_COL plus BIAS_DELTA. The delta index comes from SUBPIX_BIAS when the low 5 bits of ACT_W_X are below 10h, else 0. CELL_ROW is ACT_W_ROW.
 .BIAS_CELL_X
   LDY #&00
-  LDA Z_9F
+  LDA ACT_W_X
   AND #&1F
   CMP #&10
   BCS L5_8555
@@ -770,18 +770,18 @@ ENDIF
   LDA SUBPIX_BIAS,Y
   TAY
 .L5_8555
-  LDA Z_9D
+  LDA ACT_W_COL
   CLC
   ADC BIAS_DELTA,Y
-  STA Z_28
-  LDA Z_9E
-  STA Z_29
+  STA CELL_COL
+  LDA ACT_W_ROW
+  STA CELL_ROW
   RTS
 
-; For a horizontal step, set Z_29 from Z_9E plus BIAS_DELTA. Same sub-pixel rule on Z_A1. Z_28 is Z_9D.
+; For a horizontal step, set CELL_ROW from ACT_W_ROW plus BIAS_DELTA. Same sub-pixel rule on ACT_W_Y. CELL_COL is ACT_W_COL.
 .BIAS_CELL_Y
   LDY #&00
-  LDA Z_A1
+  LDA ACT_W_Y
   AND #&1F
   CMP #&10
   BCS L5_8571
@@ -789,17 +789,17 @@ ENDIF
   LDA SUBPIX_BIAS,Y
   TAY
 .L5_8571
-  LDA Z_9E
+  LDA ACT_W_ROW
   CLC
   ADC BIAS_DELTA,Y
-  STA Z_29
-  LDA Z_9D
-  STA Z_28
+  STA CELL_ROW
+  LDA ACT_W_COL
+  STA CELL_COL
   RTS
 
 ; If the actor X sub-pixel is not centered, step west or east with the held direction and return carry clear. Centered returns carry set.
 .SLIDE_ACTOR_X
-  LDA Z_9F
+  LDA ACT_W_X
   AND #&1F
   TAY
   LDA SUBPIX_BIAS,Y
@@ -807,14 +807,14 @@ ENDIF
   CMP #&01
   BEQ L5_8598
 .L5_858C
-  LDA W_04C2
+  LDA ACTOR_HELD
   AND #&01
   BNE L5_859F
   JSR STEP_ACTOR_WEST
   CLC
   RTS
 .L5_8598
-  LDA W_04C2
+  LDA ACTOR_HELD
   AND #&02
   BNE L5_858C
 .L5_859F
@@ -827,14 +827,14 @@ ENDIF
 
 ; If the actor Y sub-pixel is not centered, step north or south and return carry clear. Centered returns carry set.
 .SLIDE_ACTOR_Y
-  LDA Z_A1
+  LDA ACT_W_Y
   AND #&1F
   TAY
   LDA SUBPIX_BIAS,Y
   BEQ L5_85A4
   CMP #&01
   BEQ L5_85C0
-  LDA W_04C2
+  LDA ACTOR_HELD
   AND #&04
   BNE L5_85C7
 .L5_85BB
@@ -842,7 +842,7 @@ ENDIF
   CLC
   RTS
 .L5_85C0
-  LDA W_04C2
+  LDA ACTOR_HELD
   AND #&08
   BNE L5_85BB
 .L5_85C7
@@ -861,27 +861,27 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Knockback step. Decrements Z_B6 and clears Z_B5 at 0.
-; Otherwise refreshes the cell, forces Z_AC to 4, clears the pad, and steps on the low 2 bits of Z_B5. Facing is then flipped with EOR 2.
+; Knockback step. Decrements KNOCK_LEFT and clears KNOCK_DIR at 0.
+; Otherwise refreshes the cell, forces ACT_W_SPDHI to 4, clears the pad, and steps on the low 2 bits of KNOCK_DIR. Facing is then flipped with EOR 2.
 .KNOCK_STEP
-  DEC Z_B6
+  DEC KNOCK_LEFT
   BEQ L5_861F
   JSR ACTOR_XY_TO_CELL
   JSR SETUP_KNOCKBACK
   JSR TOUCH_MAP_CELL
-  LDA Z_A2
+  LDA ACT_W_DIR
   EOR #&02
-  STA Z_A2
+  STA ACT_W_DIR
   RTS
 
-; Called from KNOCK_STEP. Sets Z_AC to 4, clears W_04C2 and W_04C1, and jumps to the step for Z_B5 bits 0-1: up, left, down, right.
+; Called from KNOCK_STEP. Sets ACT_W_SPDHI to 4, clears ACTOR_HELD and ACTOR_NEW, and jumps to the step for KNOCK_DIR bits 0-1: up, left, down, right.
 .SETUP_KNOCKBACK
   LDA #&04
-  STA Z_AC
+  STA ACT_W_SPDHI
   LDA #&00
-  STA W_04C2
-  STA W_04C1
-  LDA Z_B5
+  STA ACTOR_HELD
+  STA ACTOR_NEW
+  LDA KNOCK_DIR
   AND #&03
   TAX
   BEQ L5_8624
@@ -893,7 +893,7 @@ ENDIF
   BEQ L5_862D
 .L5_861F
   LDA #&00
-  STA Z_B5
+  STA KNOCK_DIR
   RTS
 .L5_8624
   JMP L5_8446
@@ -904,79 +904,79 @@ ENDIF
 .L5_862D
   JMP L5_83C2
 
-; If Z_A6 is negative, count down Z_A7 every frame and Z_A8 every 3Ch frames.
-; At zero, clear Z_A6 and call QUEUE_A6_CLEAR.
+; If ACT_W_TIMED is negative, count down ACT_W_TFR every frame and ACT_W_TSTEP every 3Ch frames.
+; At zero, clear ACT_W_TIMED and call QUEUE_A6_CLEAR.
 .TICK_ACTOR_A6
-  LDA Z_A6
+  LDA ACT_W_TIMED
   BPL L5_8647
 
 ; (not seen executing during the coverage runs)
-  DEC Z_A7
+  DEC ACT_W_TFR
   BNE L5_8647
   LDA #&3C
-  STA Z_A7
-  DEC Z_A8
+  STA ACT_W_TFR
+  DEC ACT_W_TSTEP
   BNE L5_8647
   LDA #&00
-  STA Z_A6
+  STA ACT_W_TIMED
   JSR QUEUE_A6_CLEAR
 .L5_8647
   RTS
 
 ; (not seen executing during the coverage runs)
 
-; Reached from ITEM_HANDLERS. NEXT_RNG picks 0-3, stores that value ORed with 80h in Z_A6, a duration from A6_TIME_TAB in Z_A8, and 3Ch in Z_A7. Then QUEUE_A6_ATTR.
+; Reached from ITEM_HANDLERS. NEXT_RNG picks 0-3, stores that value ORed with 80h in ACT_W_TIMED, a duration from A6_TIME_TAB in ACT_W_TSTEP, and 3Ch in ACT_W_TFR. Then QUEUE_A6_ATTR.
 .ROLL_ACTOR_A6
   JSR NEXT_RNG
   AND #&03
   TAY
   ORA #&80
-  STA Z_A6
+  STA ACT_W_TIMED
   LDA A6_TIME_TAB,Y
-  STA Z_A8
+  STA ACT_W_TSTEP
   LDA #&3C
-  STA Z_A7
+  STA ACT_W_TFR
   JMP QUEUE_A6_ATTR
 
-; Four durations for ROLL_ACTOR_A6: 1Eh, 14h, 1Eh, 0Fh. Stored in Z_A8.
+; Four durations for ROLL_ACTOR_A6: 1Eh, 14h, 1Eh, 0Fh. Stored in ACT_W_TSTEP.
 .A6_TIME_TAB
   EQUB &1E,&14,&1E,&0F
 
-; Only when Z_49 is 2. If two live actors share a cell and exactly one has a nonzero Z_87, copy Z_87, Z_8A and Z_8D to the other, call QUEUE_A6_ATTR, and play sound 5.
+; Only when GAME_MODE is 2. If two live actors share a cell and exactly one has a nonzero ACTOR_TIMED, copy ACTOR_TIMED, ACTOR_TFRAME and ACTOR_TSTEP to the other, call QUEUE_A6_ATTR, and play sound 5.
 .SHARE_ACTOR_A6
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   CMP #&02
   BNE L5_86E3
 
 ; (not seen executing during the coverage runs)
   LDX #&00
 .L5_866B
-  LDA Z_69,X
+  LDA ACTOR_FLAG,X
   BEQ L5_86DE
   BMI L5_86DE
   TXA
   TAY
   INY
 .L5_8674
-  LDA Z_69,Y
+  LDA ACTOR_FLAG,Y
   BEQ L5_86D9
   BMI L5_86D9
-  LDA Z_6C,X
-  CMP Z_6C,Y
+  LDA ACTOR_COL,X
+  CMP ACTOR_COL,Y
   BNE L5_86D9
-  LDA Z_6F,X
-  CMP Z_6F,Y
+  LDA ACTOR_ROW,X
+  CMP ACTOR_ROW,Y
   BNE L5_86D9
-  LDA Z_87,X
+  LDA ACTOR_TIMED,X
   BNE L5_86B3
-  LDA Z_87,Y
+  LDA ACTOR_TIMED,Y
   BEQ L5_86D9
-  STA Z_87,X
-  LDA Z_8A,Y
-  STA Z_8A,X
-  LDA Z_8D,Y
-  STA Z_8D,X
-  STX Z_68
+  STA ACTOR_TIMED,X
+  LDA ACTOR_TFRAME,Y
+  STA ACTOR_TFRAME,X
+  LDA ACTOR_TSTEP,Y
+  STA ACTOR_TSTEP,X
+  STX ACTOR_INDEX
   TXA
   PHA
   TYA
@@ -990,15 +990,15 @@ ENDIF
   TAX
   JMP L5_86D9
 .L5_86B3
-  LDA Z_87,Y
+  LDA ACTOR_TIMED,Y
   BNE L5_86D9
-  LDA Z_87,X
-  STA Z_87,Y
-  LDA Z_8A,X
-  STA Z_8A,Y
-  LDA Z_8D,X
-  STA Z_8D,Y
-  STY Z_68
+  LDA ACTOR_TIMED,X
+  STA ACTOR_TIMED,Y
+  LDA ACTOR_TFRAME,X
+  STA ACTOR_TFRAME,Y
+  LDA ACTOR_TSTEP,X
+  STA ACTOR_TSTEP,Y
+  STY ACTOR_INDEX
   TXA
   PHA
   TYA
@@ -1023,10 +1023,10 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Queue the two bytes at A6_ATTR_ON onto the attribute address for actor Z_68.
-; XY comes from A6_ATTR_XY. Z_2E is 0.
+; Queue the two bytes at A6_ATTR_ON onto the attribute address for actor ACTOR_INDEX.
+; XY comes from A6_ATTR_XY. PPU_RUN_CTRL is 0.
 .QUEUE_A6_ATTR
-  LDA Z_68
+  LDA ACTOR_INDEX
   ASL A
   TAX
   LDY D5_8723,X
@@ -1034,17 +1034,17 @@ ENDIF
   TAX
   JSR XY_TO_ATTR
   LDA #LO(A6_ATTR_ON)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(A6_ATTR_ON)
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&02
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
 ; Queue the two bytes at A6_ATTR_OFF. Same attribute address as QUEUE_A6_ATTR.
 .QUEUE_A6_CLEAR
-  LDA Z_68
+  LDA ACTOR_INDEX
   ASL A
   TAX
   LDY D5_8723,X
@@ -1052,12 +1052,12 @@ ENDIF
   TAX
   JSR XY_TO_ATTR
   LDA #LO(A6_ATTR_OFF)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(A6_ATTR_OFF)
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&02
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
 ; Six bytes, three XY pairs for actors 0-2: (02,02), (09,02), (10,02). Passed to XY_TO_ATTR. The next four bytes are FF FF 00 00 and are not read as pairs.
@@ -1072,49 +1072,49 @@ ENDIF
   EQUB &00                              ; Two 00h bytes queued by QUEUE_A6_CLEAR.
   EQUB &00
 
-; Count down W_04E6 via W_04E7 and W_04E8, or else Z_B0 via Z_B1 and Z_B2.
-; Each tick is 3Ch frames. Below 4 remaining, play sound 9. At 3, clear W_04E9. At the end, clear the flag and CLR_ACTOR_FLASH.
+; Count down POWER_TIME via POWER_FRAME and POWER_LEFT, or else ITEM_KIND via ITEM_FRAME and ITEM_LEFT.
+; Each tick is 3Ch frames. Below 4 remaining, play sound 9. At 3, clear FLASH_IDX. At the end, clear the flag and CLR_ACTOR_FLASH.
 .TICK_TIMED_POWERS
-  LDA W_04E6
+  LDA POWER_TIME
   BEQ L5_875A
 
 ; (not seen executing during the coverage runs)
-  DEC W_04E7
+  DEC POWER_FRAME
   BPL L5_8780
   LDA #&3B
-  STA W_04E7
-  DEC W_04E8
+  STA POWER_FRAME
+  DEC POWER_LEFT
   BMI L5_8752
-  LDA W_04E8
+  LDA POWER_LEFT
   CMP #&03
   BNE L5_874C
   LDA #&00
-  STA W_04E9
+  STA FLASH_IDX
 .L5_874C
-  LDA W_04E8
+  LDA POWER_LEFT
   JMP L5_8777
 .L5_8752
   LDA #&00
-  STA W_04E6
+  STA POWER_TIME
   JMP CLR_ACTOR_FLASH
 .L5_875A
-  LDA Z_B0
+  LDA ITEM_KIND
   BEQ L5_8780
 
 ; (not seen executing during the coverage runs)
-  DEC Z_B1
+  DEC ITEM_FRAME
   BPL L5_8780
   LDA #&3B
-  STA Z_B1
-  DEC Z_B2
+  STA ITEM_FRAME
+  DEC ITEM_LEFT
   BMI L5_8781
-  LDA Z_B2
+  LDA ITEM_LEFT
   CMP #&03
   BNE L5_8775
   LDA #&00
-  STA W_04E9
+  STA FLASH_IDX
 .L5_8775
-  LDA Z_B2
+  LDA ITEM_LEFT
 .L5_8777
   CMP #&04
   BCS L5_8780
@@ -1126,11 +1126,11 @@ ENDIF
 ; (not seen executing during the coverage runs)
 .L5_8781
   LDA #&00
-  STA Z_B0
+  STA ITEM_KIND
   JMP CLR_ACTOR_FLASH
 
 ; In: A is a map byte. Out: A is 0 if the actor may enter.
-; Bit 6 or a zero byte returns 0. Bit 5 returns Z_AD EOR 1. Bit 4 returns Z_AE EOR 1. Any other nonzero byte returns 0.
+; Bit 6 or a zero byte returns 0. Bit 5 returns ACT_PASSBOMB EOR 1. Bit 4 returns ACT_PASSWALL EOR 1. Any other nonzero byte returns 0.
 .CELL_BLOCKS_MOVE
   TAX
   BEQ L5_879B
@@ -1146,18 +1146,18 @@ ENDIF
 .L5_879B
   RTS
 .L5_879C
-  LDA Z_AD
+  LDA ACT_PASSBOMB
   EOR #&01
   RTS
 .L5_87A1
-  LDA Z_AE
+  LDA ACT_PASSWALL
   EOR #&01
   RTS
 
-; Bit 7 of W_04C1 stores Z_9D and Z_9E and jumps to L7_CF96.
-; Bit 6 jumps to L7_CFD4 when Z_AF is set.
+; Bit 7 of ACTOR_NEW stores ACT_W_COL and ACT_W_ROW and jumps to L7_CF96.
+; Bit 6 jumps to L7_CFD4 when ACT_REMOTE is set.
 .HANDLE_ACTOR_BTN
-  LDA W_04C1
+  LDA ACTOR_NEW
   TAX
   AND #&80
   BNE L5_87B4
@@ -1166,30 +1166,30 @@ ENDIF
   BNE L5_87BF
   RTS
 .L5_87B4
-  LDA Z_9D
-  STA Z_1C
-  LDA Z_9E
-  STA Z_1D
+  LDA ACT_W_COL
+  STA RLE_BYTE
+  LDA ACT_W_ROW
+  STA RLE_BITS
   JMP L7_CF96
 .L5_87BF
-  LDA Z_AF
+  LDA ACT_REMOTE
   BEQ L5_87C6
   JMP L7_CFD4
 .L5_87C6
   RTS
 
-; Four bytes added to the walk frame for facing Z_A2: 8, 0, 4, 0.
+; Four bytes added to the walk frame for facing ACT_W_DIR: 8, 0, 4, 0.
 .FACE_FRAME_ADD
   EQUB &08,&00,&04,&00
 
-; Four attribute bytes for facing Z_A2, stored in Z_5A by DRAW_ACTOR: 00, 40h, 00, 00.
+; Four attribute bytes for facing ACT_W_DIR, stored in SPR_FLIP by DRAW_ACTOR: 00, 40h, 00, 00.
 .FACE_ATTR
   EQUB &00,&40,&00,&00
 
-; Draw actor Z_68 through DRAW_METASPRITE.
-; Frame list is ACTOR_FR_PTR. A set bit 6 of Z_9C can skip the draw via FLASH_DRAW_MASK. Death uses DEATH_FRAME_IDX plus 0Ch. Sprite Y is Z_A1 plus 20h.
+; Draw actor ACTOR_INDEX through DRAW_METASPRITE.
+; Frame list is ACTOR_FR_PTR. A set bit 6 of ACT_W_FLAG can skip the draw via FLASH_DRAW_MASK. Death uses DEATH_FRAME_IDX plus 0Ch. Sprite Y is ACT_W_Y plus 20h.
 .DRAW_ACTOR
-  LDA Z_9C
+  LDA ACT_W_FLAG
   BEQ L5_8824
   AND #&40
   BEQ L5_87E4
@@ -1197,59 +1197,59 @@ ENDIF
 ; (not seen executing during the coverage runs)
   LDA FRAME_CNT
   AND #&07
-  ORA W_04E9
+  ORA FLASH_IDX
   TAY
   LDA FLASH_DRAW_MASK,Y
   BEQ L5_8824
 .L5_87E4
-  LDA Z_68
+  LDA ACTOR_INDEX
   ASL A
   TAX
   LDA ACTOR_FR_PTR,X
-  STA Z_20
+  STA DATA_PTR
   LDA D5_8843,X
-  STA Z_21
-  LDA Z_9F
-  ABS_STA Z_56
-  LDA Z_A0
-  ABS_STA Z_57
-  LDA Z_A1
+  STA DATA_PTR_HI
+  LDA ACT_W_X
+  ABS_STA SPR_X
+  LDA ACT_W_XSUB
+  ABS_STA SPR_X_HI
+  LDA ACT_W_Y
   CLC
   ADC #&20
-  ABS_STA Z_58
-  LDA Z_A5
+  ABS_STA SPR_Y
+  LDA ACT_W_DEATH
   BNE L5_8825
-  LDX Z_A2
+  LDX ACT_W_DIR
   LDA FACE_ATTR,X
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDA FACE_FRAME_ADD,X
   CLC
-  ADC Z_A3
+  ADC ACT_W_FRAME
   ASL A
   TAY
-  LDA (Z_20),Y
-  STA Z_54
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .L5_8824
   RTS
 .L5_8825
   LDA #&00
-  STA Z_A2
-  ABS_STA Z_5A
-  LDX Z_A3
+  STA ACT_W_DIR
+  ABS_STA SPR_FLIP
+  LDX ACT_W_FRAME
   LDA DEATH_FRAME_IDX,X
   CLC
   ADC #&0C
   ASL A
   TAY
-  LDA (Z_20),Y
-  STA Z_54
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; Three words, one frame list per actor slot: ACTOR0_FRAMES, ACTOR1_FRAMES, ACTOR2_FRAMES.
@@ -1512,37 +1512,37 @@ ENDIF
   EQUB &C0,&54,&00,&FE,&80,&55,&08,&FE,&80,&44,&F9,&06,&C0,&44,&00,&06
   EQUB &80
 
-; Set SCROLL_Y to 0. If W_04E1 is 0, SCROLL_X is F8h and SCROLL_NT is FFh.
-; Otherwise follow actor 0: Z_72 minus 80h, with the borrow from Z_75, clamped to the same F8h edge.
+; Set SCROLL_Y to 0. If LAYOUT_VAR is 0, SCROLL_X is F8h and SCROLL_NT is FFh.
+; Otherwise follow actor 0: ACTOR_X minus 80h, with the borrow from ACTOR_XSUB, clamped to the same F8h edge.
 .FOLLOW_ACTOR_SCROLL
   LDA #&00
   STA SCROLL_Y
-  LDA W_04E1
+  LDA LAYOUT_VAR
   BEQ L5_8FB6
-  LDA Z_72
+  LDA ACTOR_X
   SEC
   SBC #&80
-  STA Z_20
-  LDA Z_75
+  STA DATA_PTR
+  LDA ACTOR_XSUB
   SBC #&00
-  STA Z_21
+  STA DATA_PTR_HI
   BMI L5_8F98
 
 ; (not seen executing during the coverage runs)
   LDX #&F8
-  CPX Z_20
+  CPX DATA_PTR
   LDA #&00
-  SBC Z_21
+  SBC DATA_PTR_HI
   BCS L5_8FAB
-  STX Z_20
+  STX DATA_PTR
   LDA #&00
-  STA Z_21
+  STA DATA_PTR_HI
   RTS
 .L5_8F98
   LDX #&F8
-  CPX Z_20
+  CPX DATA_PTR
   LDA #&FF
-  SBC Z_21
+  SBC DATA_PTR_HI
   BCC L5_8FAB
   STX SCROLL_X
   LDA #&FF
@@ -1551,9 +1551,9 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 .L5_8FAB
-  LDA Z_20
+  LDA DATA_PTR
   STA SCROLL_X
-  LDA Z_21
+  LDA DATA_PTR_HI
   STA SCROLL_NT
   RTS
 .L5_8FB6
@@ -1564,15 +1564,15 @@ ENDIF
   RTS
 
 ; Read the actor cell. Bit 5 returns. Low bits 0 return.
-; Low bits 2, with X_62DE set and the actor near the cell center, clear W_0518, increment Z_B7 and play sound 16h.
+; Low bits 2, with ENEMIES_GONE set and the actor near the cell center, clear BURIED_HIT, increment CLEAR_PHASE and play sound 16h.
 ; Low bits 1 clear the cell, dispatch the item in that bomb slot, and queue tile 38h.
 .TOUCH_MAP_CELL
-  LDY Z_9E
-  STY Z_29
+  LDY ACT_W_ROW
+  STY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_9D
-  STY Z_28
-  LDA (Z_2F),Y
+  LDY ACT_W_COL
+  STY CELL_COL
+  LDA (MAP_PTR),Y
   TAX
   AND #&20
   BNE L5_9003
@@ -1581,23 +1581,23 @@ ENDIF
   BEQ L5_9003
   CMP #&01
   BEQ PICK_UP_ITEM
-  LDA X_62DE
+  LDA ENEMIES_GONE
   BEQ L5_9003
-  LDA Z_9F
+  LDA ACT_W_X
   CLC
   ADC #&06
   AND #&0F
   CMP #&0D
   BCC L5_9003
-  LDA Z_A1
+  LDA ACT_W_Y
   CLC
   ADC #&06
   AND #&0F
   CMP #&0D
   BCC L5_9003
   LDA #&00
-  STA W_0518
-  INC Z_B7
+  STA BURIED_HIT
+  INC CLEAR_PHASE
   LDA #&16
   JSR AUDIO_CALL
 .L5_9003
@@ -1605,43 +1605,43 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Clear the item cell, take the low nibble of W_04EB,X as an ITEM_HANDLERS index, clear that bomb flag, queue tile 38h, and play sound 15h in story mode.
+; Clear the item cell, take the low nibble of BURIED_FLAG,X as an ITEM_HANDLERS index, clear that bomb flag, queue tile 38h, and play sound 15h in story mode.
 .PICK_UP_ITEM
   LDA #&00
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   JSR FIND_BOMB_CELL
-  LDA W_04EB,X
+  LDA BURIED_FLAG,X
   AND #&0F
   PHA
   ASL A
   TAY
   LDA ITEM_HANDLERS,Y
-  STA Z_20
+  STA DATA_PTR
   LDA D5_9045,Y
-  STA Z_21
+  STA DATA_PTR_HI
   TXA
   PHA
   JSR DISPATCH_ITEM
   PLA
   TAX
   LDA #&00
-  STA W_04EB,X
-  LDX Z_28
-  LDY Z_29
+  STA BURIED_FLAG,X
+  LDX CELL_COL
+  LDY CELL_ROW
   LDA #&38
   JSR QUEUE_TILE_Y2
   PLA
   JSR PLAY_ITEM_SND
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BNE ITEM_RETURN
   LDA #&15
   JSR AUDIO_CALL
 .ITEM_RETURN
   RTS
 
-; Jump through Z_20. PICK_UP_ITEM stores one ITEM_HANDLERS entry there.
+; Jump through DATA_PTR. PICK_UP_ITEM stores one ITEM_HANDLERS entry there.
 .DISPATCH_ITEM
-  JMP (Z_20)
+  JMP (DATA_PTR)
 
 ; 16 words. Index is the low nibble of the bomb flag. Targets are the item handlers, and the last four entries are ITEM_RETURN.
 ; One entry is ROLL_ACTOR_A6.
@@ -1679,77 +1679,77 @@ ENDIF
   JSR AUDIO_CALL
   RTS
 
-; Increment Z_A9 up to 7, then MARK_PWR_STAGE.
+; Increment ACT_W_FIRE up to 7, then MARK_PWR_STAGE.
 .INC_FIRE
-  LDA Z_A9
+  LDA ACT_W_FIRE
   CMP #&07
   BCS L5_907C
-  INC Z_A9
+  INC ACT_W_FIRE
 .L5_907C
   JSR MARK_PWR_STAGE
   RTS
 
-; Increment Z_AA up to 4, then MARK_PWR_STAGE.
+; Increment ACT_W_BOMBS up to 4, then MARK_PWR_STAGE.
 .INC_BOMBS
-  LDA Z_AA
+  LDA ACT_W_BOMBS
   CMP #&04
   BCS L5_9088
-  INC Z_AA
+  INC ACT_W_BOMBS
 .L5_9088
   JSR MARK_PWR_STAGE
   RTS
 
-; Store 1 in Z_AF. HANDLE_ACTOR_BTN uses that flag for button B.
+; Store 1 in ACT_REMOTE. HANDLE_ACTOR_BTN uses that flag for button B.
 .GIVE_REMOTE
   LDA #&01
-  STA Z_AF
+  STA ACT_REMOTE
   RTS
 
-; Increment Z_B3 up to 4. APPLY_ACTOR_SPEED uses Z_B3 as the speed index.
+; Increment ACT_SPEED up to 4. APPLY_ACTOR_SPEED uses ACT_SPEED as the speed index.
 .INC_SPEED
-  LDA Z_B3
+  LDA ACT_SPEED
   CMP #&04
   BCS L5_9099
-  INC Z_B3
+  INC ACT_SPEED
 .L5_9099
   RTS
 
-; Store 1 in Z_B0, 18h in Z_B2 and 0 in Z_B1, then SET_ACTOR_FLASH. TICK_TIMED_POWERS counts Z_B2 down.
+; Store 1 in ITEM_KIND, 18h in ITEM_LEFT and 0 in ITEM_FRAME, then SET_ACTOR_FLASH. TICK_TIMED_POWERS counts ITEM_LEFT down.
 .START_POWER_18
   LDA #&01
-  STA Z_B0
+  STA ITEM_KIND
   LDA #&18
-  STA Z_B2
+  STA ITEM_LEFT
   LDA #&00
-  STA Z_B1
+  STA ITEM_FRAME
   JMP SET_ACTOR_FLASH
 
-; Store 2 in Z_B0, 10h in Z_B2 and 0 in Z_B1, then SET_ACTOR_FLASH.
+; Store 2 in ITEM_KIND, 10h in ITEM_LEFT and 0 in ITEM_FRAME, then SET_ACTOR_FLASH.
 .START_POWER_10
   LDA #&02
-  STA Z_B0
+  STA ITEM_KIND
   LDA #&10
-  STA Z_B2
+  STA ITEM_LEFT
   LDA #&00
-  STA Z_B1
+  STA ITEM_FRAME
   JMP SET_ACTOR_FLASH
 
-; Store 1 in Z_AD. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 5.
+; Store 1 in ACT_PASSBOMB. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 5.
 .GIVE_BOMB_PASS
   LDA #&01
-  STA Z_AD
+  STA ACT_PASSBOMB
   RTS
 
-; Store 1 in Z_AE. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 4.
+; Store 1 in ACT_PASSWALL. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 4.
 .GIVE_WALL_PASS
   LDA #&01
-  STA Z_AE
+  STA ACT_PASSWALL
   RTS
 
-; Store 1 in Z_B4. STAGE_WON checks Z_B4 after the stage.
+; Store 1 in EXIT_OPEN. STAGE_WON checks EXIT_OPEN after the stage.
 .SET_CLEAR_FLAG
   LDA #&01
-  STA Z_B4
+  STA EXIT_OPEN
   RTS
 
 ; Index EXTRA_SPAWN_IDX with FRAME_CNT bits 0-3 and jump to L7_D192 with that value in Y.
@@ -1771,7 +1771,7 @@ ENDIF
 ; (not seen executing during the coverage runs)
 
 ; NEXT_RNG low 3 bits index LIFE_ROLL_TAB.
-; A positive byte is passed to L7_D192. Bit 7 with bit 0 set starts the W_04E6 timer and SET_ACTOR_FLASH. Bit 7 with bit 0 clear increments W_04E5 and plays sound 0Ah.
+; A positive byte is passed to L7_D192. Bit 7 with bit 0 set starts the POWER_TIME timer and SET_ACTOR_FLASH. Bit 7 with bit 0 clear increments LIVES and plays sound 0Ah.
 .ROLL_LIFE_OR_MOB
   LDA FRAME_CNT
   AND #&07
@@ -1781,69 +1781,69 @@ ENDIF
   AND #&01
   BEQ L5_9103
   LDA #&01
-  STA W_04E6
+  STA POWER_TIME
   LDA #&10
-  STA W_04E8
+  STA POWER_LEFT
   LDA #&00
-  STA W_04E7
+  STA POWER_FRAME
   JMP SET_ACTOR_FLASH
 .L5_9103
-  INC W_04E5
+  INC LIVES
   LDA #&0A
   JSR AUDIO_CALL
   RTS
 
-; Eight bytes read by ROLL_LIFE_OR_MOB. Bit 7 selects the life or W_04E6 path. A positive value is a Y argument to L7_D192.
+; Eight bytes read by ROLL_LIFE_OR_MOB. Bit 7 selects the life or POWER_TIME path. A positive value is a Y argument to L7_D192.
 .LIFE_ROLL_TAB
   EQUB &80,&05,&81,&0A,&05,&81,&0A,&81
 
 ; (not seen executing during the coverage runs)
 
-; Store area*8 OR stage into W_04E4. CHOOSE_LEVEL_CHR compares against it.
+; Store area*8 OR stage into POWER_STAGE. CHOOSE_LEVEL_CHR compares against it.
 .MARK_PWR_STAGE
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   ASL A
   ASL A
-  ABS_ORA Z_4C
-  STA W_04E4
+  ABS_ORA STAGE_NUM
+  STA POWER_STAGE
   RTS
 
-; Round-end timer. With Z_53 clear, a positive W_051B waits 30h frames, then either marks a winner or starts Z_53.
-; While Z_53 is below 96h and Z_49 is not 0, draw a round sprite. A negative W_051B waits 96h frames, then stores B4h in Z_53.
+; Round-end timer. With STAGE_PHASE clear, a positive ROUND_RES waits 30h frames, then either marks a winner or starts STAGE_PHASE.
+; While STAGE_PHASE is below 96h and GAME_MODE is not 0, draw a round sprite. A negative ROUND_RES waits 96h frames, then stores B4h in STAGE_PHASE.
 .UPDATE_ROUND
-  ABS_LDA Z_53
+  ABS_LDA STAGE_PHASE
   BNE L5_9153
-  LDA W_051B
+  LDA ROUND_RES
   BEQ L5_9177
   BMI L5_9178
-  INC W_051C
-  LDA W_051C
+  INC ROUND_WAIT
+  LDA ROUND_WAIT
   CMP #&30
   BCC L5_9177
   LDA #&00
-  STA W_051C
-  ABS_LDX Z_49
+  STA ROUND_WAIT
+  ABS_LDX GAME_MODE
 .L5_913F
-  LDA Z_69,X
+  LDA ACTOR_FLAG,X
   BEQ L5_9147
-  LDA Z_84,X
+  LDA ACTOR_DEATH,X
   BEQ L5_916B
 .L5_9147
   DEX
   BPL L5_913F
-  ABS_INC Z_53
+  ABS_INC STAGE_PHASE
   LDA #&1B
   JSR AUDIO_CALL
   RTS
 .L5_9153
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ L5_9177
-  ABS_LDA Z_53
+  ABS_LDA STAGE_PHASE
   CMP #&96
   BCS L5_9177
   LDX #&08
-  LDA W_055A
+  LDA CLOCK_FRAME
   BPL L5_9190
 
 ; (not seen executing during the coverage runs)
@@ -1853,7 +1853,7 @@ ENDIF
   INX
   TXA
   ORA #&80
-  STA W_051B
+  STA ROUND_RES
   LDA #&1A
   JSR AUDIO_CALL
 .L5_9177
@@ -1864,30 +1864,30 @@ ENDIF
   AND #&03
   ASL A
   TAX
-  INC W_051C
-  LDA W_051C
+  INC ROUND_WAIT
+  LDA ROUND_WAIT
   CMP #&96
   BCC L5_9190
   LDA #&00
-  STA W_051B
+  STA ROUND_RES
   LDA #&B4
-  ABS_STA Z_53
+  ABS_STA STAGE_PHASE
 .L5_9190
   LDA ROUND_OAM_PTRS,X
-  STA Z_54
+  STA SPR_PTR
   LDA D5_91B2,X
-  STA Z_55
+  STA SPR_PTR_HI
   LDA ROUND_SPR_X
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D5_91BE
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 
 ; Six words for UPDATE_ROUND. The first is 0000. The others point at metasprites just after ROUND_SPR_X.
-; X is 0, 2, 4 or 6 from the low bits of W_051B, or 8 or 0Ah from the sign of W_055A.
+; X is 0, 2, 4 or 6 from the low bits of ROUND_RES, or 8 or 0Ah from the sign of CLOCK_FRAME.
 .ROUND_OAM_PTRS
   EQUB &00
 .D5_91B2
@@ -1904,30 +1904,30 @@ ENDIF
 .D5_91BE
   EQUB &94
 
-; 8-sprite metasprite. UPDATE_ROUND selects it when the low bits of negative W_051B are 1.
+; 8-sprite metasprite. UPDATE_ROUND selects it when the low bits of negative ROUND_RES are 1.
 .ROUND_SPR_SLOT0
   EQUB &08,&C0,&E0,&ED,&01,&C1,&E8,&E8,&01,&C2,&F0,&E6,&01,&C3,&F8,&E4
   EQUB &01,&C4,&00,&E4,&01,&C5,&08,&E6,&01,&C6,&10,&E8,&01,&C9,&18,&ED
   EQUB &01
 
-; 8-sprite metasprite. Selected when the low bits of negative W_051B are 2. One tile byte differs from ROUND_SPR_SLOT0 (C7 instead of C6).
+; 8-sprite metasprite. Selected when the low bits of negative ROUND_RES are 2. One tile byte differs from ROUND_SPR_SLOT0 (C7 instead of C6).
 .ROUND_SPR_SLOT1
   EQUB &08,&C0,&E0,&ED,&01,&C1,&E8,&E8,&01,&C2,&F0,&E6,&01,&C3,&F8,&E4
   EQUB &01,&C4,&00,&E4,&01,&C5,&08,&E6,&01,&C7,&10,&E8,&01,&C9,&18,&ED
   EQUB &01
 
-; 8-sprite metasprite. Selected when the low bits of negative W_051B are 3. One tile byte differs (C8).
+; 8-sprite metasprite. Selected when the low bits of negative ROUND_RES are 3. One tile byte differs (C8).
 .ROUND_SPR_SLOT2
   EQUB &08,&C0,&E0,&ED,&01,&C1,&E8,&E8,&01,&C2,&F0,&E6,&01,&C3,&F8,&E4
   EQUB &01,&C4,&00,&E4,&01,&C5,&08,&E6,&01,&C8,&10,&E8,&01,&C9,&18,&ED
   EQUB &01
 
-; 5-sprite metasprite. UPDATE_ROUND uses pointer index 4 while Z_53 is below 96h and W_055A is positive.
+; 5-sprite metasprite. UPDATE_ROUND uses pointer index 4 while STAGE_PHASE is below 96h and CLOCK_FRAME is positive.
 .ROUND_SPR_TIME_POS
   EQUB &05,&CB,&E8,&E8,&01,&C5,&F2,&E8,&01,&C2,&FC,&E8,&01,&CA,&06,&E8
   EQUB &01,&C9,&10,&E8,&01
 
-; 7-sprite metasprite. Same path as ROUND_SPR_TIME_POS, but W_055A is negative.
+; 7-sprite metasprite. Same path as ROUND_SPR_TIME_POS, but CLOCK_FRAME is negative.
 .ROUND_SPR_TIME_NEG
   EQUB &07,&CC,&E0,&E8,&01,&CD,&E8,&E8,&01,&CE,&F0,&E8,&01,&C4,&F8,&E8
   EQUB &01,&CF,&08,&E8,&01,&D0,&10,&E8,&01,&CC,&18,&E8,&01
@@ -1935,48 +1935,48 @@ ENDIF
 ; Fill 1A0h bytes at 62F3h with FFh. Called from FILL_MAP_FF.
 .FILL_MAP_RAM
   LDA #&F3
-  STA Z_20
+  STA DATA_PTR
   LDA #&62
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&A0
-  STA Z_22
+  STA PPU_ADDR
   LDA #&01
-  STA Z_23
+  STA PPU_ADDR_HI
   LDY #&00
 .L5_9266
   LDA #&FF
-  STA (Z_20),Y
+  STA (DATA_PTR),Y
   INY
   BNE L5_926F
-  INC Z_21
+  INC DATA_PTR_HI
 .L5_926F
-  DEC Z_22
-  LDA Z_22
+  DEC PPU_ADDR
+  LDA PPU_ADDR
   CMP #&FF
   BNE L5_9279
-  DEC Z_23
+  DEC PPU_ADDR_HI
 .L5_9279
-  LDA Z_22
-  ORA Z_23
+  LDA PPU_ADDR
+  ORA PPU_ADDR_HI
   BNE L5_9266
   RTS
 
-; Fill nine bytes at W_03DB with FFh. Store 4Bh in W_03ED and 0 in W_03EE. Called from RESET_MARKS.
+; Fill nine bytes at PASS_CODE with FFh. Store 4Bh in FUSE_INIT and 0 in PASS_MARK. Called from RESET_MARKS.
 .INIT_PASS_BYTES
   LDX #&08
   LDA #&FF
 .L5_9284
-  STA W_03DB,X
+  STA PASS_CODE,X
   DEX
   BPL L5_9284
   LDA #&4B
-  STA W_03ED
+  STA FUSE_INIT
   LDA #&00
-  STA W_03EE
+  STA PASS_MARK
   RTS
 
-; Password screen. Loads CHR and palettes, copies W_03DB to W_03E4, then loops on the editor until TRY_PASS_ENTRY returns carry clear.
-; On exit stores 1 in Z_4A and Z_53, stores 0 in Z_49, and fades out. Does not return to its caller until that fade.
+; Password screen. Loads CHR and palettes, copies PASS_CODE to PASS_EDIT, then loops on the editor until TRY_PASS_ENTRY returns carry clear.
+; On exit stores 1 in KEEP_STAGE and STAGE_PHASE, stores 0 in GAME_MODE, and fades out. Does not return to its caller until that fade.
 .RUN_PASS_SCREEN
   JSR PPU_OFF
   JSR NMI_OFF
@@ -1988,7 +1988,7 @@ ENDIF
   JSR CLEAR_SCROLL
   JSR CLEAR_PASS_POS
   LDA #&00
-  STA W_054E
+  STA MENU_REDRAW
   JSR CLEAR_PASS_REPEAT
   JSR SAVE_PASS_BYTES
   JSR PPU_ON
@@ -2010,34 +2010,34 @@ ENDIF
 ; (not seen executing during the coverage runs)
 .L5_92E3
   LDA #&01
-  ABS_STA Z_4A
-  ABS_STA Z_53
+  ABS_STA KEEP_STAGE
+  ABS_STA STAGE_PHASE
   LDA #&00
-  ABS_STA Z_49
+  ABS_STA GAME_MODE
   JSR FADE_PALETTE
   JMP PPU_OFF
 
 ; Upload UI_SPR_CHR to PPU 1000h and the short PASS_CHR_BYTES run to PPU 0000h.
 .LOAD_PASS_CHR
   LDA #LO(UI_SPR_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(UI_SPR_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
   LDA #LO(PASS_CHR_BYTES)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(PASS_CHR_BYTES)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&05
   LDY #&01
   JMP UPLOAD_CHR_RLE
@@ -2045,16 +2045,16 @@ ENDIF
 ; Copy 16 background colors from UI_BG_PAL and 16 sprite colors from PASS_SPR_PAL, then MIRROR_BG_COLOR.
 .LOAD_PASS_PAL
   LDA #LO(UI_BG_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(UI_BG_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   LDA #LO(PASS_SPR_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(PASS_SPR_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&04
   LDX #&04
   JSR COPY_PAL_ROWS
@@ -2073,55 +2073,55 @@ IF REGION_JP
   LDA #LO(PASS_META_ATTR_JP)
 ELSE
 
-; Point Z_62, Z_64 and Z_66 at bank-4 password layout tables, point Z_20 at PASSWORD_LAY, and jump to L7_CD89.
+; Point TILE_GFX, TILE_MAP and TILE_ATTR at bank-4 password layout tables, point DATA_PTR at PASSWORD_LAY, and jump to L7_CD89.
 .BIND_PASS_LAYOUT
   LDA #LO(PASS_META_ATTR)
 ENDIF
-  STA Z_66
+  STA TILE_ATTR
 IF REGION_JP
   LDA #HI(PASS_META_ATTR_JP)
 ELSE
   LDA #HI(PASS_META_ATTR)
 ENDIF
-  STA Z_67
+  STA TILE_ATTR_HI
 IF REGION_JP
   LDA #LO(PASS_META_MAP_JP)
 ELSE
   LDA #LO(PASS_META_MAP)
 ENDIF
-  STA Z_64
+  STA TILE_MAP
 IF REGION_JP
   LDA #HI(PASS_META_MAP_JP)
 ELSE
   LDA #HI(PASS_META_MAP)
 ENDIF
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(PASS_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(PASS_META_GFX)
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(PASSWORD_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(PASSWORD_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Copy nine bytes from W_03DB to W_03E4.
+; Copy nine bytes from PASS_CODE to PASS_EDIT.
 .SAVE_PASS_BYTES
   LDX #&08
 .L5_938A
-  LDA W_03DB,X
-  STA W_03E4,X
+  LDA PASS_CODE,X
+  STA PASS_EDIT,X
   DEX
   BPL L5_938A
   RTS
 
-; Copy nine bytes from W_03E4 to W_03DB.
+; Copy nine bytes from PASS_EDIT to PASS_CODE.
 .LOAD_PASS_BYTES
   LDX #&08
 .L5_9396
-  LDA W_03E4,X
-  STA W_03DB,X
+  LDA PASS_EDIT,X
+  STA PASS_CODE,X
   DEX
   BPL L5_9396
   RTS
@@ -2135,10 +2135,10 @@ ENDIF
   STA W_054D
   RTS
 
-; Edit the password from W_0551, which POLL_PASS_KEYS just built.
-; Directions move W_054B and W_054C. B moves W_054D along the eight digits. Bit 7 of W_0551 writes PASS_KEY_MAP into W_03E4.
+; Edit the password from PASS_EDGES, which POLL_PASS_KEYS just built.
+; Directions move W_054B and W_054C. B moves W_054D along the eight digits. Bit 7 of PASS_EDGES writes PASS_KEY_MAP into PASS_EDIT.
 .EDIT_PASS_INPUT
-  LDX W_0551
+  LDX PASS_EDGES
   TXA
   AND #&80
   BEQ L5_93BA
@@ -2218,7 +2218,7 @@ ENDIF
   LDY W_054D
   CPY #&07
   BCS L5_944D
-  LDA W_03E4,Y
+  LDA PASS_EDIT,Y
   BMI L5_944D
   INC W_054D
 .L5_944D
@@ -2241,7 +2241,7 @@ ENDIF
   LDA PASS_KEY_MAP,X
   BMI L5_947F
   LDY W_054D
-  STA W_03E4,Y
+  STA PASS_EDIT,Y
   CPY #&07
   BCS L5_947B
   INC W_054D
@@ -2263,11 +2263,11 @@ ENDIF
   RTS
 .L5_948F
   LDX W_054D
-  LDA W_03E4,X
+  LDA PASS_EDIT,X
   BMI L5_94A2
 .L5_9497
-  LDA W_03E5,X
-  STA W_03E4,X
+  LDA PASS_EDIT_1,X
+  STA PASS_EDIT,X
   INX
   CPX #&08
   BCC L5_9497
@@ -2301,18 +2301,18 @@ ENDIF
   LDA PASS_CUR_XY,X
   CLC
   ADC #&48
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA PASS_CUR_ROWY,Y
   CLC
   ADC #&66
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   LDA #LO(PASS_CURSOR_SPR)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(PASS_CURSOR_SPR)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; One metasprite: count 1, tile 0, dx 0, dy 0, attr 0. Used by both password cursors.
@@ -2327,16 +2327,16 @@ ENDIF
   ASL A
   CLC
   ADC #&68
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA #&9E
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   LDA #LO(PASS_CURSOR_SPR)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(PASS_CURSOR_SPR)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; Map the eight password bytes to tiles and queue them at column 0Dh, row 13h.
@@ -2350,19 +2350,19 @@ IF REGION_JP
 ELSE
   LDA #&3A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&08
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
-; For each of eight bytes in W_03E4, store PASS_GLYPHS of that nybble into W_053A, or FEh when the byte is negative.
+; For each of eight bytes in PASS_EDIT, store PASS_GLYPHS of that nybble into W_053A, or FEh when the byte is negative.
 .MAP_PASS_TILES
   LDX #&07
 .L5_954E
-  LDY W_03E4,X
+  LDY PASS_EDIT,X
   BMI L5_9559
 IF REGION_JP
   LDA JD5_9609,Y
@@ -2378,45 +2378,45 @@ ENDIF
   BPL L5_954E
   RTS
 
-; Build an eight-nybble code in W_03E4 from RNG, Z_4B, Z_4C, Z_90 and Z_93, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
+; Build an eight-nybble code in PASS_EDIT from RNG, AREA_NUM, STAGE_NUM, ACTOR_FIRE and ACTOR_BOMBS, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
 .MAKE_STAGE_CODE
   JSR NEXT_RNG
   AND #&0F
   BEQ MAKE_STAGE_CODE
   LDX #&00
-  STA W_03E4,X
+  STA PASS_EDIT,X
   LDA #&00
-  STA Z_1C
-  ABS_LDA Z_4B
+  STA RLE_BYTE
+  ABS_LDA AREA_NUM
   LDX #&01
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  ABS_LDA Z_4C
+  ABS_LDA STAGE_NUM
   LDX #&02
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  ABS_LDA Z_90
+  ABS_LDA ACTOR_FIRE
   LDX #&04
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  ABS_LDA Z_93
+  ABS_LDA ACTOR_BOMBS
   LDX #&06
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
   JSR NEXT_RNG
   AND #&0F
   LDX #&05
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
   JSR NEXT_RNG
   AND #&0F
   LDX #&07
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  LDA Z_1C
+  LDA RLE_BYTE
   AND #&0F
   LDX #&03
-  STA W_03E4,X
+  STA PASS_EDIT,X
   JSR XOR_PASS_BYTES
   JSR LOAD_PASS_BYTES
   JSR MAP_PASS_TILES
@@ -2428,28 +2428,28 @@ IF REGION_JP
 ELSE
   LDA #&3A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&08
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
-; Add A into the running sum Z_1C. MAKE_STAGE_CODE calls this after each stored nybble.
+; Add A into the running sum RLE_BYTE. MAKE_STAGE_CODE calls this after each stored nybble.
 .ADD_PASS_NIBBLE
   CLC
-  ADC Z_1C
-  STA Z_1C
+  ADC RLE_BYTE
+  STA RLE_BYTE
   RTS
 
-; XOR W_03E4 bytes 1 through 7 with byte 0.
+; XOR PASS_EDIT bytes 1 through 7 with byte 0.
 .XOR_PASS_BYTES
   LDX #&01
 .L5_95EA
-  LDA W_03E4,X
-  EOR W_03E4
-  STA W_03E4,X
+  LDA PASS_EDIT,X
+  EOR PASS_EDIT
+  STA PASS_EDIT,X
   INX
   CPX #&08
   BCC L5_95EA
@@ -2482,7 +2482,7 @@ ELSE
 ENDIF
 
 ; When W_054A is set, accept the eight digits.
-; A short entry can set W_054E. A full entry must match a secret word or pass TEST_PASS_SUM and APPLY_PASS_STAGE. Carry clear leaves the screen. Carry set stays.
+; A short entry can set MENU_REDRAW. A full entry must match a secret word or pass TEST_PASS_SUM and APPLY_PASS_STAGE. Carry clear leaves the screen. Carry set stays.
 .TRY_PASS_ENTRY
   LDA W_054A
   BEQ L5_9657
@@ -2511,7 +2511,7 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   JMP L5_963D
 .L5_9650
   LDA #&04
@@ -2522,13 +2522,13 @@ ENDIF
   SEC
   RTS
 
-; Copy eight W_03E4 bytes into W_0542. Carry is set if any source byte is negative.
+; Copy eight PASS_EDIT bytes into PASS_DEC. Carry is set if any source byte is negative.
 .COPY_PASS_ENTRY
   LDX #&00
 .L5_965B
-  LDA W_03E4,X
+  LDA PASS_EDIT,X
   BMI L5_966A
-  STA W_0542,X
+  STA PASS_DEC,X
   INX
   CPX #&08
   BCC L5_965B
@@ -2538,13 +2538,13 @@ ENDIF
   SEC
   RTS
 
-; XOR W_0542 bytes 1 through 7 with byte 0. Out: Z flag from the last byte. The caller treats nonzero as failure.
+; XOR PASS_DEC bytes 1 through 7 with byte 0. Out: Z flag from the last byte. The caller treats nonzero as failure.
 .XOR_PASS_ENTRY
   LDX #&01
 .L5_966E
-  LDA W_0542,X
-  EOR W_0542
-  STA W_0542,X
+  LDA PASS_DEC,X
+  EOR PASS_DEC
+  STA PASS_DEC,X
   INX
   CPX #&08
   BCC L5_966E
@@ -2568,22 +2568,22 @@ ENDIF
   CMP W_0545
   RTS
 
-; Store the decoded nybbles into Z_4B, Z_4C, Z_90 and Z_93 when they are below 6, 8, 8 and 5. Carry set means reject.
+; Store the decoded nybbles into AREA_NUM, STAGE_NUM, ACTOR_FIRE and ACTOR_BOMBS when they are below 6, 8, 8 and 5. Carry set means reject.
 .APPLY_PASS_STAGE
   LDA W_0543
-  ABS_STA Z_4B
+  ABS_STA AREA_NUM
   CMP #&06
   BCS L5_96C4
   LDA W_0544
-  ABS_STA Z_4C
+  ABS_STA STAGE_NUM
   CMP #&08
   BCS L5_96C4
   LDA W_0546
-  ABS_STA Z_90
+  ABS_STA ACTOR_FIRE
   CMP #&08
   BCS L5_96C4
   LDA W_0548
-  ABS_STA Z_93
+  ABS_STA ACTOR_BOMBS
   CMP #&05
   BCS L5_96C4
 
@@ -2595,24 +2595,24 @@ ENDIF
   RTS
 
 ; Compare the eight decoded tiles with the seven words at PASS_WORDS.
-; Out: carry clear and Z_1C = word index on a match. Carry set and Z_1C = FFh otherwise.
+; Out: carry clear and RLE_BYTE = word index on a match. Carry set and RLE_BYTE = FFh otherwise.
 .MATCH_PASS_WORD
   LDA #&00
-  STA Z_1C
+  STA RLE_BYTE
   LDA #LO(PASS_WORDS)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(PASS_WORDS)
-  STA Z_21
+  STA DATA_PTR_HI
 .L5_96D2
   LDY #&00
 .L5_96D4
-  LDX W_0542,Y
+  LDX PASS_DEC,Y
 IF REGION_JP
   LDA JD5_9609,X
 ELSE
   LDA PASS_GLYPH_US,X
 ENDIF
-  CMP (Z_20),Y
+  CMP (DATA_PTR),Y
   BNE L5_96E8
 
 ; (not seen executing during the coverage runs)
@@ -2623,19 +2623,19 @@ ENDIF
   CLC
   RTS
 .L5_96E8
-  LDA Z_20
+  LDA DATA_PTR
   CLC
   ADC #&08
-  STA Z_20
-  LDA Z_21
+  STA DATA_PTR
+  LDA DATA_PTR_HI
   ADC #&00
-  STA Z_21
-  INC Z_1C
-  LDA Z_1C
+  STA DATA_PTR_HI
+  INC RLE_BYTE
+  LDA RLE_BYTE
   CMP #&07
   BCC L5_96D2
   LDA #&FF
-  STA Z_1C
+  STA RLE_BYTE
   SEC
   RTS
 
@@ -2655,10 +2655,10 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Apply secret word Z_1C.
-; 0 sets W_054F. 1 and 2 set W_03EE to 1 or 2 and W_054E. 3 sets W_0550. 4, 5 and 6 set W_03ED to 2Dh, 4Bh or 69h and set W_054E.
+; Apply secret word RLE_BYTE.
+; 0 sets MENU_MODE1. 1 and 2 set PASS_MARK to 1 or 2 and MENU_REDRAW. 3 sets MENU_BONUS. 4, 5 and 6 set FUSE_INIT to 2Dh, 4Bh or 69h and set MENU_REDRAW.
 .APPLY_PASS_WORD
-  LDX Z_1C
+  LDX RLE_BYTE
   BEQ L5_979F
   DEX
   BEQ L5_9794
@@ -2675,129 +2675,129 @@ ENDIF
   RTS
 .L5_9762
   LDA #&69
-  STA W_03ED
+  STA FUSE_INIT
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   RTS
 .L5_976D
   LDA #&4B
-  STA W_03ED
+  STA FUSE_INIT
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   RTS
 .L5_9778
   LDA #&2D
-  STA W_03ED
+  STA FUSE_INIT
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   RTS
 .L5_9783
   LDA #&01
-  STA W_0550
+  STA MENU_BONUS
   RTS
 .L5_9789
   LDA #&02
-  STA W_03EE
+  STA PASS_MARK
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   RTS
 .L5_9794
   LDA #&01
-  STA W_03EE
+  STA PASS_MARK
   LDA #&01
-  STA W_054E
+  STA MENU_REDRAW
   RTS
 .L5_979F
   LDA #&01
-  STA W_054F
+  STA MENU_MODE1
   RTS
 
-; Zero the eight key-repeat timers at W_0552.
+; Zero the eight key-repeat timers at PASS_REPEAT.
 .CLEAR_PASS_REPEAT
   LDX #&07
   LDA #&00
 .L5_97A9
-  STA W_0552,X
+  STA PASS_REPEAT,X
   DEX
   BPL L5_97A9
   RTS
 
-; Build W_0551 from JOY_NEW and JOY_HELD. Bit 7 is A, then B, Select, Start, up, down, left, right.
-; A held direction repeats every 6 frames after a 0Eh-frame delay, using W_0552.
+; Build PASS_EDGES from JOY_NEW and JOY_HELD. Bit 7 is A, then B, Select, Start, up, down, left, right.
+; A held direction repeats every 6 frames after a 0Eh-frame delay, using PASS_REPEAT.
 .POLL_PASS_KEYS
   LDX #&07
   LDA #&80
-  STA Z_1C
+  STA RLE_BYTE
 .L5_97B6
-  LDA Z_1C
+  LDA RLE_BYTE
   BIT JOY_NEW
   BNE L5_97D1
   CLC
   BIT JOY_HELD
   BEQ L5_97D7
-  DEC W_0552,X
+  DEC PASS_REPEAT,X
   BNE L5_97D7
   LDA #&06
-  STA W_0552,X
+  STA PASS_REPEAT,X
   SEC
   JMP L5_97D7
 .L5_97D1
   LDA #&0E
-  STA W_0552,X
+  STA PASS_REPEAT,X
   SEC
 .L5_97D7
-  ROL W_0551
-  LSR Z_1C
+  ROL PASS_EDGES
+  LSR RLE_BYTE
   DEX
   BPL L5_97B6
   RTS
 
-; Start the stage clock. Frame counter W_055A is 3Ch and W_055B is 0.
-; Z_4E uses digits 0 and 3. A nonzero Z_49 uses 3 and 0. Story mode reads the two digits from STAGE_TIME_TAB. Called from STAGE_SETUP.
+; Start the stage clock. Frame counter CLOCK_FRAME is 3Ch and W_055B is 0.
+; SPECIAL_STAGE uses digits 0 and 3. A nonzero GAME_MODE uses 3 and 0. Story mode reads the two digits from STAGE_TIME_TAB. Called from STAGE_SETUP.
 .INIT_STAGE_CLOCK
-  ABS_LDA Z_4E
+  ABS_LDA SPECIAL_STAGE
   BNE L5_981F
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BNE L5_980C
   LDA #&3C
-  STA W_055A
+  STA CLOCK_FRAME
   LDA #&00
   STA W_055B
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   ASL A
   ASL A
-  ABS_ORA Z_4C
+  ABS_ORA STAGE_NUM
   ASL A
   TAX
   LDA D5_9835,X
-  STA W_055C
+  STA CLOCK_DIG1
   LDA STAGE_TIME_TAB,X
-  STA W_055D
+  STA CLOCK_DIG2
   RTS
 .L5_980C
   LDA #&3C
-  STA W_055A
+  STA CLOCK_FRAME
   LDA #&00
   STA W_055B
-  STA W_055C
+  STA CLOCK_DIG1
   LDA #&03
-  STA W_055D
+  STA CLOCK_DIG2
   RTS
 
 ; (not seen executing during the coverage runs)
 .L5_981F
   LDA #&3C
-  STA W_055A
+  STA CLOCK_FRAME
   LDA #&00
   STA W_055B
   LDA #&03
-  STA W_055C
+  STA CLOCK_DIG1
   LDA #&00
-  STA W_055D
+  STA CLOCK_DIG2
   RTS
 
-; 48 stages, 2 bytes each: the first drawn digit and the second. Indexed by (area*8+stage)*2. INIT_STAGE_CLOCK stores them in W_055D and W_055C. The third digit starts at 0.
+; 48 stages, 2 bytes each: the first drawn digit and the second. Indexed by (area*8+stage)*2. INIT_STAGE_CLOCK stores them in CLOCK_DIG2 and CLOCK_DIG1. The third digit starts at 0.
 .STAGE_TIME_TAB
   EQUB &02
 .D5_9835
@@ -2810,46 +2810,46 @@ ENDIF
 .L5_9894
   RTS
 
-; Count the stage clock down once per frame unless Z_B7, W_051B, Z_53, or a negative W_055A says to stop.
+; Count the stage clock down once per frame unless CLEAR_PHASE, ROUND_RES, STAGE_PHASE, or a negative CLOCK_FRAME says to stop.
 ; At zero, call KILL_PLAYERS. When only the last digit remains, 3Bh and 1Dh play sound 8. Then falls into DRAW_STAGE_CLOCK.
 .TICK_STAGE_CLOCK
-  ABS_LDA Z_B7
-  ORA W_051B
-  ABS_ORA Z_53
+  ABS_LDA CLEAR_PHASE
+  ORA ROUND_RES
+  ABS_ORA STAGE_PHASE
   BNE L5_9894
-  LDA W_055A
+  LDA CLOCK_FRAME
   BMI L5_9894
-  DEC W_055A
+  DEC CLOCK_FRAME
   BPL L5_98DD
   LDA #&3B
-  STA W_055A
+  STA CLOCK_FRAME
   DEC W_055B
   BPL L5_98DD
   LDA #&09
   STA W_055B
-  DEC W_055C
+  DEC CLOCK_DIG1
   BPL L5_98DD
   LDA #&09
-  STA W_055C
-  DEC W_055D
+  STA CLOCK_DIG1
+  DEC CLOCK_DIG2
   BPL L5_98DD
 
 ; (not seen executing during the coverage runs)
   LDX #&00
   STX W_055B
-  STX W_055C
-  STX W_055D
+  STX CLOCK_DIG1
+  STX CLOCK_DIG2
   DEX
-  STX W_055A
+  STX CLOCK_FRAME
   JSR KILL_PLAYERS
   JMP DRAW_STAGE_CLOCK
 .L5_98DD
-  LDA W_055D
-  ORA W_055C
+  LDA CLOCK_DIG2
+  ORA CLOCK_DIG1
   BNE DRAW_STAGE_CLOCK
 
 ; (not seen executing during the coverage runs)
-  LDA W_055A
+  LDA CLOCK_FRAME
   CMP #&3B
   BEQ L5_98F0
   CMP #&1D
@@ -2859,22 +2859,22 @@ ENDIF
   JSR AUDIO_CALL
 
 ; Queue five tiles: 54h, 7Eh, and the three clock digits ORed with 30h.
-; Column comes from CLOCK_HUD_COL indexed by Z_49. Row is 2.
+; Column comes from CLOCK_HUD_COL indexed by GAME_MODE. Row is 2.
 .DRAW_STAGE_CLOCK
   LDA #&54
   STA W_052A
   LDA #&7E
   STA W_052B
-  LDA W_055D
+  LDA CLOCK_DIG2
   ORA #&30
   STA W_052C
-  LDA W_055C
+  LDA CLOCK_DIG1
   ORA #&30
   STA W_052D
   LDA W_055B
   ORA #&30
   STA W_052E
-  ABS_LDY Z_49
+  ABS_LDY GAME_MODE
   LDX CLOCK_HUD_COL,Y
   LDY #&02
   JSR XY_TO_NT_ADDR
@@ -2883,34 +2883,34 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&05
   JMP QUEUE_PPU_RUN
 
-; Three nametable columns for the clock, indexed by Z_49: 0Eh, 0Dh, 18h.
+; Three nametable columns for the clock, indexed by GAME_MODE: 0Eh, 0Dh, 18h.
 .CLOCK_HUD_COL
   EQUB &0E,&0D,&18
 
-; Zero W_055E, W_055F and W_0560. Called from NEW_AREA.
+; Zero MATCH_0, MATCH_1 and MATCH_2. Called from NEW_AREA.
 .CLEAR_SCORE_RAM
   LDA #&00
-  STA W_055E
-  STA W_055F
-  STA W_0560
+  STA MATCH_0
+  STA MATCH_1
+  STA MATCH_2
   RTS
 
-; Draw the score HUD. Z_49 0 falls into DRAW_LIVES_HUD.
-; Z_49 1 draws W_055E and W_055F. Any other value draws those two plus W_0560. Each value is one digit.
+; Draw the score HUD. GAME_MODE 0 falls into DRAW_LIVES_HUD.
+; GAME_MODE 1 draws MATCH_0 and MATCH_1. Any other value draws those two plus MATCH_2. Each value is one digit.
 .DRAW_MODE_HUD
   LDA #&50
   STA W_052A
   LDA #&7E
   STA W_052C
-  ABS_LDY Z_49
+  ABS_LDY GAME_MODE
   BEQ DRAW_LIVES_HUD
   CPY #&01
   BEQ L5_9982
@@ -2920,35 +2920,35 @@ ENDIF
   STA W_052B
   LDX #&03
   LDY #&02
-  LDA W_055E
+  LDA MATCH_0
   JSR DRAW_SCORE_PAIR
   LDA #&32
   STA W_052B
   LDX #&0A
   LDY #&02
-  LDA W_055F
+  LDA MATCH_1
   JSR DRAW_SCORE_PAIR
   LDA #&33
   STA W_052B
   LDX #&11
   LDY #&02
-  LDA W_0560
+  LDA MATCH_2
   JMP DRAW_SCORE_PAIR
 .L5_9982
   LDA #&31
   STA W_052B
   LDX #&05
   LDY #&02
-  LDA W_055E
+  LDA MATCH_0
   JSR DRAW_SCORE_PAIR
   LDA #&32
   STA W_052B
   LDX #&17
   LDY #&02
-  LDA W_055F
+  LDA MATCH_1
   JMP DRAW_SCORE_PAIR
 
-; Queue LIVES_TEXT and the W_04E5 digit at column 16h, row 2. Called for story mode and from the bonus stage.
+; Queue LIVES_TEXT and the LIVES digit at column 16h, row 2. Called for story mode and from the bonus stage.
 .DRAW_LIVES_HUD
   LDX #&00
 .L5_99A2
@@ -2957,7 +2957,7 @@ ENDIF
   INX
   CPX #&05
   BCC L5_99A2
-  LDA W_04E5
+  LDA LIVES
   ORA #&30
   STA W_052A,X
   LDX #&16
@@ -2968,11 +2968,11 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&06
   JMP QUEUE_PPU_RUN
 
@@ -2992,93 +2992,93 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&04
   JMP QUEUE_PPU_RUN
 
-; Demo pad. Returns at once when W_03EF is 0.
-; DEMO_PAD_PTR selects the record from W_03F0. DEMO_PAD_LOCK clear records JOYPAD1 into the record. Nonzero plays the record back into W_04C2 and W_04C1.
+; Demo pad. Returns at once when DEMO_MODE is 0.
+; DEMO_PAD_PTR selects the record from DEMO_SLOT. DEMO_PAD_LOCK clear records JOYPAD1 into the record. Nonzero plays the record back into ACTOR_HELD and ACTOR_NEW.
 .SERVICE_DEMO_PAD
-  LDA W_03EF
+  LDA DEMO_MODE
   BEQ L5_9A41
-  LDA W_03F0
+  LDA DEMO_SLOT
   ASL A
   TAX
   LDA DEMO_PAD_PTR,X
-  STA Z_B9
+  STA DEMO_PTR
   LDA D5_9A8B,X
-  STA Z_BA
+  STA DEMO_PTR_HI
   LDA DEMO_PAD_LOCK
   BNE L5_9A4D
 
 ; (not seen executing during the coverage runs)
   LDA JOYPAD1
-  STA W_04C2
+  STA ACTOR_HELD
   LDA JOYPAD1_NEW
-  STA W_04C1
-  LDA W_03F1
+  STA ACTOR_NEW
+  LDA DEMO_POS
   ASL A
   TAY
-  LDA W_03F3
+  LDA DEMO_BTN
   CMP JOYPAD1
   BEQ L5_9A42
 .L5_9A1F
-  LDA W_03F3
-  STA (Z_B9),Y
-  LDA W_03F2
+  LDA DEMO_BTN
+  STA (DEMO_PTR),Y
+  LDA DEMO_HOLD
   INY
-  STA (Z_B9),Y
-  INC W_03F1
+  STA (DEMO_PTR),Y
+  INC DEMO_POS
   LDA #&00
-  STA W_03F2
+  STA DEMO_HOLD
   LDA JOYPAD1
-  STA W_03F3
-  STA W_04C2
+  STA DEMO_BTN
+  STA ACTOR_HELD
   LDA JOYPAD1_NEW
-  STA W_04C1
+  STA ACTOR_NEW
 .L5_9A41
   RTS
 
 ; (not seen executing during the coverage runs)
 .L5_9A42
-  INC W_03F2
-  LDA W_03F2
+  INC DEMO_HOLD
+  LDA DEMO_HOLD
   CMP #&FF
   BEQ L5_9A1F
   RTS
 .L5_9A4D
-  LDA W_03F3
-  STA W_03F4
-  LDA W_03F2
+  LDA DEMO_BTN
+  STA DEMO_PREV
+  LDA DEMO_HOLD
   BEQ L5_9A5E
-  DEC W_03F2
+  DEC DEMO_HOLD
   JMP L5_9A71
 .L5_9A5E
-  LDA W_03F1
-  INC W_03F1
+  LDA DEMO_POS
+  INC DEMO_POS
   ASL A
   TAY
-  LDA (Z_B9),Y
-  STA W_03F3
+  LDA (DEMO_PTR),Y
+  STA DEMO_BTN
   INY
-  LDA (Z_B9),Y
-  STA W_03F2
+  LDA (DEMO_PTR),Y
+  STA DEMO_HOLD
 .L5_9A71
-  LDA W_03F3
-  EOR W_03F4
-  AND W_03F3
-  STA W_03F5
-  LDA W_03F3
-  STA W_04C2
-  LDA W_03F5
-  STA W_04C1
+  LDA DEMO_BTN
+  EOR DEMO_PREV
+  AND DEMO_BTN
+  STA DEMO_EDGE
+  LDA DEMO_BTN
+  STA ACTOR_HELD
+  LDA DEMO_EDGE
+  STA ACTOR_NEW
   RTS
 
-; Four words, one demo-pad record per W_03F0. The records are DEMO_REC_A, DEMO_REC_B, DEMO_REC_C, and DEMO_REC_D.
+; Four words, one demo-pad record per DEMO_SLOT. The records are DEMO_REC_A, DEMO_REC_B, DEMO_REC_C, and DEMO_REC_D.
 ; Each record is pairs of pad byte and duration.
 .DEMO_PAD_PTR
   EQUB LO(DEMO_REC_A)
@@ -3162,29 +3162,29 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Bonus stage. Saves Z_90, Z_93, Z_4B and Z_4C, sets Z_4E, area 0, stage 7, Z_90 to 8 and Z_93 to 5, then runs its own frame loop until Z_B7 reaches F0h.
-; Restores the saved bytes, clears Z_4E and Z_B4, and returns. SHOW_BONUS_CARD runs first.
+; Bonus stage. Saves ACTOR_FIRE, ACTOR_BOMBS, AREA_NUM and STAGE_NUM, sets SPECIAL_STAGE, area 0, stage 7, ACTOR_FIRE to 8 and ACTOR_BOMBS to 5, then runs its own frame loop until CLEAR_PHASE reaches F0h.
+; Restores the saved bytes, clears SPECIAL_STAGE and EXIT_OPEN, and returns. SHOW_BONUS_CARD runs first.
 .RUN_BONUS_STAGE
   JSR SHOW_BONUS_CARD
   JSR NMI_OFF
   LDA #&01
-  STA Z_4E
-  ABS_LDA Z_90
-  STA Z_4F
-  ABS_LDA Z_93
-  STA Z_50
-  LDA Z_4B
-  STA Z_52
-  LDA Z_4C
-  STA Z_51
+  STA SPECIAL_STAGE
+  ABS_LDA ACTOR_FIRE
+  STA BONUS_FIRE
+  ABS_LDA ACTOR_BOMBS
+  STA BONUS_BOMBS
+  LDA AREA_NUM
+  STA BONUS_AREA
+  LDA STAGE_NUM
+  STA BONUS_STAGE
   LDA #&08
-  ABS_STA Z_90
+  ABS_STA ACTOR_FIRE
   LDA #&05
-  ABS_STA Z_93
+  ABS_STA ACTOR_BOMBS
   LDA #&07
-  STA Z_4C
+  STA STAGE_NUM
   LDA #&00
-  STA Z_4B
+  STA AREA_NUM
   JSR CLEAR_BOMB_RAM
   LDA #&00
   JSR FILL_NAMETABLE
@@ -3202,18 +3202,18 @@ ENDIF
   FARCALL 5, DRAW_STAGE_CLOCK
   FARCALL 5, DRAW_LIVES_HUD
   LDA #&00
-  ABS_STA Z_B7
-  STA Z_53
-  STA X_62E6
-  STA X_62E7
-  STA X_62E8
+  ABS_STA CLEAR_PHASE
+  STA STAGE_PHASE
+  STA PARADE_IDX
+  STA TYPE10_TRY
+  STA TYPE10_ARM
   JSR PPU_ON
   JSR SET_TOP_SPLIT
   JSR MARK_PALETTE
   LDA #&14
   JSR AUDIO_CALL
 
-; One bonus-stage frame: players, enemy spawn, blasts, enemies, DRAW_LIVES, the clock, and the bank routine DRAW_HUD_SCORE. Leaves when Z_B7 reaches F0h.
+; One bonus-stage frame: players, enemy spawn, blasts, enemies, DRAW_LIVES, the clock, and the bank routine DRAW_HUD_SCORE. Leaves when CLEAR_PHASE reaches F0h.
 .BONUS_FRAME
   JSR WAIT_NMI
   JSR UPDATE_PLAYERS
@@ -3223,23 +3223,23 @@ ENDIF
   FARCALL 5, DRAW_LIVES
   FARCALL 5, TICK_STAGE_CLOCK
   FARCALL 5, DRAW_HUD_SCORE
-  ABS_LDA Z_B7
+  ABS_LDA CLEAR_PHASE
   CMP #&F0
   BCS L5_9F44
   JSR MARK_OAM
   JMP BONUS_FRAME
 .L5_9F44
-  LDA Z_4F
-  ABS_STA Z_90
-  LDA Z_50
-  ABS_STA Z_93
-  LDA Z_52
-  STA Z_4B
-  LDA Z_51
-  STA Z_4C
+  LDA BONUS_FIRE
+  ABS_STA ACTOR_FIRE
+  LDA BONUS_BOMBS
+  ABS_STA ACTOR_BOMBS
+  LDA BONUS_AREA
+  STA AREA_NUM
+  LDA BONUS_STAGE
+  STA STAGE_NUM
   LDA #&00
-  STA Z_4E
-  ABS_STA Z_B4
+  STA SPECIAL_STAGE
+  ABS_STA EXIT_OPEN
   RTS
 
 ; Blank the screen, load mode CHR, draw the bonus string, wait B4h frames, and fade out.
@@ -3270,13 +3270,13 @@ IF REGION_JP
   LDA #&9E
 ELSE
 
-; Point Z_20 at the bonus string that follows LOAD_BONUS_PAL and call DRAW_INLINE_STR. The US string and the JP string are at different addresses in this bank.
+; Point DATA_PTR at the bonus string that follows LOAD_BONUS_PAL and call DRAW_INLINE_STR. The US string and the JP string are at different addresses in this bank.
 .DRAW_BONUS_TEXT
   LDA #&AE
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&9F
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_INLINE_STR
 IF REGION_JP
 
@@ -3288,9 +3288,9 @@ ELSE
 .LOAD_BONUS_PAL
   LDA #&BC
 ENDIF
-  STA Z_16
+  STA PAL_SRC
   LDA #&9F
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&01
   JSR COPY_PAL_ROWS
@@ -3300,13 +3300,13 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Set Z_49 to 1, fill the nametable with 40h, load mode graphics, and repeat INIT_MODE1_SEL plus the menu handlers at SND_ROOM_INPUT. Does not return.
+; Set GAME_MODE to 1, fill the nametable with 40h, load mode graphics, and repeat INIT_MODE1_SEL plus the menu handlers at SND_ROOM_INPUT. Does not return.
 .RUN_MODE1_MENU
   JSR NMI_OFF
   LDA #&40
   JSR FILL_NAMETABLE
   LDA #&01
-  STA Z_49
+  STA GAME_MODE
   JSR CLEAR_ATTRS
   JSR LOAD_MODE_GFX
   JSR NMI_ON
@@ -3322,21 +3322,21 @@ ENDIF
   JSR MARK_OAM
   JMP L5_9FE1
 
-; Zero W_04CD and copy the three bytes at SND_PARAM_MIN into W_04CE, W_04CF and W_04D0.
+; Zero SNDROOM_CUR and copy the three bytes at SND_PARAM_MIN into SNDROOM_P0, SNDROOM_P1 and SNDROOM_P2.
 .INIT_MODE1_SEL
   LDA #&00
-  STA W_04CD
+  STA SNDROOM_CUR
   LDA SND_PARAM_MIN
-  STA W_04CE
+  STA SNDROOM_P0
   LDA D5_A086
-  STA W_04CF
+  STA SNDROOM_P1
   LDA D5_A087
-  STA W_04D0
+  STA SNDROOM_P2
   RTS
 
 ; Sound-room input. Called each frame from RUN_MODE1_MENU.
-; In: JOY_NEW. Up/down wraps W_04CD in 0..2.
-; B/A clamp W_04CE,X to SND_PARAM_MIN/MAX.
+; In: JOY_NEW. Up/down wraps SNDROOM_CUR in 0..2.
+; B/A clamp SNDROOM_P0,X to SND_PARAM_MIN/MAX.
 ; Start plays that byte; Select plays command 80h.
 .SND_ROOM_INPUT
   LDX JOY_NEW
@@ -3360,53 +3360,53 @@ ENDIF
   BNE SND_PARAM_UP
   RTS
 .SND_CUR_UP
-  DEC W_04CD
+  DEC SNDROOM_CUR
   BPL L5_A037
   LDA #&02
-  STA W_04CD
+  STA SNDROOM_CUR
 .L5_A037
   RTS
 .SND_CUR_DOWN
-  INC W_04CD
-  LDA W_04CD
+  INC SNDROOM_CUR
+  LDA SNDROOM_CUR
   CMP #&03
   BCC L5_A037
   LDA #&00
-  STA W_04CD
+  STA SNDROOM_CUR
   RTS
 .L5_A048
   LDA #&80
   JMP AUDIO_CALL
 .SND_PLAY_PARAM
-  LDX W_04CD
-  LDA W_04CE,X
+  LDX SNDROOM_CUR
+  LDA SNDROOM_P0,X
   JMP AUDIO_CALL
 .SND_PARAM_DOWN
-  LDX W_04CD
-  DEC W_04CE,X
+  LDX SNDROOM_CUR
+  DEC SNDROOM_P0,X
   BMI L5_A066
-  LDA W_04CE,X
+  LDA SNDROOM_P0,X
   CMP SND_PARAM_MIN,X
   BCS L5_A06F
 .L5_A066
   LDA SND_PARAM_MAX,X
   SEC
   SBC #&01
-  STA W_04CE,X
+  STA SNDROOM_P0,X
 .L5_A06F
   RTS
 .SND_PARAM_UP
-  LDX W_04CD
-  INC W_04CE,X
-  LDA W_04CE,X
+  LDX SNDROOM_CUR
+  INC SNDROOM_P0,X
+  LDA SNDROOM_P0,X
   CMP SND_PARAM_MAX,X
   BCC L5_A084
   LDA SND_PARAM_MIN,X
-  STA W_04CE,X
+  STA SNDROOM_P0,X
 .L5_A084
   RTS
 
-; Sound-room minimum for the three W_04CE values. 3 bytes: 0Ch, 00h, 1Eh.
+; Sound-room minimum for the three SNDROOM_P0 values. 3 bytes: 0Ch, 00h, 1Eh.
 .SND_PARAM_MIN
   EQUB &0C
 .D5_A086
@@ -3427,24 +3427,24 @@ ENDIF
 ; (not seen executing during the coverage runs)
 
 ; Draw the sound-room cursor.
-; In: W_04CD. X from SND_CURSOR_X, Y from SND_CURSOR_Y.
+; In: SNDROOM_CUR. X from SND_CURSOR_X, Y from SND_CURSOR_Y.
 .DRAW_SND_CURSOR
-  LDX W_04CD
+  LDX SNDROOM_CUR
   LDA SND_CURSOR_X
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA SND_CURSOR_Y,X
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
 IF REGION_JP
   LDA #&A1
 ELSE
   LDA #&B1
 ENDIF
-  STA Z_54
+  STA SPR_PTR
   LDA #&A0
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
   EQUB &01,&2A,&00,&00,&00
 
@@ -3459,13 +3459,13 @@ ENDIF
   LDX #&02
 
 ; Draw one sound parameter as two glyphs.
-; In: X = row 0..2. Value is W_04CE,X minus SND_PARAM_MIN.
+; In: X = row 0..2. Value is SNDROOM_P0,X minus SND_PARAM_MIN.
 ; Queued at column 12h, row SND_VALUE_ROW,X.
 .DRAW_SND_VALUE
-  LDA W_04CE,X
+  LDA SNDROOM_P0,X
   SEC
   SBC SND_PARAM_MIN,X
-  STA Z_1C
+  STA RLE_BYTE
   LSR A
   LSR A
   LSR A
@@ -3473,7 +3473,7 @@ ENDIF
   TAY
   LDA SND_HEX_GLYPH,Y
   STA W_052A
-  LDA Z_1C
+  LDA RLE_BYTE
   AND #&0F
   TAY
   LDA SND_HEX_GLYPH,Y
@@ -3486,12 +3486,12 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&02
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 
 ; Nametable rows for the three sound values. 3 bytes: 0Ah, 0Ch, 0Eh.
@@ -3514,61 +3514,61 @@ ELSE
 .DRAW_SND_ROOM_TEXT
   LDA #&5E
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&A1
-  STA Z_21
+  STA DATA_PTR_HI
   JSR QUEUE_XY_BYTES
 IF REGION_JP
   LDA #&6A
 ELSE
   LDA #&77
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&A1
-  STA Z_21
+  STA DATA_PTR_HI
   JSR QUEUE_XY_BYTES
 IF REGION_JP
   LDA #&72
 ELSE
   LDA #&7F
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&A1
-  STA Z_21
+  STA DATA_PTR_HI
   JSR QUEUE_XY_BYTES
 IF REGION_JP
   LDA #&7B
 ELSE
   LDA #&88
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&A1
-  STA Z_21
+  STA DATA_PTR_HI
   JMP QUEUE_XY_BYTES
 
-; Queue a nametable run from a record at Z_20.
-; In: (Z_20) = X, Y, length, bytes. Advances Z_20 past the header.
-; Out: PPU queue via QUEUE_PPU_RUN. Z_2E cleared.
+; Queue a nametable run from a record at DATA_PTR.
+; In: (DATA_PTR) = X, Y, length, bytes. Advances DATA_PTR past the header.
+; Out: PPU queue via QUEUE_PPU_RUN. PPU_RUN_CTRL cleared.
 .QUEUE_XY_BYTES
   LDY #&00
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAX
   INY
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAY
   JSR XY_TO_NT_ADDR
   LDY #&02
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAX
-  LDA Z_20
+  LDA DATA_PTR
   CLC
   ADC #&03
-  STA Z_20
-  LDA Z_21
+  STA DATA_PTR
+  LDA DATA_PTR_HI
   ADC #&00
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   JMP QUEUE_PPU_RUN
 IF REGION_JP
   EQUB &03
@@ -3604,7 +3604,7 @@ ENDIF
   EQUB &54,&0A,&0E,&03,&50,&43,&4D
 
 ; Title screen. SHOW_FRONT enters here.
-; Loads CHR, map and palette, then animates until Start/A or the idle timer W_051F/W_0520 hits 0.
+; Loads CHR, map and palette, then animates until Start/A or the idle timer TITLE_IDLE/TITLE_IDLE_HI hits 0.
 ; Idle timeout calls START_DEMO. Exit fades and turns the PPU off.
 .RUN_TITLE
   JSR PPU_OFF
@@ -3617,16 +3617,16 @@ ELSE
   STA SCROLL_X
   LDA #&01
 ENDIF
-  STA W_0521
+  STA TITLE_PHASE
   STA SCROLL_NT
   LDA #&60
   STA SCROLL_Y
   LDA #&00
-  STA W_0523
-  STA W_0522
-  STA W_0524
+  STA TITLE_ROW
+  STA TITLE_DELAY
+  STA TITLE_JOLT
   LDA #&FF
-  STA W_04E4
+  STA POWER_STAGE
   LDA #&00
   JSR FILL_NAMETABLE
   JSR CLEAR_ATTRS
@@ -3639,14 +3639,14 @@ ELSE
   JSR DRAW_TITLE_MAP
 ENDIF
   LDA #&00
-  STA W_051E
-  ABS_STA Z_49
+  STA TITLE_BLINK
+  ABS_STA GAME_MODE
   LDA #&DC
-  STA W_051F
+  STA TITLE_IDLE
   LDA #&05
-  STA W_0520
+  STA TITLE_IDLE_HI
   LDA #&00
-  STA W_03EF
+  STA DEMO_MODE
   JSR NMI_ON
   JSR RESET_TITLE_FRAME
 IF REGION_JP
@@ -3675,21 +3675,21 @@ ENDIF
   JSR MARK_OAM
 IF REGION_JP
 ELSE
-  LDA W_0521
+  LDA TITLE_PHASE
   BNE L5_A219
 ENDIF
   LDA JOY_NEW
   AND #&90
   BNE TITLE_START_EXIT
 .L5_A219
-  DEC W_051F
-  LDA W_051F
+  DEC TITLE_IDLE
+  LDA TITLE_IDLE
   CMP #&FF
   BNE L5_A226
-  DEC W_0520
+  DEC TITLE_IDLE_HI
 .L5_A226
-  LDA W_051F
-  ORA W_0520
+  LDA TITLE_IDLE
+  ORA TITLE_IDLE_HI
   BNE TITLE_LOOP
   JSR START_DEMO
 .TITLE_START_EXIT
@@ -3700,25 +3700,25 @@ ENDIF
 ; RLE. No inputs. Falls into the US map setup on the US path.
 .LOAD_TITLE_CHR
   LDA #LO(TITLE_SPR_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_SPR_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
   LDA #LO(TITLE_BG_CHR)
 IF REGION_JP
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JMP UPLOAD_CHR_RLE
@@ -3726,22 +3726,22 @@ IF REGION_JP
 ; JP title map piece. FARCALL bank 4 S4_BACB with D4_A8B5 and D4_A900.
 .JP_TITLE_MAP_A
   LDA #LO(TITLE_NT_RLE_2)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_NT_RLE_2)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #LO(TITLE_ATTR)
-  STA Z_24
+  STA DATA_PTR2
   LDA #HI(TITLE_ATTR)
-  STA Z_25
+  STA DATA_PTR2_HI
   FARCALL 4, DRAW_NAMETABLE_RLE_2
   RTS
 
 ; JP title palette. FARCALL bank 4 COPY_PAL_ROWS, 8 rows from D4_B0F9.
 .JP_TITLE_PAL
   LDA #LO(TITLE_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(TITLE_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&08
   FARCALL 4, COPY_PAL_ROWS
@@ -3753,11 +3753,11 @@ IF REGION_JP
   LDY JD5_A2B2
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_LOGO_TILES)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_LOGO_TILES)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&11
   JMP QUEUE_PPU_RUN
 
@@ -3768,13 +3768,13 @@ IF REGION_JP
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_LOGO_TILES)
 ELSE
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JMP UPLOAD_CHR_RLE
@@ -3782,22 +3782,22 @@ ELSE
 ; US title background. FARCALL bank 4 DRAW_NAMETABLE_RLE_1 and DRAW_NAMETABLE_RLE_2 with TITLE_NT_RLE_1/TITLE_NT_RLE_2 and TITLE_ATTR.
 .DRAW_TITLE_MAP
   LDA #LO(TITLE_NT_RLE_1)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_NT_RLE_1)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #LO(TITLE_ATTR)
-  STA Z_24
+  STA DATA_PTR2
   LDA #HI(TITLE_ATTR)
-  STA Z_25
+  STA DATA_PTR2_HI
   FARCALL 4, DRAW_NAMETABLE_RLE_1
   LDA #LO(TITLE_NT_RLE_2)
 ENDIF
-  STA Z_20
+  STA DATA_PTR
 IF REGION_JP
   LDA #HI(TITLE_LOGO_TILES)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&11
   JMP QUEUE_PPU_RUN
 .JD5_A2B1
@@ -3810,20 +3810,20 @@ IF REGION_JP
   EQUB &19
 ELSE
   LDA #HI(TITLE_NT_RLE_2)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #LO(TITLE_ATTR)
-  STA Z_24
+  STA DATA_PTR2
   LDA #HI(TITLE_ATTR)
-  STA Z_25
+  STA DATA_PTR2_HI
   FARCALL 4, DRAW_NAMETABLE_RLE_2
   RTS
 
 ; US title palette. FARCALL bank 4 COPY_PAL_ROWS of 8 rows from TITLE_PAL, then MIRROR_BG_COLOR.
 .LOAD_TITLE_PAL
   LDA #LO(TITLE_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(TITLE_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&08
   FARCALL 4, COPY_PAL_ROWS
@@ -3832,23 +3832,23 @@ ELSE
 ; US: queue two 1Dh-byte nametable runs, TITLE_BANNER_TOP at (0,18h) and TITLE_BANNER_BOT at (0,1Ah).
 .DRAW_TITLE_BANNER
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX D5_A2DB
   LDY D5_A2DC
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_BANNER_TOP)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_BANNER_TOP)
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&1D
   JSR QUEUE_PPU_RUN
   LDX D5_A2DD
   LDY D5_A2DE
   JSR XY_TO_NT_ADDR
   LDA #LO(TITLE_BANNER_BOT)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TITLE_BANNER_BOT)
-  STA Z_21
+  STA DATA_PTR_HI
   LDX #&1D
   JMP QUEUE_PPU_RUN
   EQUB &20,&18,&20,&1A
@@ -3883,13 +3883,13 @@ ELSE
   EQUB &F8,&00,&E5,&F5,&E5,&E7,&EE,&E5,&E9,&E8,&00,&00,&00
 ENDIF
 
-; Blink the title prompt while W_0521 is 0.
-; W_051E counts to 20h (draw START_TEXT_ON) and 38h (blank START_TEXT_OFF, reset).
+; Blink the title prompt while TITLE_PHASE is 0.
+; TITLE_BLINK counts to 20h (draw START_TEXT_ON) and 38h (blank START_TEXT_OFF, reset).
 .BLINK_START_TEXT
-  LDA W_0521
+  LDA TITLE_PHASE
   BNE L5_A32C
-  INC W_051E
-  LDA W_051E
+  INC TITLE_BLINK
+  LDA TITLE_BLINK
   CMP #&20
   BEQ L5_A34A
   CMP #&38
@@ -3898,7 +3898,7 @@ ENDIF
   RTS
 .L5_A32D
   LDA #&00
-  STA W_051E
+  STA TITLE_BLINK
   LDX #&0B
 IF REGION_JP
   LDY #&16
@@ -3907,11 +3907,11 @@ ELSE
 ENDIF
   JSR XY_TO_NT_ADDR
   LDA #LO(START_TEXT_ON)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(START_TEXT_ON)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&0B
   JMP QUEUE_PPU_RUN
 .L5_A34A
@@ -3923,11 +3923,11 @@ ELSE
 ENDIF
   JSR XY_TO_NT_ADDR
   LDA #LO(START_TEXT_OFF)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(START_TEXT_OFF)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&0B
   JMP QUEUE_PPU_RUN
 
@@ -3938,54 +3938,54 @@ ENDIF
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00
 
-; Clear title sprite frame W_0525 and tick W_0526.
+; Clear title sprite frame TITLE_SPR0 and tick TITLE_SPR1.
 .RESET_TITLE_FRAME
   LDA #&00
-  STA W_0525
-  STA W_0526
+  STA TITLE_SPR0
+  STA TITLE_SPR1
   RTS
 
-; Title sprites. Advances W_0525 every 8 frames, 3 frames.
+; Title sprites. Advances TITLE_SPR0 every 8 frames, 3 frames.
 ; Draws TITLE_ACTOR_PTR[frame] and TITLE_BOMBER_SPR unless sprite Y is in B0h..DFh.
 .DRAW_TITLE_ACTORS
-  INC W_0526
-  LDA W_0526
+  INC TITLE_SPR1
+  LDA TITLE_SPR1
   CMP #&08
   BCC L5_A3A5
   LDA #&00
-  STA W_0526
-  INC W_0525
-  LDA W_0525
+  STA TITLE_SPR1
+  INC TITLE_SPR0
+  LDA TITLE_SPR0
   CMP #&03
   BCC L5_A3A5
   LDA #&00
-  STA W_0525
+  STA TITLE_SPR0
 .L5_A3A5
   JSR DRAW_TITLE_LOGO
   JSR TITLE_SPRITE_Y
-  ABS_LDA Z_58
+  ABS_LDA SPR_Y
   CMP #&B0
   BCC L5_A3B6
   CMP #&E0
   BCC L5_A3E0
 .L5_A3B6
   LDA #&00
-  ABS_STA Z_5A
-  LDA W_0525
+  ABS_STA SPR_FLIP
+  LDA TITLE_SPR0
   ASL A
   TAY
   LDA TITLE_ACTOR_PTR,Y
-  STA Z_54
+  STA SPR_PTR
   LDA D5_A411,Y
-  STA Z_55
+  STA SPR_PTR_HI
   JSR DRAW_METASPRITE
   JSR TITLE_SPRITE_Y
   LDA #&00
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   LDA #LO(TITLE_BOMBER_SPR)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(TITLE_BOMBER_SPR)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .L5_A3E0
   RTS
@@ -4006,17 +4006,17 @@ ENDIF
   RTS
 .L5_A3F6
   LDA TITLE_LOGO_PTR,X
-  STA Z_54
+  STA SPR_PTR
   LDA D5_A440,X
-  STA Z_55
+  STA SPR_PTR_HI
   JSR TITLE_SPRITE_X
   LDA #&B2
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&20
-  ABS_STA Z_5A
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 
-; 3 words. Metasprite pointers TITLE_ACTOR_0, TITLE_ACTOR_1, TITLE_ACTOR_2. Index is W_0525.
+; 3 words. Metasprite pointers TITLE_ACTOR_0, TITLE_ACTOR_1, TITLE_ACTOR_2. Index is TITLE_SPR0.
 .TITLE_ACTOR_PTR
   EQUB LO(TITLE_ACTOR_0)
 .D5_A411
@@ -4025,29 +4025,29 @@ ENDIF
   EQUW TITLE_ACTOR_2
 
 ; Title sprite Y from the scroll.
-; Out: Z_58 = 20h-SCROLL_Y, minus 10h when SCROLL_Y >= 40h. Falls through to TITLE_SPRITE_X if SCROLL_Y >= 40h.
+; Out: SPR_Y = 20h-SCROLL_Y, minus 10h when SCROLL_Y >= 40h. Falls through to TITLE_SPRITE_X if SCROLL_Y >= 40h.
 .TITLE_SPRITE_Y
   LDA #&20
   SEC
   SBC SCROLL_Y
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA SCROLL_Y
   CMP #&40
   BCC TITLE_SPRITE_X
-  ABS_LDA Z_58
+  ABS_LDA SPR_Y
   SEC
   SBC #&10
-  ABS_STA Z_58
+  ABS_STA SPR_Y
 
 ; Title sprite X.
-; Out: Z_56 = 48h-SPLIT_SCROLL_X, Z_57 = SCROLL_NT.
+; Out: SPR_X = 48h-SPLIT_SCROLL_X, SPR_X_HI = SCROLL_NT.
 .TITLE_SPRITE_X
   LDA #&48
   SEC
   SBC SPLIT_SCROLL_X
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA SCROLL_NT
-  ABS_STA Z_57
+  ABS_STA SPR_X_HI
   RTS
 
 ; 2 words. TITLE_LOGO_A and TITLE_LOGO_B. DRAW_METASPRITE records: count, then count*(tile, dx, dy, attr).
@@ -4074,27 +4074,27 @@ ENDIF
   EQUB &00,&0B,&E8,&00,&00,&0B,&F0,&00,&00,&0B,&F8,&00,&00,&0B,&00,&00
   EQUB &00
 
-; Title scroll state in W_0521.
-; 1: wait W_0522 to 2Dh, play sound 01h, go to 2.
+; Title scroll state in TITLE_PHASE.
+; 1: wait TITLE_DELAY to 2Dh, play sound 01h, go to 2.
 ; 2: TITLE_SHAKE drives SPLIT_SCROLL_X; SCROLL_Y increments to F0h, then the scroll stops and DRAW_TITLE_BANNER runs.
 ; Every 8 scanlines of the scroll, queue one 20h-byte row from TITLE_MAP_ROWS.
 .STEP_TITLE_SCROLL
-  LDA W_0521
+  LDA TITLE_PHASE
   BEQ L5_A584
   CMP #&02
   BEQ TITLE_SCROLL_ON
-  INC W_0522
-  LDA W_0522
+  INC TITLE_DELAY
+  LDA TITLE_DELAY
   CMP #&2D
   BCC L5_A584
-  INC W_0521
+  INC TITLE_PHASE
   LDA #&01
   JSR AUDIO_CALL
 .TITLE_SCROLL_ON
-  INC W_0524
-  LDA W_0524
+  INC TITLE_JOLT
+  LDA TITLE_JOLT
   AND #&0F
-  STA W_0524
+  STA TITLE_JOLT
   ASL A
   TAX
 IF REGION_JP
@@ -4116,7 +4116,7 @@ ENDIF
   BCC TITLE_DRAW_ROW
   LDA #&00
   STA SCROLL_Y
-  STA W_0521
+  STA TITLE_PHASE
   LDA #&00
   STA SPLIT_SCROLL_X
   LDA #&01
@@ -4142,7 +4142,7 @@ IF REGION_JP
 ELSE
 ENDIF
 
-; 16 words. Low byte is SPLIT_SCROLL_X, bit 0 of the high byte is SPLIT_CTRL_BIT. Index is W_0524.
+; 16 words. Low byte is SPLIT_SCROLL_X, bit 0 of the high byte is SPLIT_CTRL_BIT. Index is TITLE_JOLT.
 .TITLE_SHAKE
   EQUB &FE
 .D5_A586
@@ -4174,40 +4174,40 @@ ENDIF
   AND #&07
   BNE L5_A5EE
   LDX #&00
-  STX Z_21
-  LDA W_0523
+  STX DATA_PTR_HI
+  LDA TITLE_ROW
   BMI L5_A5EE
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   ASL A
-  ROL Z_21
+  ROL DATA_PTR_HI
   CLC
   ADC #LO(TITLE_MAP_ROWS)
-  STA Z_20
-  LDA Z_21
+  STA DATA_PTR
+  LDA DATA_PTR_HI
   ADC #HI(TITLE_MAP_ROWS)
-  STA Z_21
-  LDY W_0523
+  STA DATA_PTR_HI
+  LDY TITLE_ROW
   INY
   INY
   LDX #&00
   JSR XY_TO_NT_ADDR
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&20
   JSR QUEUE_PPU_RUN
-  INC W_0523
-  LDA W_0523
+  INC TITLE_ROW
+  LDA TITLE_ROW
   CMP #&11
   BCC L5_A5EE
   LDA #&FF
-  STA W_0523
+  STA TITLE_ROW
 .L5_A5EE
   RTS
 
@@ -4255,17 +4255,17 @@ ENDIF
   EQUB &00,&00,&00,&00,&00,&00
 
 ; Game-mode menu. RUN_MODE_MENU enters here.
-; Clears W_054E, W_054F, W_0550, sets W_0563 to 1, fills the nametable with tile 13h.
-; Up/Down/Select cycle Z_49 in 0..3. Start/A confirms.
-; On the US build, Z_49 2 is rejected when JOY_SIG_OK is 0 (sound 04h).
-; MODE_TO_AREA then writes W_04C9. Fades out.
+; Clears MENU_REDRAW, MENU_MODE1, MENU_BONUS, sets WINS_GOAL to 1, fills the nametable with tile 13h.
+; Up/Down/Select cycle GAME_MODE in 0..3. Start/A confirms.
+; On the US build, GAME_MODE 2 is rejected when JOY_SIG_OK is 0 (sound 04h).
+; MODE_TO_AREA then writes START_AREA. Fades out.
 .MODE_MENU_LOOP
   LDA #&00
-  STA W_054E
-  STA W_054F
-  STA W_0550
+  STA MENU_REDRAW
+  STA MENU_MODE1
+  STA MENU_BONUS
   LDA #&01
-  STA W_0563
+  STA WINS_GOAL
   JSR PPU_OFF
   JSR NMI_OFF
   JSR CLEAR_SCROLL
@@ -4276,10 +4276,10 @@ ENDIF
   JSR LOAD_MODE_PAL
   JSR DRAW_MODE_MENU
   LDA #&00
-  ABS_STA Z_49
-  STA W_04C9
-  STA W_03EF
-  ABS_STA Z_4A
+  ABS_STA GAME_MODE
+  STA START_AREA
+  STA DEMO_MODE
+  ABS_STA KEEP_STAGE
   JSR NMI_ON
   JSR PPU_ON
   JSR MARK_PALETTE
@@ -4294,9 +4294,9 @@ ENDIF
   LDA JOY_NEW
   AND #&90
   BEQ MODE_MENU_WAIT
-  ABS_LDX Z_49
+  ABS_LDX GAME_MODE
   LDA MODE_ID_VALUE,X
-  ABS_STA Z_49
+  ABS_STA GAME_MODE
 IF REGION_JP
 ELSE
   CMP #&02
@@ -4312,36 +4312,36 @@ ENDIF
   JSR FADE_PALETTE
   JMP PPU_OFF
 
-; 4 bytes written back to Z_49 when the mode menu confirms: 00h, 01h, 02h, 03h.
+; 4 bytes written back to GAME_MODE when the mode menu confirms: 00h, 01h, 02h, 03h.
 .MODE_ID_VALUE
   EQUB &00,&01,&02,&03
 
 ; Upload UI_SPR_CHR (6 RLE blocks at $1000) and PLAY_BG_CHR (C0h bytes at $0000).
 .LOAD_MENU_CHR
   LDA #LO(UI_SPR_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(UI_SPR_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&06
   LDY #&FF
   JSR UPLOAD_CHR_RLE
   LDA #LO(PLAY_BG_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(PLAY_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&C0
   JMP UPLOAD_CHR_RLE
 
-; Mode menu. Select, Down or Up change Z_49, wrapping 0..3, and play sound 07h.
+; Mode menu. Select, Down or Up change GAME_MODE, wrapping 0..3, and play sound 07h.
 .MODE_MENU_INPUT
   LDX JOY_NEW
   TXA
@@ -4359,45 +4359,45 @@ ENDIF
 .L5_A8D3
   LDA #&07
   JSR AUDIO_CALL
-  ABS_DEC Z_49
+  ABS_DEC GAME_MODE
   BPL L5_A8F7
   LDA #&03
-  ABS_STA Z_49
+  ABS_STA GAME_MODE
   RTS
 .L5_A8E3
   LDA #&07
   JSR AUDIO_CALL
-  ABS_INC Z_49
-  ABS_LDA Z_49
+  ABS_INC GAME_MODE
+  ABS_LDA GAME_MODE
   CMP #&04
   BCC L5_A8F7
 
 ; (not seen executing during the coverage runs)
   LDA #&00
-  ABS_STA Z_49
+  ABS_STA GAME_MODE
 .L5_A8F7
   RTS
 
-; Draw MENU_CURSOR_SPR at MODE_CURSOR_X / MODE_CURSOR_Y[Z_49].
+; Draw MENU_CURSOR_SPR at MODE_CURSOR_X / MODE_CURSOR_Y[GAME_MODE].
 .DRAW_MODE_CURSOR
-  ABS_LDX Z_49
+  ABS_LDX GAME_MODE
   LDA MODE_CURSOR_X
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA MODE_CURSOR_Y,X
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_59
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_Y_HI
+  ABS_STA SPR_FLIP
   LDA #LO(MENU_CURSOR_SPR)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(MENU_CURSOR_SPR)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .MODE_CURSOR_X
   EQUB &48
 
-; Mode-menu cursor Y. 4 bytes, index Z_49: 58h, 68h, 78h, 88h. X is MODE_CURSOR_X.
+; Mode-menu cursor Y. 4 bytes, index GAME_MODE: 58h, 68h, 78h, 88h. X is MODE_CURSOR_X.
 .MODE_CURSOR_Y
   EQUB &58,&68,&78,&88
 
@@ -4406,12 +4406,12 @@ ENDIF
   EQUB &07,&05,&F8,&F3,&01,&06,&00,&F3,&01,&15,&F8,&FB,&03,&16,&00,&FB
   EQUB &03,&1F,&08,&FB,&03,&0E,&F8,&03,&03,&0F,&00,&03,&03
 
-; If Z_49 is not 0, store 6 in W_04C9. Mode 0 leaves W_04C9 alone.
+; If GAME_MODE is not 0, store 6 in START_AREA. Mode 0 leaves START_AREA alone.
 .MODE_TO_AREA
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ L5_A949
   LDA #&06
-  STA W_04C9
+  STA START_AREA
 .L5_A949
   RTS
   EQUB &AD
@@ -4427,9 +4427,9 @@ ENDIF
 ; Copy 8 palette rows from MODE_MENU_PAL and mirror the background color.
 .LOAD_MODE_PAL
   LDA #LO(MODE_MENU_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(MODE_MENU_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&08
   JSR COPY_PAL_ROWS
@@ -4445,48 +4445,48 @@ ENDIF
 .DRAW_MODE_MENU
   JSR DRAW_TOP_SCORE
   LDA #LO(MODE_TEXT_0)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(MODE_TEXT_0)
-  STA Z_21
+  STA DATA_PTR_HI
   JSR DRAW_INLINE_STR
   LDA #LO(MODE_TEXT_1)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(MODE_TEXT_1)
-  STA Z_21
+  STA DATA_PTR_HI
   JSR DRAW_INLINE_STR
   LDA #LO(MODE_TEXT_2)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(MODE_TEXT_2)
-  STA Z_21
+  STA DATA_PTR_HI
   JSR DRAW_INLINE_STR
   LDA #LO(MODE_TEXT_3)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(MODE_TEXT_3)
-  STA Z_21
+  STA DATA_PTR_HI
   JSR DRAW_INLINE_STR
   LDA #LO(MODE_TEXT_4)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(MODE_TEXT_4)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP DRAW_INLINE_STR
 
-; Draw TOP_SCORE_LABEL, then 8 digits from W_03C8 (high index first) at column 0Eh row 03h. ORs each byte with 30h.
+; Draw TOP_SCORE_LABEL, then 8 digits from TOP_SCORE (high index first) at column 0Eh row 03h. ORs each byte with 30h.
 .DRAW_TOP_SCORE
   LDA #LO(TOP_SCORE_LABEL)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(TOP_SCORE_LABEL)
-  STA Z_21
+  STA DATA_PTR_HI
   JSR DRAW_INLINE_STR
   LDX #&0E
   LDY #&03
   JSR XY_TO_NT_ADDR
-  LDA Z_23
+  LDA PPU_ADDR_HI
   STA PPU_ADDRESS
-  LDA Z_22
+  LDA PPU_ADDR
   STA PPU_ADDRESS
   LDX #&07
 .L5_AA06
-  LDA W_03C8,X
+  LDA TOP_SCORE,X
   ORA #&30
   STA PPU_DATA
   DEX
@@ -4509,8 +4509,8 @@ ENDIF
   EQUB &0B,&11,&0B,&20,&20,&43,&4F,&4E,&54,&49,&4E,&55,&45,&20
 
 ; Continue / game-over screen. RUN_GAME_OVER enters here.
-; Draws a map, sets Z_4A to 1, plays sound 19h.
-; Select/Up/Down toggle Z_4A. Start/A fades out.
+; Draws a map, sets KEEP_STAGE to 1, plays sound 19h.
+; Select/Up/Down toggle KEEP_STAGE. Start/A fades out.
 .GAME_OVER_LOOP
   JSR PPU_OFF
   JSR NMI_OFF
@@ -4523,7 +4523,7 @@ ENDIF
   JSR CLEAR_SCROLL
   JSR MIX_STAGE_BYTES
   LDA #&01
-  ABS_STA Z_4A
+  ABS_STA KEEP_STAGE
   JSR PPU_ON
   JSR MARK_PALETTE
   LDA #&19
@@ -4538,52 +4538,52 @@ ENDIF
   JSR FADE_PALETTE
   JMP PPU_OFF
 
-; Point Z_66/Z_64/Z_62 at the shared UI tiles and Z_20 at GAME_OVER_LAY, then JMP L7_CD89.
+; Point TILE_ATTR/TILE_MAP/TILE_GFX at the shared UI tiles and DATA_PTR at GAME_OVER_LAY, then JMP L7_CD89.
 .DRAW_GAME_OVER_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(GAME_OVER_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(GAME_OVER_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
 ; Palette for the game-over screen: 4 rows from UI_BG_PAL via bank 4, then 4 rows of GAME_OVER_PAL at row 4.
 .LOAD_GAME_OVER_PAL
   LDA #LO(UI_BG_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(UI_BG_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   LDA #LO(GAME_OVER_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(GAME_OVER_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&04
   LDX #&04
   JSR COPY_PAL_ROWS
@@ -4591,37 +4591,37 @@ ENDIF
 .GAME_OVER_PAL
   EQUB &0F,&20,&01,&06,&0F,&0D,&26,&20,&0F,&0F,&2A,&20,&0F,&0F,&21,&20
 
-; Read GAME_OVER_INPUT, then draw MENU_CURSOR_SPR at OVER_CURSOR_X / OVER_CURSOR_Y[Z_4A].
+; Read GAME_OVER_INPUT, then draw MENU_CURSOR_SPR at OVER_CURSOR_X / OVER_CURSOR_Y[KEEP_STAGE].
 .DRAW_OVER_CURSOR
   JSR GAME_OVER_INPUT
   JMP L5_AB20
 
-; If JOY_NEW has Up, Down or Select (2Ch), toggle Z_4A bit 0 and play sound 07h.
+; If JOY_NEW has Up, Down or Select (2Ch), toggle KEEP_STAGE bit 0 and play sound 07h.
 .GAME_OVER_INPUT
   LDA JOY_NEW
   AND #&2C
   BEQ L5_AB1F
-  ABS_LDA Z_4A
+  ABS_LDA KEEP_STAGE
   EOR #&01
-  ABS_STA Z_4A
+  ABS_STA KEEP_STAGE
   LDA #&07
   JSR AUDIO_CALL
 .L5_AB1F
   RTS
 .L5_AB20
-  ABS_LDX Z_4A
+  ABS_LDX KEEP_STAGE
   LDA OVER_CURSOR_X
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA OVER_CURSOR_Y,X
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_59
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_Y_HI
+  ABS_STA SPR_FLIP
   LDA #LO(MENU_CURSOR_SPR)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(MENU_CURSOR_SPR)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .OVER_CURSOR_X
   EQUB &50
@@ -4630,25 +4630,25 @@ ENDIF
   EQUB &00,&FB,&03,&1F,&08,&FB,&03,&0E,&F8,&03,&03,&0F,&00,&03,&03
 
 ; Write one inline string straight to the PPU. DRAW_INLINE_STR enters here.
-; In: Z_20 -> column, row, count, bytes. Byte 20h is stored as 40h.
+; In: DATA_PTR -> column, row, count, bytes. Byte 20h is stored as 40h.
 .PPU_WRITE_TEXT
   LDY #&00
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAX
   INY
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAY
   JSR XY_TO_NT_ADDR
-  LDA Z_23
+  LDA PPU_ADDR_HI
   STA PPU_ADDRESS
-  LDA Z_22
+  LDA PPU_ADDR
   STA PPU_ADDRESS
   LDY #&02
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   TAX
 .L5_AB80
   INY
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   CMP #&20
   BNE L5_AB89
   LDA #&40
@@ -4677,12 +4677,12 @@ ENDIF
   EQUB &01,&2B,&FC,&F3,&01,&2C,&04,&F3,&01,&2D,&F4,&FB,&01,&2E,&FC,&FB
   EQUB &01
 
-; If W_03C0 is not DEFAULT_TOP_NAME, clear W_03C8, call RESET_MARKS and RESET_DEMO_IDX, then copy that 8-byte name into W_03C0.
+; If TOP_NAME is not DEFAULT_TOP_NAME, clear TOP_SCORE, call RESET_MARKS and RESET_DEMO_IDX, then copy that 8-byte name into TOP_NAME.
 .SEED_DEFAULT_SCORE
   LDX #&07
 .L5_AC56
   LDA DEFAULT_TOP_NAME,X
-  CMP W_03C0,X
+  CMP TOP_NAME,X
   BNE L5_AC62
 
 ; (not seen executing during the coverage runs)
@@ -4696,45 +4696,45 @@ ENDIF
   LDX #&07
 .L5_AC6D
   LDA DEFAULT_TOP_NAME,X
-  STA W_03C0,X
+  STA TOP_NAME,X
   DEX
   BPL L5_AC6D
   RTS
 
-; 8 tiles compared with W_03C0. Bytes are K O S A K A ! !.
+; 8 tiles compared with TOP_NAME. Bytes are K O S A K A ! !.
 .DEFAULT_TOP_NAME
   EQUB &4B,&4F,&53,&41,&4B,&41,&21,&21
 
-; Zero the 8 score digits at W_03C8.
+; Zero the 8 score digits at TOP_SCORE.
 .CLEAR_TOP_SCORE
   LDA #&00
   LDX #&07
 .L5_AC83
-  STA W_03C8,X
+  STA TOP_SCORE,X
   DEX
   BPL L5_AC83
   RTS
 
-; Zero the 8 working score digits at W_03D0.
+; Zero the 8 working score digits at SCORE_NOW.
 .CLEAR_STAGE_SCORE
   LDA #&00
   LDX #&07
 .L5_AC8E
-  STA W_03D0,X
+  STA SCORE_NOW,X
   DEX
   BPL L5_AC8E
 .L5_AC94
   RTS
 
-; If Z_49 is 0, draw W_03D0 as 8 digits (OR 30h) at column 4 row 2.
+; If GAME_MODE is 0, draw SCORE_NOW as 8 digits (OR 30h) at column 4 row 2.
 ; Skipped for the other modes. Called from STAGE_LOOP.
 .DRAW_HUD_SCORE
-  ABS_LDY Z_49
+  ABS_LDY GAME_MODE
   BNE L5_AC94
   LDX #&07
   LDY #&00
 .L5_AC9E
-  LDA W_03D0,X
+  LDA SCORE_NOW,X
   ORA #&30
   STA W_052A,Y
   INY
@@ -4748,22 +4748,22 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&08
   JMP QUEUE_PPU_RUN
 
-; If Z_49 is 0 and W_03D0 is greater than W_03C8 (high byte first), copy the 8 digits into W_03C8.
+; If GAME_MODE is 0 and SCORE_NOW is greater than TOP_SCORE (high byte first), copy the 8 digits into TOP_SCORE.
 .SAVE_TOP_SCORE
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BNE L5_ACD6
   LDX #&07
 .L5_ACC9
-  LDA W_03D0,X
-  CMP W_03C8,X
+  LDA SCORE_NOW,X
+  CMP TOP_SCORE,X
   BCC L5_ACD6
   BNE L5_ACD7
   DEX
@@ -4775,8 +4775,8 @@ ENDIF
 .L5_ACD7
   LDX #&07
 .L5_ACD9
-  LDA W_03D0,X
-  STA W_03C8,X
+  LDA SCORE_NOW,X
+  STA TOP_SCORE,X
   DEX
   BPL L5_ACD9
   RTS
@@ -4784,18 +4784,18 @@ ENDIF
   RTS
 
 ; Area intro card. MAYBE_AREA_CARD enters here.
-; Returns at once unless W_03EF, Z_49 and Z_4C are 0 and Z_4B differs from Z_4D.
-; Stores the area in Z_4D, shows the card, plays sound 11h, waits on Start or a timer in Z_2A/Z_2B.
+; Returns at once unless DEMO_MODE, GAME_MODE and STAGE_NUM are 0 and AREA_NUM differs from INTRO_AREA.
+; Stores the area in INTRO_AREA, shows the card, plays sound 11h, waits on Start or a timer in Z_2A/Z_2B.
 .SHOW_AREA_INTRO
-  LDA W_03EF
+  LDA DEMO_MODE
   BNE L5_ACE3
-  ABS_LDA Z_49
-  ABS_ORA Z_4C
+  ABS_LDA GAME_MODE
+  ABS_ORA STAGE_NUM
   BNE L5_ACE3
-  ABS_LDA Z_4B
-  ABS_CMP Z_4D
+  ABS_LDA AREA_NUM
+  ABS_CMP INTRO_AREA
   BEQ L5_ACE3
-  ABS_STA Z_4D
+  ABS_STA INTRO_AREA
   JSR NMI_OFF
   JSR LOAD_AREA_INTRO
   JSR NMI_ON
@@ -4830,31 +4830,31 @@ ENDIF
   JSR FADE_PALETTE
   JMP PPU_OFF
 
-; Draw the area-intro map for Z_4B.
+; Draw the area-intro map for AREA_NUM.
 ; Six word pointers each: map, attr, layout, tiles, all in bank 4. JMP L7_CD89.
 .DRAW_AREA_INTRO
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA AREA_INTRO_MAP,X
-  STA Z_20
+  STA DATA_PTR
   LDA D5_AD78,X
-  STA Z_21
+  STA DATA_PTR_HI
   LDA AREA_INTRO_ATTR,X
-  STA Z_66
+  STA TILE_ATTR
   LDA D5_AD9C,X
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA AREA_INTRO_LAY,X
-  STA Z_64
+  STA TILE_MAP
   LDA D5_AD90,X
-  STA Z_65
+  STA TILE_MAP_HI
   LDA AREA_INTRO_TILE,X
-  STA Z_62
+  STA TILE_GFX
   LDA D5_AD84,X
-  STA Z_63
+  STA TILE_GFX_HI
   JMP L7_CD89
 
-; 6 words, one per area. Bank-4 map pointer passed to L7_CD89 as Z_20. AREA_INTRO_TILE, AREA_INTRO_LAY and AREA_INTRO_ATTR are the matching Z_62, Z_64 and Z_66 tables.
+; 6 words, one per area. Bank-4 map pointer passed to L7_CD89 as DATA_PTR. AREA_INTRO_TILE, AREA_INTRO_LAY and AREA_INTRO_ATTR are the matching TILE_GFX, TILE_MAP and TILE_ATTR tables.
 .AREA_INTRO_MAP
   EQUB LO(CARD0_LAYOUT)
 .D5_AD78
@@ -4892,54 +4892,54 @@ ENDIF
   EQUW CARD4_META_ATTR
   EQUW CARD5_META_ATTR
 
-; Load the area-intro CHR and palettes for Z_4B.
+; Load the area-intro CHR and palettes for AREA_NUM.
 ; Sprite CHR from AREA_INTRO_CHR, INTRO_BG_CHR, 4 palette rows from AREA_INTRO_PAL, then 4 rows from CARD_SPR_PAL.
 .LOAD_AREA_INTRO
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA AREA_INTRO_CHR,X
-  STA Z_20
+  STA DATA_PTR
   LDA D5_AE0B,X
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
   LDA #LO(INTRO_BG_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(INTRO_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA AREA_INTRO_PAL,X
-  STA Z_16
+  STA PAL_SRC
   LDA D5_AE17,X
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   LDA #LO(CARD_SPR_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(CARD_SPR_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&04
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   JMP MIRROR_BG_COLOR
 
-; 6 words. RLE sprite CHR for the area intro, selected by Z_4B.
+; 6 words. RLE sprite CHR for the area intro, selected by AREA_NUM.
 .AREA_INTRO_CHR
   EQUB LO(AREA0_INTRO_SPR)
 .D5_AE0B
@@ -4950,7 +4950,7 @@ ENDIF
   EQUW AREA4_INTRO_SPR
   EQUW AREA5_INTRO_SPR
 
-; 6 words. Bank-4 palette, 4 rows, selected by Z_4B.
+; 6 words. Bank-4 palette, 4 rows, selected by AREA_NUM.
 .AREA_INTRO_PAL
   EQUB LO(CARD0_BG_PAL)
 .D5_AE17
@@ -4961,26 +4961,26 @@ ENDIF
   EQUW CARD4_BG_PAL
   EQUW CARD5_BG_PAL
 
-; Clear intro animation bytes W_0532..W_0535.
+; Clear intro animation bytes INTRO_FRAME..W_0535.
 .RESET_INTRO_ANIM
   LDA #&00
-  STA W_0532
+  STA INTRO_FRAME
   STA W_0534
   STA W_0533
   STA W_0535
   RTS
 
 ; Draw the area-intro metasprite.
-; INTRO_DRAW_PTR[Z_4B]: areas 0..4 share one draw; area 5 steps W_0532 through AREA5_FRAME_DLY first.
+; INTRO_DRAW_PTR[AREA_NUM]: areas 0..4 share one draw; area 5 steps INTRO_FRAME through AREA5_FRAME_DLY first.
 .DRAW_INTRO_SPRITE
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA INTRO_DRAW_PTR,X
-  STA Z_20
+  STA DATA_PTR
   LDA D5_AE44,X
-  STA Z_21
-  JMP (Z_20)
+  STA DATA_PTR_HI
+  JMP (DATA_PTR)
 
 ; 6 words. Code pointers. Areas 0..4 point at the shared draw; area 5 points at INTRO_AREA5_FRAME.
 .INTRO_DRAW_PTR
@@ -4995,7 +4995,7 @@ ENDIF
 .L5_AE4F
   JMP DRAW_INTRO_META
 .INTRO_AREA5_FRAME
-  LDY W_0532
+  LDY INTRO_FRAME
   CPY #&06
   BCS L5_AE6C
   INC W_0534
@@ -5006,36 +5006,36 @@ ENDIF
 ; (not seen executing during the coverage runs)
   LDA #&00
   STA W_0534
-  INC W_0532
+  INC INTRO_FRAME
 .L5_AE6C
   JMP DRAW_INTRO_META
 
-; 7 frame delays for the area-5 intro. W_0534 counts up to the byte indexed by W_0532, which stops at 6.
+; 7 frame delays for the area-5 intro. W_0534 counts up to the byte indexed by INTRO_FRAME, which stops at 6.
 .AREA5_FRAME_DLY
   EQUB &07,&07,&20,&10,&08,&08,&00
 .DRAW_INTRO_META
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAY
   LDA INTRO_SPR_XY,Y
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D5_AEAB,Y
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA INTRO_FRAME_PTR,Y
-  STA Z_20
+  STA DATA_PTR
   LDA D5_AEB7,Y
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
-  LDA W_0532
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
+  LDA INTRO_FRAME
   ASL A
   TAY
-  LDA (Z_20),Y
-  STA Z_54
+  LDA (DATA_PTR),Y
+  STA SPR_PTR
   INY
-  LDA (Z_20),Y
-  STA Z_55
+  LDA (DATA_PTR),Y
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
 ; 6 areas, interleaved X then Y for the intro sprite. Not a pointer. INTRO_FRAME_PTR is the matching 6 words of animation lists.
@@ -5134,8 +5134,8 @@ ENDIF
 ; (not seen executing during the coverage runs)
 
 ; Ending. RUN_ENDING enters here when the area reaches 6.
-; Forces Z_4B=6, Z_4C=0, loads ending CHR and enemies, then waits until X_62F2 is 2.
-; SCROLL_ENDING runs while X_62F2 is 1. Then fade and JMP L7_D1B0.
+; Forces AREA_NUM=6, STAGE_NUM=0, loads ending CHR and enemies, then waits until SCRIPT_FLAG is 2.
+; SCROLL_ENDING runs while SCRIPT_FLAG is 1. Then fade and JMP L7_D1B0.
 .ENDING_LOOP
   JSR PPU_OFF
   JSR NMI_OFF
@@ -5144,20 +5144,20 @@ ENDIF
   JSR FILL_NAMETABLE
   JSR CLEAR_ATTRS
   LDA #&00
-  ABS_STA Z_4E
-  ABS_STA Z_B4
+  ABS_STA SPECIAL_STAGE
+  ABS_STA EXIT_OPEN
   JSR RESET_ENEMY_RAM
   JSR LOAD_ENDING_CHR
   JSR NMI_ON
   JSR DRAW_ENDING_MAP
   LDA #&06
-  ABS_STA Z_4B
+  ABS_STA AREA_NUM
   LDA #&00
-  ABS_STA Z_4C
+  ABS_STA STAGE_NUM
   JSR LOAD_ENEMIES
   JSR CLEAR_SCROLL
   LDA #&00
-  STA X_62F2
+  STA SCRIPT_FLAG
   JSR PPU_ON
   JSR MARK_PALETTE
   LDA #&17
@@ -5167,7 +5167,7 @@ ENDIF
   JSR SCROLL_ENDING
   JSR UPDATE_ENEMIES
   JSR MARK_OAM
-  LDA X_62F2
+  LDA SCRIPT_FLAG
   CMP #&02
   BNE ENDING_WAIT
   JSR FADE_PALETTE
@@ -5178,49 +5178,49 @@ ENDIF
 ; ENDING_SPR_CHR at $1000, PLAY_BG_CHR (A0h bytes), ENDING_EXTRA_BG_CHR at $0A30, palettes ENDING_SPR_PAL and ENDING_BG_PAL.
 .LOAD_ENDING_CHR
   LDA #LO(ENDING_SPR_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENDING_SPR_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&10
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&FF
   JSR UPLOAD_CHR_RLE
   LDA #LO(PLAY_BG_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(PLAY_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&00
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&A0
   JSR UPLOAD_CHR_RLE
   LDA #LO(ENDING_EXTRA_BG_CHR)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(ENDING_EXTRA_BG_CHR)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&30
-  STA Z_22
+  STA PPU_ADDR
   LDA #&0A
-  STA Z_23
+  STA PPU_ADDR_HI
   LDX #&01
   LDY #&50
   JSR UPLOAD_CHR_RLE
   LDA #LO(ENDING_SPR_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(ENDING_SPR_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&04
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
   LDA #LO(ENDING_BG_PAL)
-  STA Z_16
+  STA PAL_SRC
   LDA #HI(ENDING_BG_PAL)
-  STA Z_17
+  STA PAL_SRC_HI
   LDA #&00
   LDX #&04
   FARCALL 4, COPY_PAL_ROWS
@@ -5232,26 +5232,26 @@ ENDIF
 ; US bytes are END_META_ATTR, END_META_MAP, END_META_GFX and OPENING_LAYOUT.
 .DRAW_ENDING_MAP
   LDA #LO(END_META_ATTR)
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(END_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(END_META_MAP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(END_META_MAP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(END_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(END_META_GFX)
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(OPENING_LAYOUT)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(OPENING_LAYOUT)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; If X_62F2 is 1, add 1 to SCROLL_X (with SCROLL_NT).
+; If SCRIPT_FLAG is 1, add 1 to SCROLL_X (with SCROLL_NT).
 .SCROLL_ENDING
-  LDA X_62F2
+  LDA SCRIPT_FLAG
   CMP #&01
   BNE L5_B185
   LDA SCROLL_X
@@ -5265,12 +5265,12 @@ ENDIF
   RTS
 
 ; Opening scene. RUN_OPENING enters here.
-; Zeros Z_49, Z_4E, Z_B4. Sets area 6 stage 1, loads enemies, waits until X_62F2 is 2 or Start/A.
+; Zeros GAME_MODE, SPECIAL_STAGE, EXIT_OPEN. Sets area 6 stage 1, loads enemies, waits until SCRIPT_FLAG is 2 or Start/A.
 .OPENING_LOOP
   LDA #&00
-  ABS_STA Z_49
-  ABS_STA Z_4E
-  ABS_STA Z_B4
+  ABS_STA GAME_MODE
+  ABS_STA SPECIAL_STAGE
+  ABS_STA EXIT_OPEN
   JSR PPU_OFF
   JSR NMI_OFF
   LDA #&00
@@ -5281,21 +5281,21 @@ ENDIF
   JSR NMI_ON
   JSR DRAW_OPENING_MAP
   LDA #&06
-  ABS_STA Z_4B
+  ABS_STA AREA_NUM
   LDA #&01
-  ABS_STA Z_4C
+  ABS_STA STAGE_NUM
   JSR LOAD_ENEMIES
   JSR CLEAR_SCROLL
   LDA #&00
-  STA X_62F2
-  STA X_62DC
+  STA SCRIPT_FLAG
+  STA ENEMY_ORDER
   JSR PPU_ON
   JSR MARK_PALETTE
 .OPENING_WAIT
   JSR WAIT_NMI
   JSR UPDATE_ENEMIES
   JSR MARK_OAM
-  LDA X_62F2
+  LDA SCRIPT_FLAG
   CMP #&02
   BEQ L5_B1E0
   LDA JOY_NEW
@@ -5308,27 +5308,27 @@ ENDIF
 ; Draw the opening nametable from END_META_ATTR, END_META_MAP, END_META_GFX and OPENING_LAYOUT via L7_CD89.
 .DRAW_OPENING_MAP
   LDA #LO(END_META_ATTR)
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(END_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(END_META_MAP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(END_META_MAP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(END_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(END_META_GFX)
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(OPENING_LAYOUT)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(OPENING_LAYOUT)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
 ; (not seen executing during the coverage runs)
 
 ; Versus round result. SHOW_VS_RESULT enters here.
-; Sets Z_4A to 1, plays sound 1Ch. Up/Down/Select toggle Z_4A. Start/A exits.
+; Sets KEEP_STAGE to 1, plays sound 1Ch. Up/Down/Select toggle KEEP_STAGE. Start/A exits.
 .VS_RESULT_LOOP
   JSR NMI_OFF
   JSR LOAD_MODE_GFX
@@ -5337,7 +5337,7 @@ ENDIF
   STA W_0561
   STA W_0562
   LDA #&01
-  ABS_STA Z_4A
+  ABS_STA KEEP_STAGE
   JSR DRAW_VS_RESULT_MAP
   JSR DRAW_VS_RESULT_MARK
   JSR CLEAR_SCROLL
@@ -5359,60 +5359,60 @@ IF REGION_JP
 
 .DRAW_VS_RESULT_MAP
   LDA #LO(UI_META_ATTR)
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
 
 ; Draw the versus-result nametable. UI tile pointers plus map VS_RESULT_LAY, then JMP L7_CD89.
 .DRAW_VS_RESULT_MAP
   LDA #LO(UI_META_GFX)
-  STA Z_66
+  STA TILE_ATTR
   LDA #&96
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #&C1
-  STA Z_64
+  STA TILE_MAP
   LDA #&96
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #&41
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(VS_RESULT_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(VS_RESULT_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Stamp two tiles from D5_B29B/D5_B29E at (0Bh,4) and (0Bh,5) using W_04C8.
+; Stamp two tiles from D5_B29B/D5_B29E at (0Bh,4) and (0Bh,5) using VS_PICTURE.
 ; If that index is 1, also draw a 2x2 mark via DRAW_MARK_2X2.
 .DRAW_VS_RESULT_MARK
-  LDX W_04C8
+  LDX VS_PICTURE
   LDA D5_B29B,X
   LDX #&0B
   LDY #&04
   JSR QUEUE_MAP_TILE
-  LDX W_04C8
+  LDX VS_PICTURE
   LDA D5_B29E,X
   LDX #&0B
   LDY #&05
   JSR QUEUE_MAP_TILE
-  LDA W_04C8
+  LDA VS_PICTURE
   ASL A
   ASL A
   STA Z_2A
   LDA #&07
-  STA Z_28
+  STA CELL_COL
   LDA #&06
-  STA Z_29
+  STA CELL_ROW
   JMP DRAW_MARK_2X2
 .D5_B29B
   EQUB &0A,&0B,&0C
@@ -5422,7 +5422,7 @@ ENDIF
 ; (not seen executing during the coverage runs)
 
 ; Animate the versus-result sprite.
-; W_0562 flips every 8 frames. Frame and W_04C8 pick a word in VS_RESULT_SPR_PTR. Drawn at (88h, 90h).
+; W_0562 flips every 8 frames. Frame and VS_PICTURE pick a word in VS_RESULT_SPR_PTR. Drawn at (88h, 90h).
 .DRAW_VS_RESULT_SPR
   INC W_0561
   LDA W_0561
@@ -5433,29 +5433,29 @@ ENDIF
   EOR #&01
   STA W_0562
 .L5_B2B6
-  LDA W_04C8
+  LDA VS_PICTURE
   ASL A
   ORA W_0562
   ASL A
   TAX
   LDA VS_RESULT_SPR_PTR,X
-  STA Z_54
+  STA SPR_PTR
   LDA D5_B2DF,X
-  STA Z_55
+  STA SPR_PTR_HI
   LDA #&88
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA #&90
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 IF REGION_JP
 .VS_RESULT_SPR_PTR
   EQUB &86
 ELSE
 
-; 6 words. Versus-result metasprites. Index is (W_04C8*2 + W_0562)*2.
+; 6 words. Versus-result metasprites. Index is (VS_PICTURE*2 + W_0562)*2.
 ; US bytes still raw for the entries merge cannot take as pointers. See the notes.
 .VS_RESULT_SPR_PTR
   EQUB &EA
@@ -5519,30 +5519,30 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Toggle Z_4A on Up/Down/Select and draw the one-tile cursor at X D5_B4F1, Y VS_CURSOR_Y[Z_4A].
+; Toggle KEEP_STAGE on Up/Down/Select and draw the one-tile cursor at X D5_B4F1, Y VS_CURSOR_Y[KEEP_STAGE].
 .VS_RESULT_INPUT
   LDA JOY_NEW
   AND #&2C
   BEQ L5_B4CC
-  ABS_LDA Z_4A
+  ABS_LDA KEEP_STAGE
   EOR #&01
-  ABS_STA Z_4A
+  ABS_STA KEEP_STAGE
   LDA #&07
   JSR AUDIO_CALL
 .L5_B4CC
-  ABS_LDX Z_4A
+  ABS_LDX KEEP_STAGE
   LDA D5_B4F1
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA VS_CURSOR_Y,X
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_59
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_Y_HI
+  ABS_STA SPR_FLIP
   LDA #LO(D5_B4F4)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(D5_B4F4)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 .D5_B4F1
   EQUB &54
@@ -5552,14 +5552,14 @@ ENDIF
   EQUB &01,&2A,&00,&00,&00
 
 ; Win-count screen. SET_WIN_COUNT enters here.
-; If Z_49 is not 2, store 5 in W_0563 and return.
-; If Z_49 is 2, show a menu: W_0563 wraps 1..5. Start/A fades out.
+; If GAME_MODE is not 2, store 5 in WINS_GOAL and return.
+; If GAME_MODE is 2, show a menu: WINS_GOAL wraps 1..5. Start/A fades out.
 .BATTLE_WIN_MENU
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   CMP #&02
   BEQ L5_B506
   LDA #&05
-  STA W_0563
+  STA WINS_GOAL
   RTS
 
 ; (not seen executing during the coverage runs)
@@ -5583,7 +5583,7 @@ ENDIF
   JSR FADE_PALETTE
   JMP PPU_OFF
 
-; Win-count menu. Up wraps W_0563 down to 1; Down or Select wraps it up to 5. Sound 07h.
+; Win-count menu. Up wraps WINS_GOAL down to 1; Down or Select wraps it up to 5. Sound 07h.
 .WIN_COUNT_INPUT
   LDA JOY_NEW
   AND #&08
@@ -5598,77 +5598,77 @@ ENDIF
 .L5_B54D
   LDA #&07
   JSR AUDIO_CALL
-  DEC W_0563
+  DEC WINS_GOAL
   BNE L5_B55C
   LDA #&05
-  STA W_0563
+  STA WINS_GOAL
 .L5_B55C
   RTS
 .L5_B55D
   LDA #&07
   JSR AUDIO_CALL
-  INC W_0563
-  LDA W_0563
+  INC WINS_GOAL
+  LDA WINS_GOAL
   CMP #&06
   BCC L5_B571
   LDA #&01
-  STA W_0563
+  STA WINS_GOAL
 .L5_B571
   RTS
 IF REGION_JP
 
 .DRAW_WIN_MENU_MAP
   LDA #LO(UI_META_ATTR)
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
 
 ; Draw the win-count nametable from WIN_COUNT_LAY plus the shared UI tile pointers. JMP L7_CD89.
 .DRAW_WIN_MENU_MAP
   LDA #LO(UI_META_GFX)
-  STA Z_66
+  STA TILE_ATTR
   LDA #&96
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #&C1
-  STA Z_64
+  STA TILE_MAP
   LDA #&96
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #&41
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(WIN_COUNT_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(WIN_COUNT_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Draw MENU_CURSOR_SPR-shaped data at X = WIN_CURSOR_Y[0] and Y = WIN_CURSOR_Y[W_0563].
+; Draw MENU_CURSOR_SPR-shaped data at X = WIN_CURSOR_Y[0] and Y = WIN_CURSOR_Y[WINS_GOAL].
 .DRAW_WIN_CURSOR
-  LDX W_0563
+  LDX WINS_GOAL
   LDA WIN_CURSOR_Y
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA WIN_CURSOR_Y,X
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_59
-  ABS_STA Z_5A
+  ABS_STA SPR_Y_HI
+  ABS_STA SPR_FLIP
   LDA #LO(D5_B5BD)
-  STA Z_54
+  STA SPR_PTR
   LDA #HI(D5_B5BD)
-  STA Z_55
+  STA SPR_PTR_HI
   JMP DRAW_METASPRITE
 
-; Win-count cursor. Byte 0 is X (48h). Bytes 1..5 are Y for W_0563 = 1..5.
+; Win-count cursor. Byte 0 is X (48h). Bytes 1..5 are Y for WINS_GOAL = 1..5.
 .WIN_CURSOR_Y
   EQUB &48,&70,&80,&90,&A0,&B0
 .D5_B5BD
@@ -5677,7 +5677,7 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Battle pre-stage card. SETUP_BY_MODE calls this when Z_49 is 2.
+; Battle pre-stage card. SETUP_BY_MODE calls this when GAME_MODE is 2.
 ; Draws digits and a mark, plays sound 1Dh, waits B4h frames, fades out.
 .SHOW_BATTLE_CARD
   JSR NMI_OFF
@@ -5703,66 +5703,66 @@ IF REGION_JP
 
 .DRAW_BATTLE_CARD_MAP
   LDA #LO(UI_META_ATTR)
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
 
 ; Draw the battle-card nametable from BATTLE_CARD_LAY. JMP L7_CD89.
 .DRAW_BATTLE_CARD_MAP
   LDA #LO(UI_META_GFX)
-  STA Z_66
+  STA TILE_ATTR
   LDA #&96
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #&C1
-  STA Z_64
+  STA TILE_MAP
   LDA #&96
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #&41
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(BATTLE_CARD_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(BATTLE_CARD_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Draw W_055E, W_0560 and W_055F on the battle card.
+; Draw MATCH_0, MATCH_2 and MATCH_1 on the battle card.
 ; Digits come from SCORE_DIGIT_TILE. The middle value also places a second tile from BATTLE_TILE_RIGHT.
 ; Columns are D5_B66A, D5_B66B and D5_B66C; row is 0Ah.
 .DRAW_BATTLE_DIGITS
   LDA #&0A
-  STA Z_29
-  LDY W_055E
+  STA CELL_ROW
+  LDY MATCH_0
   LDA SCORE_DIGIT_TILE,Y
   LDX D5_B66A
-  LDY Z_29
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
-  LDY W_0560
+  LDY MATCH_2
   LDA SCORE_DIGIT_TILE,Y
   LDX D5_B66C
-  LDY Z_29
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
-  LDY W_055F
+  LDY MATCH_1
   LDA BATTLE_TILE_RIGHT,Y
   PHA
   LDA BATTLE_TILE_LEFT,Y
   LDX D5_B66B
-  LDY Z_29
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
   PLA
   LDX D5_B66B
   INX
-  LDY Z_29
+  LDY CELL_ROW
   JMP QUEUE_MAP_TILE
 .D5_B66A
   EQUB &04
@@ -5771,7 +5771,7 @@ ENDIF
 .D5_B66C
   EQUB &0B
 
-; 10 tiles for the left half of the middle battle-card number. BATTLE_TILE_RIGHT is the matching right half. Index is W_055F.
+; 10 tiles for the left half of the middle battle-card number. BATTLE_TILE_RIGHT is the matching right half. Index is MATCH_1.
 .BATTLE_TILE_LEFT
   EQUB &22,&10,&12,&14,&16,&18,&1A,&1C,&1E,&20
 .BATTLE_TILE_RIGHT
@@ -5779,10 +5779,10 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Draw the battle mark for W_04C8.
+; Draw the battle mark for VS_PICTURE.
 ; Negative: nothing. 1: 2x2 tiles at row 7 via DRAW_MARK_2X2. Other: one tile from D5_B6E5 at row 8.
 .DRAW_BATTLE_MARK
-  LDA W_04C8
+  LDA VS_PICTURE
   BMI L5_B6D8
   CMP #&01
   BEQ L5_B696
@@ -5797,38 +5797,38 @@ ENDIF
   ASL A
   STA Z_2A
   LDA D5_B66A,X
-  STA Z_28
+  STA CELL_COL
   LDA #&07
-  STA Z_29
+  STA CELL_ROW
 .DRAW_MARK_2X2
   LDY Z_2A
   LDA MARK_TILE_2X2,Y
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
   LDY Z_2A
   LDA D5_B6DA,Y
-  LDX Z_28
+  LDX CELL_COL
   INX
-  LDY Z_29
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
   LDY Z_2A
   LDA D5_B6DB,Y
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   INY
   JSR QUEUE_MAP_TILE
   LDY Z_2A
   LDA D5_B6DC,Y
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   INX
   INY
   JMP QUEUE_MAP_TILE
 .L5_B6D8
   RTS
 
-; 2x2 mark tiles. 3 groups of 4, index W_04C8*4: top-left, top-right, bottom-left, bottom-right.
+; 2x2 mark tiles. 3 groups of 4, index VS_PICTURE*4: top-left, top-right, bottom-left, bottom-right.
 .MARK_TILE_2X2
   EQUB &40
 .D5_B6DA
@@ -5842,15 +5842,15 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Queue SCORE_DIGIT_TILE[W_0563] at column 3, row 3.
+; Queue SCORE_DIGIT_TILE[WINS_GOAL] at column 3, row 3.
 .DRAW_WIN_COUNT_TILE
-  LDX W_0563
+  LDX WINS_GOAL
   LDA SCORE_DIGIT_TILE,X
   LDX #&03
   LDY #&03
   JMP QUEUE_MAP_TILE
 
-; Versus pre-stage card. SETUP_BY_MODE calls this when Z_49 is not 0 or 2.
+; Versus pre-stage card. SETUP_BY_MODE calls this when GAME_MODE is not 0 or 2.
 ; Plays sound 1Dh and waits Z_2A counts of B4h frames.
 .SHOW_VS_CARD
   JSR NMI_OFF
@@ -5882,43 +5882,43 @@ ENDIF
 .DRAW_VS_CARD_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(VS_CARD_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(VS_CARD_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Queue SCORE_DIGIT_TILE[W_055E] at column D5_B77D and [W_055F] at D5_B77E, both on row 8.
+; Queue SCORE_DIGIT_TILE[MATCH_0] at column D5_B77D and [MATCH_1] at D5_B77E, both on row 8.
 .DRAW_VS_CARD_DIGITS
-  LDY W_055E
+  LDY MATCH_0
   LDA SCORE_DIGIT_TILE,Y
   LDY #&08
   LDX D5_B77D
   JSR QUEUE_MAP_TILE
-  LDY W_055F
+  LDY MATCH_1
   LDA SCORE_DIGIT_TILE,Y
   LDY #&08
   LDX D5_B77E
@@ -5949,31 +5949,31 @@ ENDIF
   ASL A
   TAX
   LDA VS_CARD_SPR_A,X
-  STA Z_54
+  STA SPR_PTR
   LDA D5_B7E5,X
-  STA Z_55
+  STA SPR_PTR_HI
   LDA D5_B7E0
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D5_B7E1
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JSR DRAW_METASPRITE
   LDA W_0562
   ASL A
   TAX
   LDA VS_CARD_SPR_B,X
-  STA Z_54
+  STA SPR_PTR
   LDA D5_B7E9,X
-  STA Z_55
+  STA SPR_PTR_HI
   LDA D5_B7E2
-  ABS_STA Z_56
+  ABS_STA SPR_X
   LDA D5_B7E3
-  ABS_STA Z_58
+  ABS_STA SPR_Y
   LDA #&00
-  ABS_STA Z_57
-  ABS_STA Z_5A
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_FLIP
   JMP DRAW_METASPRITE
 .D5_B7E0
   EQUB &50
@@ -6008,24 +6008,24 @@ ENDIF
   EQUB &07,&19,&F8,&F9,&03,&1A,&00,&F9,&03,&21,&E4,&FC,&03,&22,&EC,&FC
   EQUB &03,&1B,&F8,&01,&03,&1C,&00,&01,&03,&23,&EC,&04,&03
 
-; Compare W_055E with W_055F and queue the outcome tiles.
+; Compare MATCH_0 with MATCH_1 and queue the outcome tiles.
 ; Equal and >= 4: one or two strings (9 uses two). Unequal with either side >= 4: a run of tiles via QUEUE_TILE_SPAN.
 .DRAW_VS_OUTCOME
-  LDA W_055E
-  CMP W_055F
+  LDA MATCH_0
+  CMP MATCH_1
   BEQ L5_B87A
 
 ; (not seen executing during the coverage runs)
   CMP #&04
   BCS L5_B86B
-  LDA W_055F
+  LDA MATCH_1
   CMP #&04
   BCC L5_B8CF
 .L5_B86B
   LDA #&02
-  STA Z_28
+  STA CELL_COL
   LDA #&0A
-  STA Z_29
+  STA CELL_ROW
   LDA #&8A
   LDX #&0C
   JMP QUEUE_TILE_SPAN
@@ -6037,24 +6037,24 @@ ENDIF
   CMP #&09
   BNE L5_B8A4
   LDA #&03
-  STA Z_28
+  STA CELL_COL
   LDA #&0A
-  STA Z_29
+  STA CELL_ROW
   LDA #&B3
   LDX #&04
   JSR QUEUE_TILE_SPAN
   LDA #&08
-  STA Z_28
+  STA CELL_COL
   LDA #&0A
-  STA Z_29
+  STA CELL_ROW
 IF REGION_JP
   LDA #&7E
 ELSE
   LDA #&E9
 ENDIF
-  STA Z_24
+  STA DATA_PTR2
   LDA #&B8
-  STA Z_25
+  STA DATA_PTR2_HI
   JMP QUEUE_STRING_TILES
 IF REGION_JP
 .L5_B8A4
@@ -6063,32 +6063,32 @@ ELSE
 .L5_B8A4
   LDA #&05
 ENDIF
-  STA Z_28
+  STA CELL_COL
   LDA #&0A
-  STA Z_29
+  STA CELL_ROW
 IF REGION_JP
   LDA #&86
   LDX #&04
 ELSE
   LDA #&EF
-  STA Z_24
+  STA DATA_PTR2
   LDA #&B8
-  STA Z_25
+  STA DATA_PTR2_HI
   JMP QUEUE_STRING_TILES
 ENDIF
 
-; Queue Z_2A consecutive tiles starting at A, column Z_28, row Z_29.
+; Queue Z_2A consecutive tiles starting at A, column CELL_COL, row CELL_ROW.
 ; Each tile increments A and the column. Uses W_04CA as the cursor.
 .QUEUE_TILE_SPAN
   STA W_04CA
   STX Z_2A
 .L5_B8BC
   LDA W_04CA
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
   INC W_04CA
-  INC Z_28
+  INC CELL_COL
   DEC Z_2A
   BNE L5_B8BC
 .L5_B8CF
@@ -6097,15 +6097,15 @@ ENDIF
 ; (not seen executing during the coverage runs)
 .QUEUE_STRING_TILES
   LDY #&00
-  LDA (Z_24),Y
+  LDA (DATA_PTR2),Y
   BEQ L5_B8E8
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR QUEUE_MAP_TILE
-  INC Z_28
-  INC Z_24
+  INC CELL_COL
+  INC DATA_PTR2
   BNE L5_B8E5
-  INC Z_25
+  INC DATA_PTR2_HI
 .L5_B8E5
   JMP QUEUE_STRING_TILES
 .L5_B8E8
@@ -6116,7 +6116,7 @@ ELSE
   EQUB &FC,&FD,&FE,&FF,&38,&39,&00
 ENDIF
 
-; Normal-mode stage card. SETUP_BY_MODE calls this when Z_49 is 0.
+; Normal-mode stage card. SETUP_BY_MODE calls this when GAME_MODE is 0.
 ; Sound 1Dh, waits B4h frames, fades out.
 .SHOW_STAGE_CARD
   JSR NMI_OFF
@@ -6141,56 +6141,56 @@ ENDIF
 .DRAW_STAGE_CARD_MAP
   LDA #LO(UI_META_ATTR)
 IF REGION_JP
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP_JP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP_JP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ELSE
-  STA Z_66
+  STA TILE_ATTR
   LDA #HI(UI_META_ATTR)
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA #LO(UI_META_MAP)
-  STA Z_64
+  STA TILE_MAP
   LDA #HI(UI_META_MAP)
-  STA Z_65
+  STA TILE_MAP_HI
   LDA #LO(UI_META_GFX)
-  STA Z_62
+  STA TILE_GFX
   LDA #HI(UI_META_GFX)
 ENDIF
-  STA Z_63
+  STA TILE_GFX_HI
   LDA #LO(STORY_CARD_LAY)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(STORY_CARD_LAY)
-  STA Z_21
+  STA DATA_PTR_HI
   JMP L7_CD89
 
-; Stage card: score, the two-tile suffix D5_B9C7, lives, then SCORE_DIGIT_TILE for Z_4B and Z_4C.
+; Stage card: score, the two-tile suffix D5_B9C7, lives, then SCORE_DIGIT_TILE for AREA_NUM and STAGE_NUM.
 .DRAW_STAGE_CARD
   JSR DRAW_CARD_SCORE
   JSR DRAW_CARD_LIVES
-  ABS_LDX Z_4B
+  ABS_LDX AREA_NUM
   LDA D5_B774,X
   LDX #&06
   LDY #&07
   JSR QUEUE_MAP_TILE
-  ABS_LDX Z_4C
+  ABS_LDX STAGE_NUM
   LDA D5_B774,X
   LDX #&09
   LDY #&07
   JMP QUEUE_MAP_TILE
 
-; Draw W_03D0 as 8 digits at (0Dh, 5) and queue D5_B9C7 (two tiles) at (0Ah, 5).
+; Draw SCORE_NOW as 8 digits at (0Dh, 5) and queue D5_B9C7 (two tiles) at (0Ah, 5).
 .DRAW_CARD_SCORE
   LDX #&07
   LDY #&00
 .L5_B968
-  LDA W_03D0,X
+  LDA SCORE_NOW,X
   ORA #&30
   STA W_052A,Y
   INY
@@ -6204,29 +6204,29 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&08
   JSR QUEUE_PPU_RUN
   LDX #&0A
   LDY #&05
   JSR XY_TO_NT_ADDR
   LDA #LO(D5_B9C7)
-  STA Z_20
+  STA DATA_PTR
   LDA #HI(D5_B9C7)
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&02
   JMP QUEUE_PPU_RUN
 
-; Copy W_04E5 into W_04CB and draw it as one digit (OR 30h) at column 12h, row 15h.
+; Copy LIVES into LIVES_SHOWN and draw it as one digit (OR 30h) at column 12h, row 15h.
 .DRAW_CARD_LIVES
-  LDA W_04E5
-  STA W_04CB
+  LDA LIVES
+  STA LIVES_SHOWN
   ORA #&30
   STA W_052A
   LDX #&12
@@ -6237,25 +6237,25 @@ IF REGION_JP
 ELSE
   LDA #&2A
 ENDIF
-  STA Z_20
+  STA DATA_PTR
   LDA #&05
-  STA Z_21
+  STA DATA_PTR_HI
   LDA #&00
-  STA Z_2E
+  STA PPU_RUN_CTRL
   LDX #&01
   JMP QUEUE_PPU_RUN
 .D5_B9C7
   EQUB &53,&43
 
-; Remote detonate for player Z_68. L7_CFD4 enters here when Z_AF is 0.
-; Scans the 8 bomb slots under BOMB_SLOT_BASE[Z_68]. The first positive X_6001 flag jumps to DETONATE_BOMB.
+; Remote detonate for player ACTOR_INDEX. L7_CFD4 enters here when ACT_REMOTE is 0.
+; Scans the 8 bomb slots under BOMB_SLOT_BASE[ACTOR_INDEX]. The first positive BOMB_FLAG flag jumps to DETONATE_BOMB.
 .DETONATE_REMOTE
-  LDX Z_68
+  LDX ACTOR_INDEX
   LDA BOMB_SLOT_BASE,X
   TAX
   LDY #&07
 .L5_B9D1
-  LDA X_6001,X
+  LDA BOMB_FLAG,X
   BEQ L5_B9DB
   BMI L5_B9DB
   JMP DETONATE_BOMB
@@ -6267,58 +6267,58 @@ ENDIF
   BPL L5_B9D1
   RTS
 
-; Place a bomb at Z_1C/Z_1D. L7_CF96 enters here.
-; ALLOC_BOMB_SLOT must return C=1. Writes the X_6001 slot, fuse W_03ED, map bit 10h, and plays sound 02h.
-; A map byte with bit 7 also sets X_6079 bit 7 and fuse 2, and copies the actor id from FIND_ACTOR_CELL.
+; Place a bomb at RLE_BYTE/RLE_BITS. L7_CF96 enters here.
+; ALLOC_BOMB_SLOT must return C=1. Writes the BOMB_FLAG slot, fuse FUSE_INIT, map bit 10h, and plays sound 02h.
+; A map byte with bit 7 also sets BOMB_KICK bit 7 and fuse 2, and copies the actor id from FIND_ACTOR_CELL.
 .PLACE_BOMB
   JSR ALLOC_BOMB_SLOT
   BCC L5_BA55
   STX Z_2C
   LDA #&01
-  STA X_6001,X
-  LDA Z_1C
-  STA Z_28
-  STA X_6019,X
-  LDA Z_1D
-  STA Z_29
-  STA X_6031,X
+  STA BOMB_FLAG,X
+  LDA RLE_BYTE
+  STA CELL_COL
+  STA BOMB_COL,X
+  LDA RLE_BITS
+  STA CELL_ROW
+  STA BOMB_ROW,X
   LDA #&00
-  STA X_6049,X
-  STA X_6079,X
+  STA BOMB_FRAME,X
+  STA BOMB_KICK,X
   LDA #&FF
-  STA X_6091,X
-  LDA W_03ED
-  STA X_6061,X
-  LDX Z_1C
-  LDY Z_1D
+  STA BOMB_OWNER,X
+  LDA FUSE_INIT
+  STA BOMB_FUSE,X
+  LDX RLE_BYTE
+  LDY RLE_BITS
   LDA BOMB_ANIM_TILE
   JSR QUEUE_TILE_Y2
-  LDX Z_1C
-  LDY Z_1D
+  LDX RLE_BYTE
+  LDY RLE_BITS
   JSR PEEK_MAP_BYTE
   PHA
   AND #&80
   BEQ L5_BA3C
   LDX Z_2C
   LDA #&80
-  STA X_6079,X
+  STA BOMB_KICK,X
   LDA #&02
-  STA X_6061,X
+  STA BOMB_FUSE,X
   JSR FIND_ACTOR_CELL
   CPY #&FF
   BEQ L5_BA3C
-  LDA X_620E,Y
-  STA X_6091,X
+  LDA FLAME_OWNER,Y
+  STA BOMB_OWNER,X
 .L5_BA3C
-  LDY Z_1C
+  LDY RLE_BYTE
   PLA
   ORA #&10
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   LDX Z_2C
-  LDA X_6091,X
+  LDA BOMB_OWNER,X
   BPL L5_BA50
   JSR FREE_RING_SLOT
-  STA X_6091,X
+  STA BOMB_OWNER,X
 .L5_BA50
   LDA #&02
   JSR AUDIO_CALL
@@ -6326,18 +6326,18 @@ ENDIF
   RTS
 
 ; Bomb and flame tick. UPDATE_BLASTS enters here.
-; X_624D even: step flames. Odd: step each occupied slot of the 24 at X_6001.
+; BLAST_TOG even: step flames. Odd: step each occupied slot of the 24 at BOMB_FLAG.
 .STEP_BLASTS
-  INC X_624D
-  LDA X_624D
+  INC BLAST_TOG
+  LDA BLAST_TOG
   LSR A
   BCS L5_BA75
-  INC X_624E
+  INC BLAST_ANIM_A
   LDX #&17
   STX Z_2A
 .L5_BA66
   LDX Z_2A
-  LDA X_6001,X
+  LDA BOMB_FLAG,X
   BEQ L5_BA70
   JSR STEP_BOMB
 .L5_BA70
@@ -6345,41 +6345,41 @@ ENDIF
   BPL L5_BA66
   RTS
 .L5_BA75
-  INC X_624F
+  INC BLAST_ANIM_B
   JMP STEP_FLAMES
 
 ; One bomb slot in X.
-; Negative X_6001 counts X_60A9 down, then the flag becomes 1.
-; The fuse in X_6061 counts down unless X_6000 is set, or Z_AF is 1 and X_6079 is 0.
-; Fuse 0 jumps to DETONATE_BOMB. The tile cycles BOMB_ANIM_TILE every 8 counts of X_624E.
+; Negative BOMB_FLAG counts BOMB_REARM down, then the flag becomes 1.
+; The fuse in BOMB_FUSE counts down unless FUSE_LOCK is set, or ACT_REMOTE is 1 and BOMB_KICK is 0.
+; Fuse 0 jumps to DETONATE_BOMB. The tile cycles BOMB_ANIM_TILE every 8 counts of BLAST_ANIM_A.
 .STEP_BOMB
-  LDA X_6079,X
+  LDA BOMB_KICK,X
   BNE L5_BA8B
-  LDA X_6001,X
+  LDA BOMB_FLAG,X
   BMI L5_BABB
-  LDA Z_AF
+  LDA ACT_REMOTE
   CMP #&01
   BEQ L5_BA98
 .L5_BA8B
-  LDA X_6000
+  LDA FUSE_LOCK
   BNE L5_BA98
-  LDA X_6061,X
+  LDA BOMB_FUSE,X
   BEQ DETONATE_BOMB
-  DEC X_6061,X
+  DEC BOMB_FUSE,X
 .L5_BA98
-  LDA X_624E
+  LDA BLAST_ANIM_A
   AND #&07
   BNE L5_BABA
-  LDA X_6049,X
+  LDA BOMB_FRAME,X
   CLC
   ADC #&01
   AND #&03
-  STA X_6049,X
+  STA BOMB_FRAME,X
   TAY
   LDA BOMB_ANIM_TILE,Y
   PHA
-  LDY X_6031,X
-  LDA X_6019,X
+  LDY BOMB_ROW,X
+  LDA BOMB_COL,X
   TAX
   PLA
   JMP QUEUE_TILE_Y2
@@ -6387,12 +6387,12 @@ ENDIF
   RTS
 .L5_BABB
   LDA #&00
-  STA X_6049,X
-  DEC X_60A9,X
+  STA BOMB_FRAME,X
+  DEC BOMB_REARM,X
   BNE L5_BACD
   LDA #&01
-  STA X_6001,X
-  STA X_6049,X
+  STA BOMB_FLAG,X
+  STA BOMB_FRAME,X
 .L5_BACD
   RTS
 .DETONATE_BOMB
@@ -6402,9 +6402,9 @@ ENDIF
   LSR A
   AND #&03
   TAY
-  LDA Z_93,Y
-  STA X_624B
-  LDA Z_87,Y
+  LDA ACTOR_BOMBS,Y
+  STA BLAST_RADIUS
+  LDA ACTOR_TIMED,Y
   BPL L5_BAEB
 
 ; (not seen executing during the coverage runs)
@@ -6412,63 +6412,63 @@ ENDIF
   CMP #&03
   BNE L5_BAEB
   LDA #&00
-  STA X_624B
+  STA BLAST_RADIUS
 .L5_BAEB
   JSR FIND_FREE_FLAME
   BCC L5_BABA
-  LDY X_6031,X
-  STY Z_1D
-  STY Z_29
+  LDY BOMB_ROW,X
+  STY RLE_BITS
+  STY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY X_6019,X
-  STY Z_1C
-  STY Z_28
+  LDY BOMB_COL,X
+  STY RLE_BYTE
+  STY CELL_COL
   LDA #&00
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   LDA #&00
-  STA X_6001,X
-  LDA X_6091,X
-  STA X_624C
-  LDA X_6079,X
+  STA BOMB_FLAG,X
+  LDA BOMB_OWNER,X
+  STA BLAST_OWNER
+  LDA BOMB_KICK,X
   JMP L7_D018
 .STEP_FLAMES
   LDX #&3B
   STX Z_2A
 .L5_BB1A
   LDX Z_2A
-  LDA X_60E2,X
+  LDA FLAME_FLAG,X
   BEQ L5_BB65
   AND #&0F
   TAY
-  INC X_6196,X
-  LDA X_6196,X
-  STA Z_1C
+  INC FLAME_ANIM,X
+  LDA FLAME_ANIM,X
+  STA RLE_BYTE
   AND #&01
   BNE L5_BB65
-  LDA X_611E,X
-  STA Z_28
-  LDA X_615A,X
-  STA Z_29
-  LDA Z_1C
+  LDA FLAME_COL,X
+  STA CELL_COL
+  LDA FLAME_ROW,X
+  STA CELL_ROW
+  LDA RLE_BYTE
   LSR A
   ORA FLAME_TILE_BASE,Y
   TAY
   LDA FLAME_ANIM_TILE,Y
-  LDY Z_29
-  LDX Z_28
+  LDY CELL_ROW
+  LDX CELL_COL
   JSR QUEUE_TILE_Y2
-  LDA Z_1C
+  LDA RLE_BYTE
   CMP #&0E
   BCC L5_BB65
   LDA #&00
   LDX Z_2A
-  STA X_60E2,X
-  LDY Z_29
+  STA FLAME_FLAG,X
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   AND #&5F
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
 .L5_BB65
   DEC Z_2A
   BMI L5_BB6C
@@ -6476,15 +6476,15 @@ ENDIF
 .L5_BB6C
   RTS
 
-; 4 bomb tiles. X_6049 & 3 selects 01h, 02h, 03h, 02h.
+; 4 bomb tiles. BOMB_FRAME & 3 selects 01h, 02h, 03h, 02h.
 .BOMB_ANIM_TILE
   EQUB &01,&02,&03,&02
 
-; 16 base indexes added to the flame timer. The low nibble of X_60E2 selects the row. Unused types are 0.
+; 16 base indexes added to the flame timer. The low nibble of FLAME_FLAG selects the row. Unused types are 0.
 .FLAME_TILE_BASE
   EQUB &00,&08,&18,&10,&20,&08,&28,&10,&30,&38,&40,&00,&00,&00,&00,&00
 
-; Flame tiles. 9 rows of 8. Y = (X_6196 >> 1) OR the base from FLAME_TILE_BASE. The row is queued with QUEUE_TILE_Y2.
+; Flame tiles. 9 rows of 8. Y = (FLAME_ANIM >> 1) OR the base from FLAME_TILE_BASE. The row is queued with QUEUE_TILE_Y2.
 .FLAME_ANIM_TILE
   EQUB &04,&0B,&12,&19,&12,&0B,&04,&38,&07,&0E,&15,&1C,&15,&0E,&07,&38
   EQUB &0A,&11,&18,&1F,&18,&11,&0A,&38,&05,&0C,&13,&1A,&13,&0C,&05,&38
@@ -6492,40 +6492,40 @@ ENDIF
   EQUB &09,&10,&17,&1E,&17,&10,&09,&38,&3A,&3A,&3B,&3C,&3D,&3E,&3F,&38
   EQUB &2D,&2D,&2E,&2F,&30,&31,&32,&38
 
-; Find a free bomb slot for player Z_68.
-; Empty map cell (bits 0..6 clear) required. Packs that player's 8 X_6001 slots down from BOMB_SLOT_BASE.
-; C=1 if the free index is in range and Z_A9 >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
+; Find a free bomb slot for player ACTOR_INDEX.
+; Empty map cell (bits 0..6 clear) required. Packs that player's 8 BOMB_FLAG slots down from BOMB_SLOT_BASE.
+; C=1 if the free index is in range and ACT_W_FIRE >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
 .ALLOC_BOMB_SLOT
-  LDX Z_1C
-  LDY Z_1D
+  LDX RLE_BYTE
+  LDY RLE_BITS
   JSR PEEK_MAP_BYTE
   AND #&7F
   BNE L5_BC24
-  LDX Z_68
+  LDX ACTOR_INDEX
   LDA BOMB_SLOT_BASE,X
   TAX
   TAY
   LDA #&07
   STA Z_2A
 .L5_BBDF
-  LDA X_6001,Y
+  LDA BOMB_FLAG,Y
   BEQ L5_BC13
   LDA #&00
-  STA X_6001,Y
-  LDA X_6019,Y
-  STA X_6019,X
-  LDA X_6031,Y
-  STA X_6031,X
-  LDA X_6049,Y
-  STA X_6049,X
-  LDA X_6061,Y
-  STA X_6061,X
-  LDA X_6079,Y
-  STA X_6079,X
-  LDA X_6091,Y
-  STA X_6091,X
+  STA BOMB_FLAG,Y
+  LDA BOMB_COL,Y
+  STA BOMB_COL,X
+  LDA BOMB_ROW,Y
+  STA BOMB_ROW,X
+  LDA BOMB_FRAME,Y
+  STA BOMB_FRAME,X
+  LDA BOMB_FUSE,Y
+  STA BOMB_FUSE,X
+  LDA BOMB_KICK,Y
+  STA BOMB_KICK,X
+  LDA BOMB_OWNER,Y
+  STA BOMB_OWNER,X
   LDA #&01
-  STA X_6001,X
+  STA BOMB_FLAG,X
   DEX
 .L5_BC13
   DEY
@@ -6533,7 +6533,7 @@ ENDIF
   BPL L5_BBDF
   TXA
   BMI L5_BC24
-  LDA Z_A9
+  LDA ACT_W_FIRE
   CMP BOMB_SLOT_LIMIT,X
   BCC L5_BC24
   SEC
@@ -6542,21 +6542,21 @@ ENDIF
   CLC
   RTS
 
-; 24 bytes, three copies of 07h..00h. After ALLOC_BOMB_SLOT packs a player's bombs, Z_A9 must be >= the byte at the free slot index.
+; 24 bytes, three copies of 07h..00h. After ALLOC_BOMB_SLOT packs a player's bombs, ACT_W_FIRE must be >= the byte at the free slot index.
 .BOMB_SLOT_LIMIT
   EQUB &07,&06,&05,&04,&03,&02,&01,&00,&07,&06,&05,&04,&03,&02,&01,&00
   EQUB &07,&06,&05,&04,&03,&02,&01,&00
 
-; 3 bytes, one per player in Z_68: 07h, 0Fh, 17h. Top index of that player's 8 bomb slots in X_6001.
+; 3 bytes, one per player in ACTOR_INDEX: 07h, 0Fh, 17h. Top index of that player's 8 bomb slots in BOMB_FLAG.
 .BOMB_SLOT_BASE
   EQUB &07,&0F,&17
 
-; Find a free flame slot among the 60 flags at X_60E2 (index 3Bh down).
+; Find a free flame slot among the 60 flags at FLAME_FLAG (index 3Bh down).
 ; Out: C=1 and Y=slot, or C=0 if none.
 .FIND_FREE_FLAME
   LDY #&3B
 .L5_BC43
-  LDA X_60E2,Y
+  LDA FLAME_FLAG,Y
   BEQ L5_BC4D
   DEY
   BPL L5_BC43
@@ -6568,130 +6568,130 @@ ENDIF
   SEC
   RTS
 
-; Spread a blast from Z_1C/Z_1D. L7_D018 stores the direction mask in Z_B8 and calls this.
-; Range is X_624B. LSR Z_B8 drops a direction when its bit was set: up, down, left, right.
+; Spread a blast from RLE_BYTE/RLE_BITS. L7_D018 stores the direction mask in FLAME_DIR and calls this.
+; Range is BLAST_RADIUS. LSR FLAME_DIR drops a direction when its bit was set: up, down, left, right.
 ; Each step calls BLAST_CELL and stops on C=0 or when the range count expires.
 .SPREAD_FLAME
-  LDA X_62E7
+  LDA TYPE10_TRY
   BMI L5_BC57
-  INC X_62E7
+  INC TYPE10_TRY
 .L5_BC57
-  LDA X_624B
-  STA X_624A
-  LDA Z_1C
-  STA Z_28
-  LDA Z_1D
-  STA Z_29
+  LDA BLAST_RADIUS
+  STA RAY_LEFT
+  LDA RLE_BYTE
+  STA CELL_COL
+  LDA RLE_BITS
+  STA CELL_ROW
   LDA #&00
   JSR BLAST_CELL
-  LSR Z_B8
+  LSR FLAME_DIR
   BCS L5_BC8D
-  LDA Z_1C
-  STA Z_28
-  LDA Z_1D
-  STA Z_29
+  LDA RLE_BYTE
+  STA CELL_COL
+  LDA RLE_BITS
+  STA CELL_ROW
 .FLAME_UP
-  DEC Z_29
+  DEC CELL_ROW
   BMI L5_BC8D
   LDA #&01
-  LDX X_624A
+  LDX RAY_LEFT
   BNE L5_BC83
   LDA #&02
 .L5_BC83
   JSR BLAST_CELL
   BCC L5_BC8D
-  DEC X_624A
+  DEC RAY_LEFT
   BPL FLAME_UP
 .L5_BC8D
-  LSR Z_B8
+  LSR FLAME_DIR
   BCS L5_BCB4
-  LDA X_624B
-  STA X_624A
-  LDA Z_1C
-  STA Z_28
-  LDA Z_1D
-  STA Z_29
+  LDA BLAST_RADIUS
+  STA RAY_LEFT
+  LDA RLE_BYTE
+  STA CELL_COL
+  LDA RLE_BITS
+  STA CELL_ROW
 .FLAME_DOWN
-  INC Z_29
+  INC CELL_ROW
   LDA #&05
-  LDX X_624A
+  LDX RAY_LEFT
   BNE L5_BCAA
   LDA #&06
 .L5_BCAA
   JSR BLAST_CELL
   BCC L5_BCB4
-  DEC X_624A
+  DEC RAY_LEFT
   BPL FLAME_DOWN
 .L5_BCB4
-  LSR Z_B8
+  LSR FLAME_DIR
   BCS L5_BCDD
-  LDA X_624B
-  STA X_624A
-  LDA Z_1C
-  STA Z_28
-  LDA Z_1D
-  STA Z_29
+  LDA BLAST_RADIUS
+  STA RAY_LEFT
+  LDA RLE_BYTE
+  STA CELL_COL
+  LDA RLE_BITS
+  STA CELL_ROW
 .FLAME_LEFT
-  DEC Z_28
+  DEC CELL_COL
   BMI L5_BCDD
   LDA #&03
-  LDX X_624A
+  LDX RAY_LEFT
   BNE L5_BCD3
   LDA #&04
 .L5_BCD3
   JSR BLAST_CELL
   BCC L5_BCDD
-  DEC X_624A
+  DEC RAY_LEFT
   BPL FLAME_LEFT
 .L5_BCDD
-  LSR Z_B8
+  LSR FLAME_DIR
   BCS L5_BD04
-  LDA X_624B
-  STA X_624A
-  LDA Z_1C
-  STA Z_28
-  LDA Z_1D
-  STA Z_29
+  LDA BLAST_RADIUS
+  STA RAY_LEFT
+  LDA RLE_BYTE
+  STA CELL_COL
+  LDA RLE_BITS
+  STA CELL_ROW
 .FLAME_RIGHT
-  INC Z_28
+  INC CELL_COL
   LDA #&07
-  LDX X_624A
+  LDX RAY_LEFT
   BNE L5_BCFA
   LDA #&08
 .L5_BCFA
   JSR BLAST_CELL
   BCC L5_BD04
-  DEC X_624A
+  DEC RAY_LEFT
   BPL FLAME_RIGHT
 .L5_BD04
   RTS
 
-; One flame cell. In: A = flame type, Z_28/Z_29 = cell. Out: C=1 if the ray continues.
+; One flame cell. In: A = flame type, CELL_COL/CELL_ROW = cell. Out: C=1 if the ray continues.
 ; Map bit 6 or value A0h stops the ray. Bit 4 kicks the bomb there (KICK_DIR_MASK) and stops.
 ; Low bits 1 or 2 go to BLAST_CONTENTS and stop. Value 20h opens a buried tile, then uses type 09h.
 ; Low bits 0 spawn a flame.
 .BLAST_CELL
-  STA Z_1E
-  LDY Z_29
+  STA RLE_LEFT
+  LDY CELL_ROW
   LDA MAP_ROW_LO,Y
-  STA Z_2F
+  STA MAP_PTR
   LDA MAP_ROW_HI,Y
-  STA Z_30
-  LDY Z_28
-  LDA (Z_2F),Y
-  STA Z_1F
+  STA MAP_PTR_HI
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
+  STA MAP_BYTE
   AND #&40
   BNE L5_BD84
-  LDA Z_1F
+  LDA MAP_BYTE
   AND #&10
   BNE L5_BD86
-  LDA Z_1F
+  LDA MAP_BYTE
   AND #&A0
   CMP #&A0
   BEQ L5_BD84
   CMP #&20
   BEQ L5_BD3A
-  LDA Z_1F
+  LDA MAP_BYTE
   AND #&03
   BEQ SPAWN_FLAME
 
@@ -6703,37 +6703,37 @@ ENDIF
   JSR OPEN_BURIED
   BCC L5_BD84
   LDA #&09
-  STA Z_1E
+  STA RLE_LEFT
   JSR SPAWN_FLAME
   BCC L5_BD84
-  DEC W_04E2
+  DEC SOFT_COUNT
   CLC
   RTS
 
 ; Spawn a flame actor if FIND_FREE_FLAME succeeds.
-; Stores cell, type|80h, range X_624A, owner X_624C. Sets map bit 7. Calls NOTE_BLAST_TYPE. C=1.
+; Stores cell, type|80h, range RAY_LEFT, owner BLAST_OWNER. Sets map bit 7. Calls NOTE_BLAST_TYPE. C=1.
 .SPAWN_FLAME
   JSR CLEAR_FLAME_HERE
   JSR FIND_FREE_FLAME
   BCC L5_BD84
-  LDA X_624A
-  STA X_61D2,Y
-  LDA Z_28
-  STA X_611E,Y
-  LDA Z_29
-  STA X_615A,Y
+  LDA RAY_LEFT
+  STA FLAME_RADIUS,Y
+  LDA CELL_COL
+  STA FLAME_COL,Y
+  LDA CELL_ROW
+  STA FLAME_ROW,Y
   LDA #&FF
-  STA X_6196,Y
-  LDA Z_1E
+  STA FLAME_ANIM,Y
+  LDA RLE_LEFT
   ORA #&80
-  STA X_60E2,Y
-  LDA X_624C
-  STA X_620E,Y
+  STA FLAME_FLAG,Y
+  LDA BLAST_OWNER
+  STA FLAME_OWNER,Y
   JSR NOTE_BLAST_TYPE
-  LDY Z_28
-  LDA Z_1F
+  LDY CELL_COL
+  LDA MAP_BYTE
   ORA #&80
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   SEC
   RTS
 .L5_BD84
@@ -6742,25 +6742,25 @@ ENDIF
 .L5_BD86
   LDX #&17
 .L5_BD88
-  LDA X_6001,X
+  LDA BOMB_FLAG,X
   BEQ L5_BDBA
-  LDA Z_28
-  CMP X_6019,X
+  LDA CELL_COL
+  CMP BOMB_COL,X
   BNE L5_BDBA
-  LDA Z_29
-  CMP X_6031,X
+  LDA CELL_ROW
+  CMP BOMB_ROW,X
   BNE L5_BDBA
-  LDA X_6079,X
+  LDA BOMB_KICK,X
   BMI L5_BDBA
-  LDY Z_1E
+  LDY RLE_LEFT
   ORA KICK_DIR_MASK,Y
-  STA X_6079,X
-  LDA X_624C
-  STA X_6091,X
+  STA BOMB_KICK,X
+  LDA BLAST_OWNER
+  STA BOMB_OWNER,X
   LDA #&02
-  CMP X_6061,X
+  CMP BOMB_FUSE,X
   BCS L5_BDBA
-  STA X_6061,X
+  STA BOMB_FUSE,X
   CLC
   RTS
 .L5_BDBA
@@ -6772,7 +6772,7 @@ ENDIF
   RTS
 
 ; Flame hit a cell whose low bits are 1 or 2.
-; 1: clear the matching W_04EB slot and the map byte, spawn flame type 0Ah, JMP L7_D11B.
+; 1: clear the matching BURIED_FLAG slot and the map byte, spawn flame type 0Ah, JMP L7_D11B.
 ; 2: JMP L7_D103. Other values return.
 .BLAST_CONTENTS
   CMP #&01
@@ -6780,15 +6780,15 @@ ENDIF
   JSR FIND_BOMB_SLOT
   BMI L5_BDEB
   LDA #&00
-  STA W_04EB,X
-  LDY Z_29
+  STA BURIED_FLAG,X
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
+  LDY CELL_COL
   LDA #&00
-  STA (Z_2F),Y
-  STA Z_1F
+  STA (MAP_PTR),Y
+  STA MAP_BYTE
   LDA #&0A
-  STA Z_1E
+  STA RLE_LEFT
   JSR SPAWN_FLAME
   JMP L7_D11B
 .L5_BDE4
@@ -6798,18 +6798,18 @@ ENDIF
 .L5_BDEB
   RTS
 
-; Find a placed-bomb slot whose cell is Z_28/Z_29.
-; In: those coordinates. Out: X=slot and N clear if W_04EB,X is nonzero; X=FFh (N set) if none. 15 slots.
+; Find a placed-bomb slot whose cell is CELL_COL/CELL_ROW.
+; In: those coordinates. Out: X=slot and N clear if BURIED_FLAG,X is nonzero; X=FFh (N set) if none. 15 slots.
 .FIND_BOMB_SLOT
   LDX #&0E
 .L5_BDEE
-  LDA W_04EB,X
+  LDA BURIED_FLAG,X
   BEQ L5_BE01
-  LDA W_04FA,X
-  CMP Z_28
+  LDA BURIED_COL,X
+  CMP CELL_COL
   BNE L5_BE01
-  LDA W_0509,X
-  CMP Z_29
+  LDA BURIED_ROW,X
+  CMP CELL_ROW
   BEQ L5_BE04
 .L5_BE01
   DEX
@@ -6817,31 +6817,31 @@ ENDIF
 .L5_BE04
   RTS
 
-; If this cell already has a flame actor whose low type nibble is not 9, clear that X_60E2 flag.
-; Skipped when Z_1E is not 0 and the map byte Z_1F is 0.
+; If this cell already has a flame actor whose low type nibble is not 9, clear that FLAME_FLAG flag.
+; Skipped when RLE_LEFT is not 0 and the map byte MAP_BYTE is 0.
 .CLEAR_FLAME_HERE
-  LDA Z_1E
+  LDA RLE_LEFT
   CMP #&00
   BEQ L5_BE0F
-  LDA Z_1F
+  LDA MAP_BYTE
   BEQ L5_BE36
 .L5_BE0F
   LDY #&3B
 .L5_BE11
-  LDA X_60E2,Y
+  LDA FLAME_FLAG,Y
   BEQ L5_BE33
-  LDA X_611E,Y
-  CMP Z_28
+  LDA FLAME_COL,Y
+  CMP CELL_COL
   BNE L5_BE33
-  LDA X_615A,Y
-  CMP Z_29
+  LDA FLAME_ROW,Y
+  CMP CELL_ROW
   BNE L5_BE33
-  LDA X_60E2,Y
+  LDA FLAME_FLAG,Y
   AND #&0F
   CMP #&09
   BEQ L5_BE33
   LDA #&00
-  STA X_60E2,Y
+  STA FLAME_FLAG,Y
   RTS
 .L5_BE33
   DEY
@@ -6849,16 +6849,16 @@ ENDIF
 .L5_BE36
   RTS
 
-; 9 masks ORed into X_6079 when a flame of that type hits a bomb. Index is the flame type in Z_1E.
+; 9 masks ORed into BOMB_KICK when a flame of that type hits a bomb. Index is the flame type in RLE_LEFT.
 .KICK_DIR_MASK
   EQUB &F0,&02,&02,&08,&08,&01,&01,&04,&04
 
 ; Open a buried cell (map value 20h).
-; Low bits 2: set W_0518 to 1, reveal tile 0Ch, C=0.
-; Low bits 1: if FIND_BOMB_CELL hits, reveal BURIED_REVEAL_TILE[flag & 0Fh]; either way DEC W_04E2.
+; Low bits 2: set BURIED_HIT to 1, reveal tile 0Ch, C=0.
+; Low bits 1: if FIND_BOMB_CELL hits, reveal BURIED_REVEAL_TILE[flag & 0Fh]; either way DEC SOFT_COUNT.
 ; Any other low bits: C=1 and the map byte is left for the flame.
 .OPEN_BURIED
-  LDA Z_1F
+  LDA MAP_BYTE
   AND #&03
   CMP #&02
   BEQ L5_BE64
@@ -6870,33 +6870,33 @@ ENDIF
 ; (not seen executing during the coverage runs)
 .L5_BE4E
   LDA #&00
-  STA Z_1F
+  STA MAP_BYTE
   SEC
   RTS
 .L5_BE54
   JSR FIND_BOMB_CELL
   BCC L5_BE4E
-  DEC W_04E2
-  LDA W_04EB,X
+  DEC SOFT_COUNT
+  LDA BURIED_FLAG,X
   AND #&0F
   JMP L5_BE6E
 .L5_BE64
-  DEC W_04E2
+  DEC SOFT_COUNT
   LDA #&01
-  STA W_0518
+  STA BURIED_HIT
   LDA #&0C
 .L5_BE6E
   TAX
   LDA BURIED_REVEAL_TILE,X
-  LDX Z_28
-  LDY Z_29
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR QUEUE_TILE_Y2
-  LDY Z_29
+  LDY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA Z_1F
+  LDY CELL_COL
+  LDA MAP_BYTE
   AND #&03
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   CLC
   RTS
 

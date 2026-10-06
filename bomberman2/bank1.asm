@@ -371,7 +371,7 @@
   EQUB &81,&92,&6D,&FF,&3B,&46,&5C,&3C,&7C,&7E,&6D,&00,&FD,&FE,&BD,&59
   EQUB &31,&0D,&02,&01,&FD,&3D,&5A,&26,&0E,&02,&01,&00,&00,&00
 
-; ENEMY_CHR_PTR index 6. LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h when Z_4B is 6.
+; ENEMY_CHR_PTR index 6. LOAD_AREA_CHR uploads 40h tiles to PPU 0C00h when AREA_NUM is 6.
 ; The stream runs past AREA0_INTRO_SPR.
 .ENEMY_VS_CHR
   EQUB &EE,&FE,&FF,&E7,&FF,&FE,&E0,&CD,&FC,&C6,&FC,&C0,&00,&82,&70,&7F
@@ -420,7 +420,7 @@
   EQUB &D0,&88,&04,&02,&81,&40,&BF,&20,&70,&F8,&FC,&FE,&FF,&7F,&FF,&30
   EQUB &38,&3C,&3E,&3C,&38,&30,&20,&FF,&10,&08,&04,&02,&04,&08,&10,&20
 
-; Area-0 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 0.
+; Area-0 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 0.
 ; The stream runs past AREA1_INTRO_SPR and AREA2_INTRO_SPR.
 .AREA0_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&FF,&F9,&F8,&F0,&F9,&FD,&EF,&F6,&F5,&80,&FF
@@ -479,7 +479,7 @@
   EQUB &E0,&FF,&03,&FF,&80,&6F,&80,&FC,&83,&DB,&FB,&FF,&81,&FF,&7F,&83
   EQUB &6F,&7F,&FF,&81,&FC,&F8,&61,&FF,&00,&FF,&E0,&FF,&00,&FF
 
-; Area-1 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 1.
+; Area-1 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 1.
 ; The stream runs through AREA2_INTRO_SPR and AREA3_INTRO_SPR.
 .AREA1_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&80,&FF,&00,&81,&FF,&7C,&03,&03,&87,&87,&FF
@@ -541,7 +541,7 @@
   EQUB &02,&FF,&87,&FF,&FE,&F0,&80,&07,&01,&0F,&7F,&87,&FF,&1F,&03,&00
   EQUB &07,&E0,&FC,&FF
 
-; Area-2 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 2.
+; Area-2 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 2.
 ; The stream runs past AREA3_INTRO_SPR.
 .AREA2_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&80,&FF,&80,&FF,&FC,&FF,&EF,&93,&7C,&C7,&00
@@ -585,7 +585,7 @@
   EQUB &FF,&F7,&0F,&71,&90,&01,&3F,&F3,&A0,&F3,&FF,&8F,&6F,&FF,&EF,&5F
   EQUB &9D,&FF,&9F,&0F,&07,&87,&80,&FF,&81,&FF,&AA,&80,&FF
 
-; Area-3 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 3.
+; Area-3 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 3.
 ; The stream runs past AREA4_INTRO_SPR into TITLE_SPR_CHR.
 .AREA3_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&8E,&FF,&1F,&01,&00,&0E,&E0,&FE,&FF,&83,&FF
@@ -645,7 +645,7 @@
   EQUB &1F,&0F,&03,&80,&FF,&FF,&FF,&FD,&F3,&EB,&E7,&D5,&EF,&D7,&80,&FF
   EQUB &F8,&AF,&57,&FF,&5F,&FF,&80,&FF
 
-; Area-4 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 4.
+; Area-4 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 4.
 ; The stream runs through AREA5_INTRO_SPR and TITLE_SPR_US_ONLY.
 .AREA4_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&F5,&7F,&7E,&6E,&D6,&F7,&B3,&94,&FF,&EF,&CF
@@ -673,7 +673,7 @@
   EQUB &80,&FF,&9F,&E3,&C1,&A1,&C3,&FF,&FE,&9C,&9F,&BF,&DF,&FF,&9F,&E3
   EQUB &A3,&A7,&C7,&FF,&7F,&94,&9F,&DF,&FF
 
-; Area-5 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when Z_4B is 5.
+; Area-5 intro sprite CHR. LOAD_AREA_INTRO uploads FFh tiles to PPU 1000h when AREA_NUM is 5.
 ; The stream runs through INTRO_BG_CHR and TITLE_SPR_US_ONLY.
 .AREA5_INTRO_SPR
   EQUB &00,&00,&00,&80,&FF,&FF,&FF,&2F,&CC,&37,&DB,&BF,&6A,&BF,&FE,&FF

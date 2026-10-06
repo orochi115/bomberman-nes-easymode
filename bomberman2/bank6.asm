@@ -569,7 +569,7 @@
   EQUB &9F,&5F,&1F,&80,&0F,&BB,&FA,&F9,&F8,&F9,&FA,&F8,&80,&FF,&FE,&B5
   EQUB &BD,&D9,&C9,&8D,&8B,&89
 
-; AREA_CHR_PTR index 6. LOAD_AREA_CHR uploads 60h tiles to PPU 1A00h when Z_4B is 6.
+; AREA_CHR_PTR index 6. LOAD_AREA_CHR uploads 60h tiles to PPU 1A00h when AREA_NUM is 6.
 ; The stream runs through LEVEL_OBJ_TILES into UI_SPR_CHR.
 .VS_BATTLE_SPR_CHR
   EQUB &E5,&FF,&BF,&C0,&FF,&06,&47,&7F,&00,&F9,&FB,&A5,&FF,&00,&FF,&00
@@ -590,7 +590,7 @@
   EQUB &CA,&FF,&00,&1F,&00,&00,&0C,&7C,&00,&00,&0C,&0E,&00
 
 ; Raw (not RLE) object tiles, 16 bytes each. 240h bytes, nine groups of 4, ending at UI_SPR_CHR.
-; UPLOAD_LEVEL_CHR adds LEVEL_CHR_OFF[W_04E3] shifted left 4 and uploads 4 tiles to PPU 1800h via UPLOAD_CHR_RAW.
+; UPLOAD_LEVEL_CHR adds LEVEL_CHR_OFF[TILESET] shifted left 4 and uploads 4 tiles to PPU 1800h via UPLOAD_CHR_RAW.
 .LEVEL_OBJ_TILES
   EQUB &00,&7F,&7F,&67,&CF,&CF,&DE,&DD,&FF,&9C,&A2,&D9,&B0,&B3,&A7,&AF
   EQUB &00,&FE,&FE,&FE,&EF,&DF,&7F,&FF,&FF,&39,&45,&93,&39,&F1,&E1,&F1

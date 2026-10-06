@@ -4,7 +4,7 @@
 
   PAD SHIFT                               ; relocation test, see make.sh
 
-; BGM 14 channel 0. Stage music when Z_49 is not 0. Header is BGM_BATTLE_HDR.
+; BGM 14 channel 0. Stage music when GAME_MODE is not 0. Header is BGM_BATTLE_HDR.
 ; Bytes below D0 are notes (high nibble pitch, low nibble duration). D0 and above are SND_STREAM_CMDS.
 ; DF is a phrase call: the next word is the phrase address. E0 returns from a phrase.
 .BGM_BATTLE_CH0
@@ -455,7 +455,7 @@
   EQUB &10,&10,&02,&30,&01,&10,&10,&02,&30,&01,&10,&10,&30,&10,&00,&50
   EQUB &50,&50,&00,&EA,&D0
 
-; BGM 16 channel 0. Played when exit flag Z_B7 is set. Header BGM_EXIT_HDR.
+; BGM 16 channel 0. Played when exit flag CLEAR_PHASE is set. Header BGM_EXIT_HDR.
 .BGM_EXIT_CH0
   EQUB &D4,&06,&DC,&00,&D5,&05,&E3,&17,&D3,&02,&DA,&80,&DB,&12,&30,&D1
   EQUB &30,&D1,&30,&D1,&30,&20,&D2,&C0,&A0,&70,&D2,&D2,&60,&D1,&60,&D1

@@ -1,0 +1,312 @@
+ram:0049	GAME_MODE	0 story, 1 vs, 2 battle. Selects the pre-stage card and enemy update.
+ram:004A	KEEP_STAGE	Nonzero: STAGE_BOOT keeps the current area and stage.
+ram:004B	AREA_NUM	Area 0-5. Area 6 is the ending, not a map.
+ram:004C	STAGE_NUM	Stage 0-7 inside the area.
+ram:004D	INTRO_AREA	Last area whose intro card has played.
+ram:004E	SPECIAL_STAGE	Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
+ram:004F	BONUS_FIRE	RUN_BONUS_STAGE saves actor 0 firepower here.
+ram:0050	BONUS_BOMBS	RUN_BONUS_STAGE saves actor 0 bomb count here.
+ram:0051	BONUS_STAGE	RUN_BONUS_STAGE saves STAGE_NUM here.
+ram:0052	BONUS_AREA	RUN_BONUS_STAGE saves AREA_NUM here.
+ram:0053	STAGE_PHASE	0 in play. Counts after a round. F0h exits as a loss or a demo abort.
+ram:00B4	EXIT_OPEN	Nonzero after the exit item. PREP_STAGE_B4 then calls RUN_BONUS_STAGE.
+ram:00B7	CLEAR_PHASE	Nonzero while a stage is ending. STAGE_LOOP leaves at F0h.
+ram:00B8	FLAME_DIR	Four direction bits for SPREAD_FLAME.
+ram:0068	ACTOR_INDEX	Actor slot 0-2 being updated.
+ram:0069	ACTOR_FLAG	3 bytes. Nonzero if that actor is active. Bit 6 flashes the sprite.
+ram:006C	ACTOR_COL	3 bytes. Map column of each actor.
+ram:006F	ACTOR_ROW	3 bytes. Map row of each actor.
+ram:0072	ACTOR_X	3 bytes. Pixel X of each actor.
+ram:0075	ACTOR_XSUB	3 bytes. X subpixel. INIT_PLAYERS stores 0.
+ram:0078	ACTOR_Y	3 bytes. Pixel Y of each actor.
+ram:007B	ACTOR_DIR	3 bytes. Facing 0-3.
+ram:007E	ACTOR_FRAME	3 bytes. Walk frame.
+ram:0081	ACTOR_FTIMER	3 bytes. Frame timer.
+ram:0084	ACTOR_DEATH	3 bytes. Nonzero while the death animation runs.
+ram:0087	ACTOR_TIMED	3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
+ram:008A	ACTOR_TFRAME	3 bytes. Timed-state frame count.
+ram:008D	ACTOR_TSTEP	3 bytes. Timed-state steps left.
+ram:0090	ACTOR_FIRE	3 bytes. Firepower, max 7. Demo records and the mode table also write slot 0.
+ram:0093	ACTOR_BOMBS	3 bytes. Bomb capacity, max 4.
+ram:0096	ACTOR_SPDLO	3 bytes. Speed accumulator low.
+ram:0099	ACTOR_SPDHI	3 bytes. Speed accumulator high.
+ram:009C	ACT_W_FLAG	Work copy of ACTOR_FLAG for ACTOR_INDEX.
+ram:009D	ACT_W_COL	Work copy of the actor column.
+ram:009E	ACT_W_ROW	Work copy of the actor row.
+ram:009F	ACT_W_X	Work copy of pixel X.
+ram:00A0	ACT_W_XSUB	Work copy of the X subpixel.
+ram:00A1	ACT_W_Y	Work copy of pixel Y.
+ram:00A2	ACT_W_DIR	Work copy of facing.
+ram:00A3	ACT_W_FRAME	Work copy of the walk frame.
+ram:00A4	ACT_W_FTMR	Work copy of the frame timer.
+ram:00A5	ACT_W_DEATH	Work copy of the death flag.
+ram:00A6	ACT_W_TIMED	Work copy of ACTOR_TIMED.
+ram:00A7	ACT_W_TFR	Work copy of the timed frame count.
+ram:00A8	ACT_W_TSTEP	Work copy of timed steps left.
+ram:00A9	ACT_W_FIRE	Work copy of firepower.
+ram:00AA	ACT_W_BOMBS	Work copy of bomb capacity.
+ram:00AB	ACT_W_SPDLO	Work copy of speed low.
+ram:00AC	ACT_W_SPDHI	Work copy of speed high.
+ram:00AD	ACT_PASSBOMB	Nonzero: the actor walks through bomb cells.
+ram:00AE	ACT_PASSWALL	Nonzero: the actor walks through soft blocks.
+ram:00AF	ACT_REMOTE	1: B detonates. Bombs with kick 0 do not count down.
+ram:00B0	ITEM_KIND	Kind of the active timed item.
+ram:00B1	ITEM_FRAME	Frame counter for ITEM_KIND.
+ram:00B2	ITEM_LEFT	Steps left for ITEM_KIND.
+ram:00B3	ACT_SPEED	Speed gear.
+ram:00B5	KNOCK_DIR	Negative while in knockback. Low 2 bits are the direction.
+ram:00B6	KNOCK_LEFT	Knockback steps remaining.
+ram:00B9	DEMO_PTR	Pointer to the demo pad record selected by DEMO_SLOT.
+ram:00BA	DEMO_PTR_HI	High byte of DEMO_PTR.
+ram:0016	PAL_SRC	Source pointer for COPY_PAL_ROWS.
+ram:0017	PAL_SRC_HI	High byte of PAL_SRC.
+ram:001C	RLE_BYTE	CHR RLE literal. Also reused as a one-byte scratch.
+ram:001D	RLE_BITS	CHR RLE control bits, MSB first.
+ram:001E	RLE_LEFT	Tiles left for UPLOAD_CHR. BLAST_CELL also stores the flame type here.
+ram:001F	MAP_BYTE	Map cell latched by BLAST_CELL.
+ram:0020	DATA_PTR	General data pointer: CHR, strings, queued bytes.
+ram:0021	DATA_PTR_HI	High byte of DATA_PTR.
+ram:0022	PPU_ADDR	PPU address low for CHR and nametable uploads.
+ram:0023	PPU_ADDR_HI	PPU address high.
+ram:0024	DATA_PTR2	Second data pointer. Nametable upload reads 64 attribute bytes through it.
+ram:0025	DATA_PTR2_HI	High byte of DATA_PTR2.
+ram:0028	CELL_COL	Current map column.
+ram:0029	CELL_ROW	Current map row.
+ram:002E	PPU_RUN_CTRL	Bit 7 selects vertical PPU increment for a queued run.
+ram:002F	MAP_PTR	Live map row pointer. MAP_ROW_PTR sets it from MAP_ROW_LO/HI.
+ram:0030	MAP_PTR_HI	High byte of MAP_PTR.
+ram:0033	FAR_A	A saved by FAR_CALL.
+ram:0034	FAR_X	X saved by FAR_CALL.
+ram:0035	FAR_Y	Y saved by FAR_CALL.
+ram:0036	FAR_RET	Caller return address low, used to read the inline bank and target.
+ram:0037	FAR_RET_HI	Caller return address high.
+ram:0038	FAR_TMP	Resume address, then the target address low.
+ram:0039	FAR_TMP_HI	Target address high read from the inline operand.
+ram:003A	FAR_X2	X saved across the bank restore in FAR_CALL.
+ram:0054	SPR_PTR	Metasprite stream for DRAW_METASPRITE.
+ram:0055	SPR_PTR_HI	High byte of SPR_PTR.
+ram:0056	SPR_X	Metasprite origin X.
+ram:0057	SPR_X_HI	Metasprite origin X high.
+ram:0058	SPR_Y	Metasprite origin Y. DRAW_METASPRITE decrements it first.
+ram:0059	SPR_Y_HI	Metasprite origin Y high.
+ram:005A	SPR_FLIP	Flip bits EOR-ed into each sprite attribute. Bit 6 flips X, bit 7 flips Y.
+ram:005B	SPR_COUNT	Sprites left in the current metasprite.
+ram:005C	SPR_DX	Sprite X after the metasprite offset and scroll.
+ram:005D	SPR_DX_HI	High byte of SPR_DX. Nonzero skips the sprite.
+ram:005E	SPR_DY	Sprite Y written to OAM.
+ram:005F	SPR_DY_HI	High byte of SPR_DY.
+ram:0060	SPR_TILE	Tile byte written to OAM.
+ram:0061	SPR_ATTR	Attribute byte written to OAM.
+ram:0062	TILE_GFX	Pointer to 4 CHR bytes per tile id. Set from the area layout.
+ram:0063	TILE_GFX_HI	High byte of TILE_GFX.
+ram:0064	TILE_MAP	Pointer to map-byte values per tile id.
+ram:0065	TILE_MAP_HI	High byte of TILE_MAP.
+ram:0066	TILE_ATTR	Pointer to attribute nibbles per tile id.
+ram:0067	TILE_ATTR_HI	High byte of TILE_ATTR.
+ram:0000	WORK_PTR	Scratch pointer low. The sound driver walks a channel stream through it.
+ram:0001	WORK_PTR_HI	Scratch pointer high.
+ram:0004	WORK_PTR2	Scratch pointer low. SND_RUN_BGM points it at the channel-header table.
+ram:0005	WORK_PTR2_HI	Scratch pointer high.
+ram:00FF	ZP_FF	Byte at 00FFh. CLEAR_LOW_RAM skips FC-FF. SND_SET_FADE loads it when the song id is 0Ch.
+ram:6250	ENEMY_FLAGS	10 slots. 0 empty. Bit 3 draws every other frame, bit 4 hides, bit 5 skips the player, bit 6 skips blasts. Bit 7 or a negative byte is death.
+ram:625A	ENEMY_TYPE	10 slots. Index into the AI and draw tables. Death stores 11h and keeps the old type in ENEMY_PHASE.
+ram:6264	ENEMY_X	10 slots. Pixel X. A cell is column times 16 plus 8.
+ram:626E	ENEMY_X_HI	10 slots. Pixel X high byte.
+ram:6278	ENEMY_Y	10 slots. Pixel Y.
+ram:6282	ENEMY_COL	10 slots. Column from pixel X divided by 16.
+ram:628C	ENEMY_ROW	10 slots. Row from pixel Y divided by 16.
+ram:6296	ENEMY_SCORE	10 slots. Blast-chain count plus ENEMY_SCORE_INDEX. Type 11h picks an item sprite from it.
+ram:62A0	ENEMY_PHASE	10 slots. AI state and script phase. Death uses it as a frame count.
+ram:62AA	ENEMY_ACC	10 slots. Speed accumulator. Death stores 30h.
+ram:62B4	ENEMY_TIMER	10 slots. Turn or pause counter.
+ram:62BE	ENEMY_DIR	10 slots. 0 up, 1 left, 2 down, 3 right.
+ram:62C8	ENEMY_SUBT	10 slots. Second timer for scripts and some AI.
+ram:62D2	ENEMY_SCRIPT	10 slots. Index used by ENEMY_SCRIPT_STEP.
+ram:62DC	ENEMY_ORDER	0 uses draw-order phase 0. Otherwise FRAME_CNT bits 0-1.
+ram:62DD	ENEMY_REACT	Bit 0 clear reacts to blasts. Bit 0 set reacts to the player.
+ram:62DE	ENEMIES_GONE	1 when every slot is empty or type 11h.
+ram:62DF	ENEMY_PLACE	Type argument for PLACE_ENEMY.
+ram:62E0	ENEMY_INDEX	Slot currently drawn or tested.
+ram:62E1	ENEMY_SPAWN	Type kept while looking for an empty cell.
+ram:62E2	ENEMY_MASK	Map-byte mask. Seen values include 70h, 50h, 40h and F0h.
+ram:62E3	ENEMY_STEP	Step size for ENEMY_MOVE_SPEED.
+ram:62E6	PARADE_IDX	SPAWN_PARADE point index. Wraps at 41h.
+ram:62E7	TYPE10_TRY	Attempt counter for SPAWN_TYPE_10.
+ram:62E8	TYPE10_ARM	ARM_TYPE10_TIMER stores 1 when this is 0.
+ram:62E9	TYPE10_TIME	ARM_TYPE10_TIMER stores F0h here.
+ram:62EB	BURST_TIME	Countdown. At 0 the same type is placed eight times.
+ram:62EC	BURST_COL	Column stored with BURST_TIME.
+ram:62ED	BURST_ROW	Row stored with BURST_TIME.
+ram:62EE	TYPE4_TIME	Countdown for a type-4 spawn.
+ram:62EF	TYPE4_COL	Column stored with TYPE4_TIME.
+ram:62F0	TYPE4_ROW	Row stored with TYPE4_TIME.
+ram:62F2	SCRIPT_FLAG	Script ops 09, 0A and 0B store 1, 0 and 2. Ending scroll runs only when this is 1.
+ram:6000	FUSE_LOCK	Nonzero: every bomb fuse stays put.
+ram:6001	BOMB_FLAG	24 slots. 0 empty, positive is a bomb, negative counts BOMB_REARM then returns to 1.
+ram:6019	BOMB_COL	24 slots. Bomb column.
+ram:6031	BOMB_ROW	24 slots. Bomb row.
+ram:6049	BOMB_FRAME	24 slots. Bomb animation frame.
+ram:6061	BOMB_FUSE	24 slots. Fuse countdown. Remote bombs with kick 0 do not tick.
+ram:6079	BOMB_KICK	24 slots. Kick direction. 0 means not kicked.
+ram:6091	BOMB_OWNER	24 slots. Owner index on the ring.
+ram:60A9	BOMB_REARM	24 slots. Countdown while BOMB_FLAG is negative.
+ram:60C1	RING_SLOT	32-byte ring. FREE_RING_SLOT clears the current byte and advances.
+ram:60E1	RING_INDEX	Index into RING_SLOT, modulo 32.
+ram:60E2	FLAME_FLAG	60 slots. Low nibble is the flame kind. Bit 7 is set when the flame is spawned.
+ram:611E	FLAME_COL	60 slots. Flame column.
+ram:615A	FLAME_ROW	60 slots. Flame row.
+ram:6196	FLAME_ANIM	60 slots. Animation counter.
+ram:61D2	FLAME_RADIUS	60 slots. Radius still to draw.
+ram:620E	FLAME_OWNER	60 slots. Actor that owns the flame.
+ram:624B	BLAST_RADIUS	Radius used by SPREAD_FLAME.
+ram:624C	BLAST_OWNER	Actor that owns the blast being spread.
+ram:624D	BLAST_TOG	Odd frames step bombs, even frames step flames.
+ram:624E	BLAST_ANIM_A	Blast animation phase.
+ram:624F	BLAST_ANIM_B	Second blast animation phase.
+ram:6493	MAP_TMP_A	Holds the tile index while COPY_LAYOUT_CELL switches banks.
+ram:6494	MAP_TMP_X	Holds the column while COPY_LAYOUT_CELL switches banks.
+ram:624A	RAY_LEFT	Cells still to walk on the current flame ray.
+ram:0202	SND_CH	Channel 0-4 being updated.
+ram:0203	SND_BYTE	Last byte read from the channel stream.
+ram:0204	SND_BANK	PRG bank of the current song streams.
+ram:0205	SND_SFX_ID	SFX id. Bit 7 means the effect is ticking.
+ram:0206	SND_BGM_ID	Song id. Bit 7 means the headers are loaded.
+ram:0207	SND_DMC_ID	DMC id. Bit 7 means it has started. 1Eh is silence.
+ram:0208	SND_CMD_ID	Pending command 80h-8Ch.
+ram:020A	SND_BGM_LATCH	Copy of SND_BGM_ID taken when a song loads.
+ram:0213	SND_STREAM	5 stream pointers, low bytes, stride 2.
+ram:0214	SND_STREAM_HI	5 stream pointers, high bytes, stride 2.
+ram:022C	SND_NOTE_LEN	5 bytes. Note length per channel.
+ram:0231	SND_GATE	5 bytes. Frames left in the note gate.
+ram:0236	SND_DUTY	5 bytes. Duty from stream command DA.
+ram:023B	SND_GATE_SCL	5 bytes. Gate scale from command DC.
+ram:0240	SND_PENV	5 bytes. Pitch-envelope id from command DB.
+ram:0245	SND_DUR_UNIT	5 bytes. Duration unit from command D4.
+ram:024A	SND_OCTAVE	5 bytes. Octave per channel.
+ram:024F	SND_TRANSPOSE	5 bytes. Transpose from command D5.
+ram:0295	SND_LEGATO	5 bytes. Command D6: next note does not retrigger.
+ram:02CC	SND_VOLUME	5 bytes. Channel volume 00h-1Fh from E3 or E8.
+ram:02D1	SND_VIB_LEN	5 bytes. Vibrato length from command E5.
+ram:02D6	SND_VIB_ID	5 bytes. Vibrato id from command E4.
+ram:02E2	SND_DETUNE	5 bytes. Detune from command E6.
+ram:02E7	SND_DETUNE_ID	5 bytes. Detune id from command E7.
+ram:0310	SND_PITCH_LO	5 bytes. Pitch low, paired with SND_PITCH_HI.
+ram:0315	SND_PITCH_HI	5 bytes. Pitch high.
+ram:032E	SND_APU_BUF	APU register image for the music channels. 14h bytes cleared by SND_INIT.
+ram:0347	SND_SFX_ON	Which channels the SFX layer owns.
+ram:0351	SND_MASTER	Master volume. Starts at 10h. Below 10h square volume is scaled down.
+ram:0352	SND_MIX	Shadow of 4015h.
+ram:0353	SND_CMD_X	Value returned in X by a sound command.
+ram:0355	SND_FADE_ACC	Adds SND_FADE each frame. Carry lowers SND_MASTER.
+ram:0356	SND_FADE	Fade step from command 85h.
+ram:0357	SND_MASTER0	Master volume restored when a song loads or the fade wraps.
+ram:0358	SND_CH_RUN	How many channels SND_RUN_BGM actually ticked.
+ram:0359	SND_BUSY	Sound frame re-entry lock.
+ram:035B	SND_SFX_BUF	APU image for the SFX layer.
+ram:036F	SND_SFX_DIRTY	Dirty flags for the SFX APU image.
+ram:0342	SND_DIRTY	One dirty byte per channel. SND_INIT clears five bytes.
+ram:03C0	TOP_NAME	Eight name tiles. The default is KOSAKA!!.
+ram:03C8	TOP_SCORE	Eight digits of the top score.
+ram:03D0	SCORE_NOW	Eight digits of the current score.
+ram:03D1	SCORE_NOW_1	Digit of SCORE_NOW.
+ram:03D2	SCORE_NOW_2	Digit of SCORE_NOW.
+ram:03D3	SCORE_NOW_3	Digit of SCORE_NOW.
+ram:03D4	SCORE_NOW_4	Digit of SCORE_NOW.
+ram:03D5	SCORE_NOW_5	Digit of SCORE_NOW.
+ram:03D6	SCORE_NOW_6	Digit of SCORE_NOW.
+ram:03D7	SCORE_NOW_7	Digit of SCORE_NOW.
+ram:03DB	PASS_CODE	Nine password bytes. RESET_MARKS fills them with FFh.
+ram:03E4	PASS_EDIT	Nine bytes edited on the password screen.
+ram:03E5	PASS_EDIT_1	Byte 1 of PASS_EDIT. The screen indexes from here.
+ram:03ED	FUSE_INIT	Fuse stored into a new bomb. RESET_MARKS writes 4Bh.
+ram:03EE	PASS_MARK	Set to 1 or 2 by a password word.
+ram:03EF	DEMO_MODE	0 normal, 1 demo, negative leaves the demo.
+ram:03F0	DEMO_SLOT	Demo record 0-3.
+ram:03F1	DEMO_POS	Index into the demo button record.
+ram:03F2	DEMO_HOLD	Frames left for the current demo buttons.
+ram:03F3	DEMO_BTN	Buttons stored or played by the demo.
+ram:03F4	DEMO_PREV	Previous demo buttons, used to make the edge.
+ram:03F5	DEMO_EDGE	Buttons newly set in the demo playback.
+ram:0404	PAL_BG1	Background color of palette row 1. Copied from PAL_BUF.
+ram:0408	PAL_BG2	Background color of palette row 2.
+ram:040C	PAL_BG3	Background color of palette row 3.
+ram:0410	PAL_BG4	Background color of palette row 4.
+ram:0414	PAL_BG5	Background color of palette row 5.
+ram:0418	PAL_BG6	Background color of palette row 6.
+ram:041C	PAL_BG7	Background color of palette row 7.
+ram:04A8	PPU_Q_LEFT	Bytes or records left while a PPU run is drained.
+ram:04A9	NT_ADDR_LO	Nametable address low built by QUEUE_TILE.
+ram:04AA	NT_ADDR_HI	Nametable address high built by QUEUE_TILE.
+ram:04AB	TILE_COL	Column passed to QUEUE_MAP_TILE.
+ram:04AC	TILE_ROW	Row passed to QUEUE_MAP_TILE.
+ram:04AD	PPU_WORK	Attribute address in QUEUE_TILE. Also the size tested by PPU_Q_HAS_ROOM.
+ram:04AE	ATTR_KEEP	Attribute bits kept while merging a tile nibble.
+ram:04AF	ATTR_NEW	New attribute bits merged into ATTR_BUF.
+ram:04B0	TILE_PAL	Attribute nibble of the queued 2x2 tile.
+ram:04B1	TILE_CHR0	First CHR byte of the queued tile.
+ram:04B2	TILE_CHR1	Second CHR byte of the queued tile.
+ram:04B3	TILE_CHR2	Third CHR byte of the queued tile.
+ram:04B4	TILE_CHR3	Fourth CHR byte of the queued tile.
+ram:04C1	ACTOR_NEW	New buttons for the actor. Demo playback writes this.
+ram:04C2	ACTOR_HELD	Held direction for the actor. Demo playback writes this.
+ram:04C8	VS_PICTURE	0-2. Picks the vs-result picture and tile group.
+ram:04C9	START_AREA	Copied into AREA_NUM for a new game. Bit 7 jumps to the ending.
+ram:04CB	LIVES_SHOWN	Last lives value drawn on the HUD.
+ram:04CC	PAUSE_X	X returned by AUDIO_CALL when pause starts.
+ram:04CD	SNDROOM_CUR	Sound-room cursor, 0-2.
+ram:04CE	SNDROOM_P0	First sound-room parameter. Initial bytes are 0C 00 1E.
+ram:04CF	SNDROOM_P1	Second sound-room parameter.
+ram:04D0	SNDROOM_P2	Third sound-room parameter.
+ram:04D1	LAYOUT_ID	16 ids unpacked from one layout strip. The draw uses the first 15.
+ram:04E1	LAYOUT_VAR	0 or 1 layout variant. Also the horizontal-scroll flag read by S5_8F6E.
+ram:04E2	SOFT_COUNT	Soft blocks still to place, then still hidden. OPEN_BURIED decrements it.
+ram:04E3	TILESET	Level tile-group index for LEVEL_OBJ_TILES.
+ram:04E4	POWER_STAGE	Area times 8 plus stage when the last power item was taken.
+ram:04E5	LIVES	Lives. STAGE_BOOT stores 2. A loss decrements it.
+ram:04E6	POWER_TIME	Second timed-item counter, separate from ITEM_KIND.
+ram:04E7	POWER_FRAME	Frame divider for POWER_TIME. One tick is 3Ch frames.
+ram:04E8	POWER_LEFT	Steps left on POWER_TIME.
+ram:04E9	FLASH_IDX	Index into FLASH_DRAW_MASK. SET_ACTOR_FLASH stores 8.
+ram:04EA	FLASH_ZERO	SET_ACTOR_FLASH stores 0. No reader found in the source.
+ram:04EB	BURIED_FLAG	15 buried-item flags.
+ram:04FA	BURIED_COL	15 columns for BURIED_FLAG.
+ram:0509	BURIED_ROW	15 rows for BURIED_FLAG.
+ram:0518	BURIED_HIT	Set to 1 when a buried cell has low bits 2.
+ram:051B	ROUND_RES	Positive waits 30h frames. Negative low 2 bits pick the round sprite.
+ram:051C	ROUND_WAIT	Frame counter for ROUND_RES.
+ram:051E	TITLE_BLINK	Blink counter for the title START text.
+ram:051F	TITLE_IDLE	Low byte of the title idle timer. Starts at 05DCh.
+ram:0520	TITLE_IDLE_HI	High byte of the title idle timer. Zero starts the demo.
+ram:0521	TITLE_PHASE	1 wait, 2 scroll, 0 done.
+ram:0522	TITLE_DELAY	Delay inside the title phase.
+ram:0523	TITLE_ROW	Title rows already drawn.
+ram:0525	TITLE_SPR0	Title actor frame.
+ram:0526	TITLE_SPR1	Second title actor frame.
+ram:0527	NT_SAVE_COL	Column saved by the US SET_NAMETABLE_XY.
+ram:0528	NT_SAVE_ROW	Row saved by the US SET_NAMETABLE_XY.
+ram:0532	INTRO_FRAME	Area-intro frame. Only area 5 steps it with AREA5_FRAME_DLY.
+ram:0536	CREDITS_MODE	1 scrolling, 2 waiting at the end, 0 finished.
+ram:0537	CREDITS_TICK	Credits scroll counter.
+ram:0538	CREDITS_ROW	Credits line number.
+ram:0542	PASS_DEC	Decode buffer for a password.
+ram:054E	MENU_REDRAW	Nonzero redraws the front menu.
+ram:054F	MENU_MODE1	Nonzero enters the mode-1 menu and does not return.
+ram:0550	MENU_BONUS	Nonzero sets lives to 1 and runs the bonus stage.
+ram:0551	PASS_EDGES	Bits from POLL_PASS_KEYS. Bit 7 is A, then B, Select, Start, up, down, left, right.
+ram:0552	PASS_REPEAT	Eight key-repeat timers for the password screen.
+ram:055A	CLOCK_FRAME	Stage-clock frame countdown from 3Ch. Negative stops the clock and picks the other round sprite.
+ram:055C	CLOCK_DIG1	First stage-clock digit from the time table.
+ram:055D	CLOCK_DIG2	Second stage-clock digit from the time table.
+ram:055E	MATCH_0	First card counter. The loss path compares it with WINS_GOAL.
+ram:055F	MATCH_1	Second card counter.
+ram:0560	MATCH_2	Third card counter. The battle card draws all three.
+ram:0563	WINS_GOAL	Wins required. 5 unless battle mode picked 1-5.
+ram:0700	OAM_Y	OAM buffer at 0700h. Sprite Y, indexed by 4.
+ram:0701	OAM_TILE	OAM tile. Sprite 0 uses tile 01h when the split is on.
+ram:0524	TITLE_JOLT	Shake index on the title screen.
+ram:0702	OAM_ATTR	OAM attribute byte. The split sprite stores 23h.
+ram:0703	OAM_X	OAM X byte. The split sprite stores 00h.
+ram:0740	OAM_PAGE1	OAM Y bytes 40h-7Fh. CLEAR_OAM hides this quarter.
+ram:0780	OAM_PAGE2	OAM Y bytes 80h-BFh.
+ram:07C0	OAM_PAGE3	OAM Y bytes C0h-FFh.
+ram:62F1	DRAW_PHASE	Draw-order phase copied from ENEMY_ORDER_BASE.

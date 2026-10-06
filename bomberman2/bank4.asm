@@ -36,7 +36,7 @@
   EQUB &00,&10,&11,&11,&00,&00,&10,&11,&11,&01,&00,&00,&30,&11,&11,&11
   EQUB &22,&22,&22,&22,&22,&22,&20,&22,&03
 
-; Area 0 map byte per metatile id. COPY_LAYOUT_CELL reads (Z_64),Y with Y = the id.
+; Area 0 map byte per metatile id. COPY_LAYOUT_CELL reads (TILE_MAP),Y with Y = the id.
 ; One byte per id. The byte is what later collision code sees in the live map.
 .AREA0_META_MAP
   EQUB &00,&10,&10,&10,&80,&80,&80,&80,&80,&80,&80,&80,&80,&80,&80,&80
@@ -275,7 +275,7 @@
   EQUB &40,&40
 
 ; Area-card metatiles for area 0. Same 4-byte CHR layout as AREA0_META_GFX.
-; DRAW_AREA_INTRO selects CARD0..CARD5 by Z_4B. CARD0_LAYOUT is the compressed picture.
+; DRAW_AREA_INTRO selects CARD0..CARD5 by AREA_NUM. CARD0_LAYOUT is the compressed picture.
 .CARD0_META_GFX
   EQUB &00,&00,&00,&00,&01,&01,&01,&01,&02,&03,&12,&13,&02,&03,&06,&07
   EQUB &16,&17,&1C,&1D,&18,&19,&37,&33,&04,&05,&08,&09,&04,&05,&14,&15
@@ -557,7 +557,7 @@ ENDIF
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
 
-; Password-screen metatile CHR. BIND_PASS_LAYOUT points Z_62 here and Z_20 at PASSWORD_LAY.
+; Password-screen metatile CHR. BIND_PASS_LAYOUT points TILE_GFX here and DATA_PTR at PASSWORD_LAY.
 ; US attributes start at PASS_META_ATTR. JP attributes start 3 bytes later.
 .PASS_META_GFX
   EQUB &00,&00,&00,&00,&00,&00,&01,&02,&00,&00,&02,&02,&00,&00,&03,&00
@@ -864,7 +864,7 @@ ENDIF
   EQUB &4E,&51,&46,&4E,&41,&50,&E0,&2A,&2B,&50,&80,&50
 
 ; Compressed area-intro picture, area 0. Same strip format as AREA0_LAYOUT_A.
-; DRAW_AREA_INTRO indexes CARD0_LAYOUT..CARD5_LAYOUT by Z_4B.
+; DRAW_AREA_INTRO indexes CARD0_LAYOUT..CARD5_LAYOUT by AREA_NUM.
 .CARD0_LAYOUT
   EQUB &40,&00,&48,&00,&4F,&00,&56,&00,&5F,&00,&68,&00,&6F,&00,&79,&00
   EQUB &83,&00,&8D,&00,&97,&00,&9E,&00,&A7,&00,&B0,&00,&B7,&00,&BE,&00
@@ -982,7 +982,7 @@ ENDIF
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
   EQUB &00,&00,&00,&00,&00,&00,&00,&00
 
-; Pre-stage card layout for Z_49 = 2. Strip format as AREA0_LAYOUT_A. UI metatiles. Drawn by DRAW_BATTLE_CARD_MAP.
+; Pre-stage card layout for GAME_MODE = 2. Strip format as AREA0_LAYOUT_A. UI metatiles. Drawn by DRAW_BATTLE_CARD_MAP.
 .BATTLE_CARD_LAY
   EQUB &40,&00,&42,&00,&49,&00,&50,&00,&5A,&00,&65,&00,&71,&00,&7B,&00
   EQUB &87,&00,&93,&00,&9D,&00,&A9,&00,&B4,&00,&49,&00,&BE,&00,&40,&00
@@ -1013,7 +1013,7 @@ ENDIF
   EQUB &3E,&02,&09,&0A,&0D,&09,&8C,&09,&07,&00,&30,&03,&05,&8C,&05,&08
   EQUB &00
 
-; Pre-stage card for Z_49 = 1. Strip format. UI metatiles. Drawn by DRAW_VS_CARD_MAP.
+; Pre-stage card for GAME_MODE = 1. Strip format. UI metatiles. Drawn by DRAW_VS_CARD_MAP.
 .VS_CARD_LAY
   EQUB &40,&00,&42,&00,&49,&00,&50,&00,&5C,&00,&69,&00,&73,&00,&7D,&00
   EQUB &88,&00,&93,&00,&9D,&00,&A7,&00,&B4,&00,&49,&00,&C0,&00,&40,&00
@@ -1029,7 +1029,7 @@ ENDIF
   EQUB &7E,&09,&84,&00,&3B,&02,&DE,&09,&75,&7D,&EC,&77,&7F,&09,&84,&00
   EQUB &30,&03,&05,&8C,&05,&85,&00
 
-; Pre-stage card for Z_49 = 0. Strip format. UI metatiles. Drawn by DRAW_STAGE_CARD_MAP.
+; Pre-stage card for GAME_MODE = 0. Strip format. UI metatiles. Drawn by DRAW_STAGE_CARD_MAP.
 .STORY_CARD_LAY
   EQUB &40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&42,&00,&49,&00
   EQUB &50,&00,&57,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00,&40,&00
@@ -1079,7 +1079,7 @@ ENDIF
   EQUB &26,&09,&07,&00,&1F,&02,&27,&09,&18,&20,&D8,&24,&09,&07,&00,&18
   EQUB &02,&09,&98,&09,&07,&00,&18,&03,&05,&98,&05,&08,&00
 
-; Win-count picture used when Z_49 is 2. Strip format. UI metatiles. Drawn by DRAW_WIN_MENU_MAP.
+; Win-count picture used when GAME_MODE is 2. Strip format. UI metatiles. Drawn by DRAW_WIN_MENU_MAP.
 .WIN_COUNT_LAY
   EQUB &40,&00,&42,&00,&49,&00,&52,&00,&5B,&00,&64,&00,&6E,&00,&7C,&00
   EQUB &87,&00,&91,&00,&9C,&00,&A7,&00,&B1,&00,&BA,&00,&C3,&00,&40,&00
@@ -1251,7 +1251,7 @@ ENDIF
   EQUB &18,&10,&30,&0F,&18,&16,&27,&38,&18,&00,&10,&0F,&18,&06,&16,&0F
   EQUB &1A,&10,&30,&0F,&1A,&16,&27,&38,&1A,&0F,&10,&30,&1A,&10,&26,&0F
 
-; Area-intro background palette, 16 bytes. LOAD_AREA_INTRO indexes CARD0_BG_PAL..CARD5_BG_PAL by Z_4B.
+; Area-intro background palette, 16 bytes. LOAD_AREA_INTRO indexes CARD0_BG_PAL..CARD5_BG_PAL by AREA_NUM.
 .CARD0_BG_PAL
   EQUB &0F,&27,&17,&08,&0F,&0F,&0F,&20,&0F,&0F,&0F,&20,&0F,&0F,&0F,&20
 
@@ -1310,122 +1310,122 @@ ELSE
 ENDIF
 
 ; Bind area metatile pointers, select the stage layout, then decode it.
-; In: Z_4B area. Uses Z_4C and Z_49 inside PICK_STAGE_LAYOUT.
-; Out: Z_62/Z_64/Z_66 point at this area. Falls into DECODE_LAYOUT, which jumps to L7_CF6F.
+; In: AREA_NUM area. Uses STAGE_NUM and GAME_MODE inside PICK_STAGE_LAYOUT.
+; Out: TILE_GFX/TILE_MAP/TILE_ATTR point at this area. Falls into DECODE_LAYOUT, which jumps to L7_CF6F.
 .LOAD_AREA_LAYOUT
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   TAX
   LDA AREA_ATTR_PTR,X
-  STA Z_66
+  STA TILE_ATTR
   LDA AREA_ATTR_PTR_HI,X
-  STA Z_67
+  STA TILE_ATTR_HI
   LDA AREA_MAP_PTR,X
-  STA Z_64
+  STA TILE_MAP
   LDA AREA_MAP_PTR_HI,X
-  STA Z_65
+  STA TILE_MAP_HI
   LDA AREA_GFX_PTR,X
-  STA Z_62
+  STA TILE_GFX
   LDA AREA_GFX_PTR_HI,X
-  STA Z_63
+  STA TILE_GFX_HI
   JSR PICK_STAGE_LAYOUT
 
 ; Decode a layout blob into the nametable and, for rows 0-12, the live map.
-; In: Z_20 layout, Z_62 4-byte tiles, Z_64 map bytes, Z_66 packed attributes.
-; 32 strips. Each strip offset is added to Z_20. Then jumps to L7_CF6F.
+; In: DATA_PTR layout, TILE_GFX 4-byte tiles, TILE_MAP map bytes, TILE_ATTR packed attributes.
+; 32 strips. Each strip offset is added to DATA_PTR. Then jumps to L7_CF6F.
 .DECODE_LAYOUT
   LDA #&00
-  STA Z_1C
+  STA RLE_BYTE
 .NEXT_LAYOUT_STRIP
-  LDA Z_1C
+  LDA RLE_BYTE
   ASL A
   TAY
-  LDA (Z_20),Y
+  LDA (DATA_PTR),Y
   CLC
-  ADC Z_20
-  STA Z_22
+  ADC DATA_PTR
+  STA PPU_ADDR
   INY
-  LDA (Z_20),Y
-  ADC Z_21
-  STA Z_23
+  LDA (DATA_PTR),Y
+  ADC DATA_PTR_HI
+  STA PPU_ADDR_HI
   LDY #&00
   LDX #&00
   JSR UNPACK_STRIP_BYTES
   JSR UNPACK_STRIP_BYTES
   JSR PAINT_LAYOUT_STRIP
-  INC Z_1C
-  LDA Z_1C
+  INC RLE_BYTE
+  LDA RLE_BYTE
   CMP #&20
   BCC NEXT_LAYOUT_STRIP
   JMP L7_CF6F
 
-; Unpack 8 metatile ids into W_04D1,X.
+; Unpack 8 metatile ids into LAYOUT_ID,X.
 ; A header bit of 1 reads the next byte; a 0 stores 0. X advances. Y is the read index.
 .UNPACK_STRIP_BYTES
   LDA #&08
   STA Z_2A
-  LDA (Z_22),Y
+  LDA (PPU_ADDR),Y
   INY
-  STA Z_1D
+  STA RLE_BITS
   LDA #&00
 .L4_B85F
-  ASL Z_1D
+  ASL RLE_BITS
   BCC L4_B866
-  LDA (Z_22),Y
+  LDA (PPU_ADDR),Y
   INY
 .L4_B866
-  STA W_04D1,X
+  STA LAYOUT_ID,X
   INX
   DEC Z_2A
   BNE L4_B85F
   RTS
 
 ; Paint 15 cells of one strip.
-; Map column is Z_1C. Map row is the cell index minus 2, and COPY_LAYOUT_CELL drops rows past 12.
-; Tile id indexes Z_62 by 4 and Z_66 as a 2-bit attribute. Columns below 15 call QUEUE_TILE.
+; Map column is RLE_BYTE. Map row is the cell index minus 2, and COPY_LAYOUT_CELL drops rows past 12.
+; Tile id indexes TILE_GFX by 4 and TILE_ATTR as a 2-bit attribute. Columns below 15 call QUEUE_TILE.
 .PAINT_LAYOUT_STRIP
   LDX #&00
-  STX Z_1D
+  STX RLE_BITS
 .PAINT_STRIP_CELL
   STX Z_2A
   LDA #&00
-  STA Z_25
-  LDA W_04D1,X
+  STA DATA_PTR2_HI
+  LDA LAYOUT_ID,X
   PHA
   ASL A
-  ROL Z_25
+  ROL DATA_PTR2_HI
   ASL A
-  ROL Z_25
+  ROL DATA_PTR2_HI
   CLC
-  ADC Z_62
-  STA Z_24
-  LDA Z_63
-  ADC Z_25
-  STA Z_25
+  ADC TILE_GFX
+  STA DATA_PTR2
+  LDA TILE_GFX_HI
+  ADC DATA_PTR2_HI
+  STA DATA_PTR2_HI
   LDY #&00
-  LDA (Z_24),Y
-  STA W_04B1
+  LDA (DATA_PTR2),Y
+  STA TILE_CHR0
   INY
-  LDA (Z_24),Y
-  STA W_04B2
+  LDA (DATA_PTR2),Y
+  STA TILE_CHR1
   INY
-  LDA (Z_24),Y
-  STA W_04B3
+  LDA (DATA_PTR2),Y
+  STA TILE_CHR2
   INY
-  LDA (Z_24),Y
-  STA W_04B4
-  LDA W_04D1,X
-  LDX Z_1C
-  LDY Z_1D
-  STX W_04AB
-  STY W_04AC
+  LDA (DATA_PTR2),Y
+  STA TILE_CHR3
+  LDA LAYOUT_ID,X
+  LDX RLE_BYTE
+  LDY RLE_BITS
+  STX TILE_COL
+  STY TILE_ROW
   DEY
   DEY
   JSR COPY_LAYOUT_CELL
   PLA
   LSR A
   TAY
-  LDA (Z_66),Y
+  LDA (TILE_ATTR),Y
   BCC L4_B8C4
   LSR A
   LSR A
@@ -1433,13 +1433,13 @@ ENDIF
   LSR A
 .L4_B8C4
   AND #&03
-  STA W_04B0
-  LDA Z_1D
+  STA TILE_PAL
+  LDA RLE_BITS
   CMP #&0F
   BCS L4_B8D2
   JSR QUEUE_TILE
 .L4_B8D2
-  INC Z_1D
+  INC RLE_BITS
   LDX Z_2A
   INX
   CPX #&0F
@@ -1448,7 +1448,7 @@ ENDIF
 .L4_B8DE
   RTS
 
-; 7 words, areas 0-6. Low/high of the 4-byte metatile CHR table. LOAD_AREA_LAYOUT stores the pair in Z_62.
+; 7 words, areas 0-6. Low/high of the 4-byte metatile CHR table. LOAD_AREA_LAYOUT stores the pair in TILE_GFX.
 .AREA_GFX_PTR
   EQUB LO(AREA0_META_GFX)
 .AREA_GFX_PTR_HI
@@ -1460,7 +1460,7 @@ ENDIF
   EQUW AREA5_META_GFX
   EQUW AREA6_META_GFX
 
-; 7 words, areas 0-6. Attribute-nibble tables. Stored in Z_66.
+; 7 words, areas 0-6. Attribute-nibble tables. Stored in TILE_ATTR.
 .AREA_ATTR_PTR
   EQUB LO(AREA0_META_ATTR)
 .AREA_ATTR_PTR_HI
@@ -1472,7 +1472,7 @@ ENDIF
   EQUW AREA5_META_ATTR
   EQUW AREA6_META_ATTR
 
-; 7 words, areas 0-6. One map byte per metatile. Stored in Z_64.
+; 7 words, areas 0-6. One map byte per metatile. Stored in TILE_MAP.
 .AREA_MAP_PTR
   EQUB LO(AREA0_META_MAP)
 .AREA_MAP_PTR_HI
@@ -1485,42 +1485,42 @@ ENDIF
   EQUW AREA6_META_MAP
 
 ; Seal a few cells, scatter soft blocks, place bomb pickups, load enemies, then unseal.
-; In: Z_4B, Z_4C, Z_49. Soft-block count comes from SOFT_BLOCK_QUOTA, or 32h when Z_49 is not 0.
+; In: AREA_NUM, STAGE_NUM, GAME_MODE. Soft-block count comes from SOFT_BLOCK_QUOTA, or 32h when GAME_MODE is not 0.
 ; Empty cells are map byte 0. A soft block stores 20h and queues tile 39h.
 .PLACE_SOFT_AND_BOMBS
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   ASL A
   ASL A
-  ABS_ORA Z_4C
+  ABS_ORA STAGE_NUM
   TAY
   LDA SOFT_BLOCK_QUOTA,Y
   STA Z_2A
-  STA W_04E2
-  ABS_LDA Z_49
+  STA SOFT_COUNT
+  ABS_LDA GAME_MODE
   BEQ L4_B927
   LDA #&32
   STA Z_2A
-  STA W_04E2
+  STA SOFT_COUNT
 .L4_B927
   JSR SEAL_PLACEMENT_CELLS
 .TRY_SOFT_CELL
   JSR NEXT_RNG
   AND #&1F
-  STA Z_28
+  STA CELL_COL
   JSR NEXT_RNG
   AND #&0F
   TAY
   LDA SOFT_ROW_TABLE,Y
-  STA Z_29
-  LDX Z_28
-  LDY Z_29
+  STA CELL_ROW
+  LDX CELL_COL
+  LDY CELL_ROW
   JSR PEEK_MAP_BYTE
   BNE TRY_SOFT_CELL
   LDA #&20
-  STA (Z_2F),Y
-  LDX Z_28
-  LDY Z_29
+  STA (MAP_PTR),Y
+  LDX CELL_COL
+  LDY CELL_ROW
   LDA #&39
   JSR QUEUE_TILE_Y2
   DEC Z_2A
@@ -1530,9 +1530,9 @@ ENDIF
   JMP OPEN_PLACEMENT_CELLS
 
 ; Write map byte 1 on cells that must stay empty during scattering.
-; Z_49 0 marks 3 story cells. 1 also marks 3 mode-1 cells. 2 also marks 7 battle cells.
+; GAME_MODE 0 marks 3 story cells. 1 also marks 3 mode-1 cells. 2 also marks 7 battle cells.
 .SEAL_PLACEMENT_CELLS
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ L4_B96E
   CMP #&01
   BEQ L4_B96B
@@ -1544,7 +1544,7 @@ ENDIF
 .L4_B96E
   JMP SEAL_STORY_CELLS
 .OPEN_PLACEMENT_CELLS
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ L4_B980
   CMP #&01
   BEQ L4_B97D
@@ -1562,7 +1562,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY STORY_SEAL_COL,X
   LDA #&01
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B985
   RTS
@@ -1573,7 +1573,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY STORY_SEAL_COL,X
   LDA #&00
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B998
   RTS
@@ -1586,7 +1586,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY MODE1_SEAL_COL,X
   LDA #&01
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B9AB
   RTS
@@ -1599,7 +1599,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY MODE1_SEAL_COL,X
   LDA #&00
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B9BE
   RTS
@@ -1614,7 +1614,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY BATTLE_SEAL_COL,X
   LDA #&01
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B9D1
   RTS
@@ -1627,7 +1627,7 @@ ENDIF
   JSR MAP_ROW_PTR
   LDY BATTLE_SEAL_COL,X
   LDA #&00
-  STA (Z_2F),Y
+  STA (MAP_PTR),Y
   DEX
   BPL L4_B9E4
   RTS
@@ -1640,7 +1640,7 @@ ENDIF
 .STORY_SEAL_ROW
   EQUB &01,&01,&02
 
-; 3 columns paired with MODE1_SEAL_ROW. Used when Z_49 is 1 or 2.
+; 3 columns paired with MODE1_SEAL_ROW. Used when GAME_MODE is 1 or 2.
 .MODE1_SEAL_COL
   EQUB &0D,&0C,&0D
 
@@ -1648,7 +1648,7 @@ ENDIF
 .MODE1_SEAL_ROW
   EQUB &0A,&0B,&0B
 
-; 7 columns paired with BATTLE_SEAL_ROW. Used when Z_49 is 2.
+; 7 columns paired with BATTLE_SEAL_ROW. Used when GAME_MODE is 2.
 .BATTLE_SEAL_COL
   EQUB &06,&07,&08,&07,&06,&07,&08
 
@@ -1657,17 +1657,17 @@ ENDIF
   EQUB &05,&05,&05,&06,&07,&07,&07
 
 ; Place bomb pickups on empty cells found by PLACE_ONE_PICKUP.
-; Z_49 0: one bomb, flag W_04E3 with bit 7 set, plus one more soft block (map 22h).
-; Otherwise 5 flags 80h and 5 flags 81h. Z_49 2 adds 5 flags 8Bh.
+; GAME_MODE 0: one bomb, flag TILESET with bit 7 set, plus one more soft block (map 22h).
+; Otherwise 5 flags 80h and 5 flags 81h. GAME_MODE 2 adds 5 flags 8Bh.
 .PLACE_BOMB_PICKUPS
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   BEQ PLACE_STORY_BOMB
   LDA #&05
   STA Z_2A
 .L4_BA18
   JSR PLACE_ONE_PICKUP
   LDA #&80
-  STA W_04EB,X
+  STA BURIED_FLAG,X
   DEC Z_2A
   BNE L4_BA18
   LDA #&05
@@ -1675,10 +1675,10 @@ ENDIF
 .L4_BA28
   JSR PLACE_ONE_PICKUP
   LDA #&81
-  STA W_04EB,X
+  STA BURIED_FLAG,X
   DEC Z_2A
   BNE L4_BA28
-  ABS_LDA Z_49
+  ABS_LDA GAME_MODE
   CMP #&02
   BNE L4_BA4B
 
@@ -1688,64 +1688,64 @@ ENDIF
 .L4_BA3F
   JSR PLACE_ONE_PICKUP
   LDA #&8B
-  STA W_04EB,X
+  STA BURIED_FLAG,X
   DEC Z_2A
   BNE L4_BA3F
 .L4_BA4B
   RTS
 .PLACE_STORY_BOMB
   JSR PLACE_ONE_PICKUP
-  LDA W_04E3
+  LDA TILESET
   ORA #&80
-  STA W_04EB,X
+  STA BURIED_FLAG,X
 .L4_BA57
   JSR NEXT_RNG
   AND #&1F
-  STA Z_28
+  STA CELL_COL
   JSR NEXT_RNG
   AND #&0F
   TAX
   LDY SOFT_ROW_TABLE,X
-  STY Z_29
+  STY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   BNE L4_BA57
-  INC W_04E2
+  INC SOFT_COUNT
   LDA #&22
-  STA (Z_2F),Y
-  LDX Z_28
-  LDY Z_29
+  STA (MAP_PTR),Y
+  LDX CELL_COL
+  LDY CELL_ROW
   LDA #&39
   JMP QUEUE_TILE_Y2
 
 ; Find an empty cell, store map 21h, queue tile 39h, and fill one bomb slot.
-; Out: X slot from FIND_FREE_BOMB, coords in W_04FA/W_0509. Increments W_04E2.
+; Out: X slot from FIND_FREE_BOMB, coords in BURIED_COL/BURIED_ROW. Increments SOFT_COUNT.
 .PLACE_ONE_PICKUP
   JSR NEXT_RNG
   AND #&1F
-  STA Z_28
+  STA CELL_COL
   JSR NEXT_RNG
   AND #&0F
   TAX
   LDY SOFT_ROW_TABLE,X
-  STY Z_29
+  STY CELL_ROW
   JSR MAP_ROW_PTR
-  LDY Z_28
-  LDA (Z_2F),Y
+  LDY CELL_COL
+  LDA (MAP_PTR),Y
   BNE PLACE_ONE_PICKUP
   LDA #&21
-  STA (Z_2F),Y
-  LDX Z_28
-  LDY Z_29
+  STA (MAP_PTR),Y
+  LDX CELL_COL
+  LDY CELL_ROW
   LDA #&39
   JSR QUEUE_TILE_Y2
   JSR FIND_FREE_BOMB
-  LDA Z_28
-  STA W_04FA,X
-  LDA Z_29
-  STA W_0509,X
-  INC W_04E2
+  LDA CELL_COL
+  STA BURIED_COL,X
+  LDA CELL_ROW
+  STA BURIED_ROW,X
+  INC SOFT_COUNT
   RTS
 
 ; 16 row numbers. A random low nibble indexes this when scattering soft blocks and pickups.
@@ -1754,7 +1754,7 @@ ENDIF
   EQUB &01,&02,&03,&03,&04,&05,&05,&06,&06,&07,&07,&08,&09,&09,&0A,&0B
 
 ; NMI off, upload the RLE nametable at column 20h (second screen on US), NMI on.
-; JP starts at column 0. In: Z_20 RLE bytes, Z_24 64 attribute bytes.
+; JP starts at column 0. In: DATA_PTR RLE bytes, DATA_PTR2 64 attribute bytes.
 .DRAW_NAMETABLE_RLE_2
   JSR NMI_OFF
 IF REGION_JP
@@ -1781,82 +1781,82 @@ ELSE
   JSR WAIT_VBLANK
   JMP NMI_ON
 
-; US only. Save X/Y in W_0527/W_0528 and convert them with XY_TO_NT_ADDR.
+; US only. Save X/Y in NT_SAVE_COL/NT_SAVE_ROW and convert them with XY_TO_NT_ADDR.
 .SET_NAMETABLE_XY
-  STX W_0527
-  STY W_0528
+  STX NT_SAVE_COL
+  STY NT_SAVE_ROW
   JSR XY_TO_NT_ADDR
 ENDIF
 
-; Write 400h nametable bytes from Z_20, then 40h attribute bytes from Z_24.
+; Write 400h nametable bytes from DATA_PTR, then 40h attribute bytes from DATA_PTR2.
 ; FF, count, tile repeats that tile count+1 times. Attributes also go to ATTR_BUF.
 .UPLOAD_RLE_NAMETABLE
-  LDA Z_23
+  LDA PPU_ADDR_HI
   STA PPU_ADDRESS
-  LDA Z_22
+  LDA PPU_ADDR
   STA PPU_ADDRESS
   LDA #&00
-  STA Z_22
+  STA PPU_ADDR
   LDA #&04
-  STA Z_23
+  STA PPU_ADDR_HI
   LDY #&00
   LDX #&00
 .RLE_WRITE_BYTE
   CPX #&00
   BEQ L4_BB14
   DEX
-  LDA Z_1C
+  LDA RLE_BYTE
   JMP L4_BB33
 .L4_BB14
-  LDA (Z_20),Y
-  INC Z_20
+  LDA (DATA_PTR),Y
+  INC DATA_PTR
   BNE L4_BB1C
 
 ; (not seen executing during the coverage runs)
-  INC Z_21
+  INC DATA_PTR_HI
 .L4_BB1C
   CMP #&FF
   BNE L4_BB33
-  LDA (Z_20),Y
-  INC Z_20
+  LDA (DATA_PTR),Y
+  INC DATA_PTR
   BNE L4_BB28
 
 ; (not seen executing during the coverage runs)
-  INC Z_21
+  INC DATA_PTR_HI
 .L4_BB28
   TAX
-  LDA (Z_20),Y
-  INC Z_20
+  LDA (DATA_PTR),Y
+  INC DATA_PTR
   BNE L4_BB31
-  INC Z_21
+  INC DATA_PTR_HI
 .L4_BB31
-  STA Z_1C
+  STA RLE_BYTE
 .L4_BB33
   STA PPU_DATA
-  DEC Z_22
-  LDA Z_22
+  DEC PPU_ADDR
+  LDA PPU_ADDR
   CMP #&FF
   BNE L4_BB40
-  DEC Z_23
+  DEC PPU_ADDR_HI
 .L4_BB40
-  LDA Z_22
-  ORA Z_23
+  LDA PPU_ADDR
+  ORA PPU_ADDR_HI
   BNE RLE_WRITE_BYTE
 IF REGION_JP
   LDX #&00
   LDY #&00
 ELSE
-  LDX W_0527
-  LDY W_0528
+  LDX NT_SAVE_COL
+  LDY NT_SAVE_ROW
 ENDIF
   JSR XY_TO_ATTR
-  LDA Z_23
+  LDA PPU_ADDR_HI
   STA PPU_ADDRESS
-  LDA Z_22
+  LDA PPU_ADDR
   STA PPU_ADDRESS
   LDY #&00
 .L4_BB5B
-  LDA (Z_24),Y
+  LDA (DATA_PTR2),Y
   STA ATTR_BUF,Y
   STA PPU_DATA
   INY
@@ -1865,46 +1865,46 @@ ENDIF
   RTS
 
 ; 48 bytes, one per stage: area 0-5 times stages 0-7. Each byte is 0 or 1.
-; PICK_STAGE_LAYOUT stores it in W_04E1 and uses it to choose layout A or B.
-; FOLLOW_ACTOR_SCROLL later treats a nonzero W_04E1 as a horizontal scroll setup.
+; PICK_STAGE_LAYOUT stores it in LAYOUT_VAR and uses it to choose layout A or B.
+; FOLLOW_ACTOR_SCROLL later treats a nonzero LAYOUT_VAR as a horizontal scroll setup.
 .LAYOUT_VARIANT
   EQUB &00,&00,&00,&00,&01,&01,&01,&01,&00,&01,&00,&01,&00,&01,&00,&01
   EQUB &00,&01,&01,&01,&00,&01,&00,&01,&00,&00,&01,&01,&00,&01,&00,&01
   EQUB &00,&01,&01,&00,&01,&01,&00,&01,&01,&01,&01,&01,&01,&01,&01,&01
 
 ; 48 bytes, area*8+stage. Initial soft-block count for story mode.
-; PLACE_SOFT_AND_BOMBS replaces it with 32h when Z_49 is not 0. The count is also copied to W_04E2.
+; PLACE_SOFT_AND_BOMBS replaces it with 32h when GAME_MODE is not 0. The count is also copied to SOFT_COUNT.
 .SOFT_BLOCK_QUOTA
   EQUB &17,&17,&22,&22,&32,&32,&32,&32,&22,&32,&22,&4B,&22,&32,&22,&4B
   EQUB &22,&64,&64,&64,&2D,&64,&22,&64,&2D,&2D,&64,&7D,&38,&64,&38,&64
   EQUB &38,&64,&7D,&2D,&4B,&64,&43,&7D,&64,&7D,&7D,&7D,&96,&64,&96,&96
 
-; Point Z_20 at one stage layout.
-; When Z_49 is 0, LAYOUT_VARIANT[area*8+stage] is 0 or 1 and is stored in W_04E1.
+; Point DATA_PTR at one stage layout.
+; When GAME_MODE is 0, LAYOUT_VARIANT[area*8+stage] is 0 or 1 and is stored in LAYOUT_VAR.
 ; Index into STAGE_LAYOUT_PTR is area*2 plus that bit. 7 areas, 2 layouts each.
 .PICK_STAGE_LAYOUT
   LDA #&00
-  STA W_04E1
-  ABS_LDA Z_49
+  STA LAYOUT_VAR
+  ABS_LDA GAME_MODE
   BNE L4_BBE3
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
   ASL A
   ASL A
-  ABS_ORA Z_4C
+  ABS_ORA STAGE_NUM
   TAY
   LDA LAYOUT_VARIANT,Y
-  STA W_04E1
+  STA LAYOUT_VAR
 .L4_BBE3
-  ABS_LDA Z_4B
+  ABS_LDA AREA_NUM
   ASL A
-  ORA W_04E1
+  ORA LAYOUT_VAR
   ASL A
   TAX
   LDA STAGE_LAYOUT_PTR,X
-  STA Z_20
+  STA DATA_PTR
   LDA STAGE_LAYOUT_PTR_HI,X
-  STA Z_21
+  STA DATA_PTR_HI
   RTS
 
 ; 14 words. Layout pointer for (area * 2 + variant). Areas 0-6, variant from LAYOUT_VARIANT.
