@@ -217,7 +217,7 @@ def main():
         print("notptr %s" % key)
     elif cmd == "unname" and len(a) == 2:
         key = key_of(a[1])
-        for f in ("symbols.tsv", "comments.tsv", "pointers.tsv"):
+        for f in ("symbols.tsv", "comments.tsv", "pointers.tsv", "code.tsv", "notptr.tsv"):
             p = own_shard(f)
             if os.path.exists(p):
                 write_rows(p, lambda r: norm_key(r[0]) != norm_key(key))

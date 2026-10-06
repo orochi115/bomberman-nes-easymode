@@ -1,0 +1,5 @@
+jp:5:ACE3	>	Z_3D times 2 selects a row. Copies JP 6-word tables into Z_20, Z_58, Z_56 and Z_54, then jumps to L7_CCF5.
+jp:0:8266	>	JP enemy logic table, 27 words. Indexed like ENEMY_AI_LO.
+jp:5:90E3	>	JP code reached from the word table at jp:5:9044.
+jp:0:82C7	>	JP enemy draw table, 27 words. Indexed like ENEMY_DRAW_LO.
+jp:2:8746	>	JP sound-code pointer table, 13 words, through JS2_8760.

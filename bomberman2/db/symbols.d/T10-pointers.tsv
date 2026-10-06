@@ -1,0 +1,3 @@
+jp:0:8266	JP_ENEMY_AI_LO	logic entry for each JP enemy type
+jp:0:82C7	JP_ENEMY_DRAW_LO	draw entry for each JP enemy type
+jp:2:8746	JP_SOUND_CODE_LO	13 word table of JP sound routines

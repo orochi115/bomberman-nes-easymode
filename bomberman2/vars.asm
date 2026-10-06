@@ -339,6 +339,7 @@ PARADE_IDX              = &62E6 ; SPAWN_PARADE point index. Wraps at 41h.
 TYPE10_TRY              = &62E7 ; Attempt counter for SPAWN_TYPE_10.
 TYPE10_ARM              = &62E8 ; ARM_TYPE10_TIMER stores 1 when this is 0.
 TYPE10_TIME             = &62E9 ; ARM_TYPE10_TIMER stores F0h here.
+X_62EA                  = &62EA
 BURST_TIME              = &62EB ; Countdown. At 0 the same type is placed eight times.
 BURST_COL               = &62EC ; Column stored with BURST_TIME.
 BURST_ROW               = &62ED ; Row stored with BURST_TIME.
@@ -472,7 +473,6 @@ IF REGION_JP
   W_0561                  = &055F
   W_0562                  = &0560
   WINS_GOAL               = &0561
-  JX_62EA                 = &62EA
 ELSE
   JOY_PROBE_1             = &45 ; US extra byte shifted from pad port 1
   JOY_PROBE_2             = &46 ; US extra byte shifted from pad port 2
@@ -599,7 +599,6 @@ ELSE
   W_0561                  = &0561
   W_0562                  = &0562
   WINS_GOAL               = &0563 ; Wins required. 5 unless battle mode picked 1-5.
-  X_62EA                  = &62EA
 ENDIF
 
 MMC1_CONTROL            = &9FFF

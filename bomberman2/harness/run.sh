@@ -75,7 +75,7 @@ done_yet && echo "== task reports CHECK PASSED" | tee -a "$MAIN/harness/logs/$TA
 # Collect results into the main tree (one task at a time)
 until mkdir "$MAIN/harness/logs/.lock" 2>/dev/null; do sleep 5; done
 trap 'rmdir "$MAIN/harness/logs/.lock"' EXIT
-for f in symbols comments pointers notptr; do
+for f in symbols comments pointers notptr code; do
   [ -f "$W/db/$f.d/$TASK.tsv" ] && mkdir -p "$MAIN/db/$f.d" && cp "$W/db/$f.d/$TASK.tsv" "$MAIN/db/$f.d/"
 done
 [ -f "$W/harness/notes/$TASK.md" ] && cp "$W/harness/notes/$TASK.md" "$MAIN/harness/notes/"

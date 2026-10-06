@@ -1,0 +1,51 @@
+0:93B4	lo	0:93B8
+0:B107	lo	0:B10B
+0:9276	lo	0:927A
+0:B06A	lo	0:B06E	bank=4
+0:B053	lo	0:B057	bank=6
+5:9F92	lo	5:9F96
+5:9F9D	lo	5:9FA1
+5:A0A7	lo	5:A0AB
+5:A119	lo	5:A11D
+5:A10E	lo	5:A112
+5:A12F	lo	5:A133
+5:A124	lo	5:A128
+7:FFFA	word	3
+5:B255	lo	5:B259	bank=4
+5:B25D	lo	5:B261	bank=4
+5:B583	lo	5:B587	bank=4
+5:B265	lo	5:B269	bank=4
+5:B57B	lo	5:B57F	bank=4
+5:B58B	lo	5:B58F	bank=4
+5:B5AD	lo	5:B5B1
+5:B614	lo	5:B618	bank=4
+5:B624	lo	5:B628	bank=4
+5:B61C	lo	5:B620	bank=4
+5:B89A	lo	5:B89E
+5:B8AD	lo	5:B8B1
+us:5:B573	lo	5:B577	bank=4
+us:5:B24D	lo	5:B251	bank=4
+us:5:B60C	lo	5:B610	bank=4
+5:B4E7	lo	5:B4EB
+jp:2:8746	word	13
+jp:0:82C7	word	27
+jp:0:8266	word	27
+jp:0:AB58	lo	jp:0:AB5C	bank=6
+jp:0:AB6F	lo	jp:0:AB73	bank=4
+jp:0:AC0C	lo	jp:0:AC10
+jp:5:9044	word	16
+jp:5:9F8D	lo	jp:5:9F91
+jp:5:9F82	lo	jp:5:9F86
+jp:5:A097	lo	jp:5:A09B
+jp:5:A0FE	lo	jp:5:A102
+jp:5:A114	lo	jp:5:A118
+jp:5:A109	lo	jp:5:A10D
+jp:5:A11F	lo	jp:5:A123
+jp:5:B0E7	lo	jp:5:B0EB	bank=4
+jp:5:B0EF	lo	jp:5:B0F3	bank=4
+jp:5:B836	lo	jp:5:B83A
+jp:5:B0FF	lo	jp:5:B103	bank=4
+jp:5:B0F7	lo	jp:5:B0FB	bank=4
+jp:7:CBC3	lo	jp:7:CBC7
+jp:5:ADDF	word	5
+jp:5:AE46	word	5

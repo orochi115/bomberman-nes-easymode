@@ -1,0 +1,81 @@
+5:90CD	middle bytes of LDA EXTRA_SPAWN_IDX,X in SPAWN_RAND_EXTRA
+5:B5B9	two Y bytes inside WIN_CURSOR_Y
+7:F9B1	DPCM sample bytes after E000, not a pointer table
+5:9259	Z_21 is the high byte of RAM 62F3 and Z_22 is the low byte of length 01A0
+7:D0DC	lo and hi bytes form WRAM row pointers from 62F3 step 20
+3:8D79	sound command bytes whose high half is D1 or D2
+1:B71B	same FF D1 pattern as the bytes at B6E5
+0:A5D3	repeating A6 then a coordinate, metasprite bytes
+1:B6E5	bytes FF D1 FF C4 repeated, not a code table
+3:8D87	sound command bytes whose high half is D1 or D2
+5:A7AE	ascending bytes BC BD BE BF C0 C1
+2:9FB9	sound stream bytes, high half is a D0 command
+3:8D25	three copies of param 30 and sound command D1
+3:8DC5	sound command bytes whose high half is D1 or D2
+3:8DAA	sound command bytes whose high half is D1 or D2
+2:9C7A	sound stream byte 70 followed by command D1
+3:8DD5	sound command bytes whose high half is D1 or D2
+2:A0E8	sound stream bytes, high half is a D0 command
+2:A1F0	sound data that codeguess also decoded as BMI
+7:E2F5	DPCM sample bytes
+7:E636	DPCM sample bytes
+7:F3D0	DPCM sample bytes
+7:EECB	DPCM sample bytes
+7:F1BD	DPCM sample bytes
+7:EC67	DPCM sample bytes
+7:F407	DPCM sample bytes
+7:F37B	DPCM sample bytes
+7:F5C4	DPCM sample bytes
+7:E6BE	DPCM sample bytes
+7:F43A	DPCM sample bytes
+7:F60D	DPCM sample bytes
+7:F6C4	DPCM sample bytes
+7:F982	DPCM sample bytes
+7:FA02	DPCM sample bytes
+7:FAA2	DPCM sample bytes
+7:FAAE	DPCM sample bytes
+7:FC7B	DPCM sample bytes
+7:FA72	DPCM sample bytes
+7:FA6C	DPCM sample bytes
+7:FBC4	DPCM sample bytes
+7:FB55	DPCM sample bytes
+1:B55E	bytes 00 80, tile or pad, not a pointer to 8000
+1:B6B3	bytes 00 80, tile or pad, not a pointer to 8000
+7:FDB2	DPCM sample bytes
+7:FDD8	DPCM sample bytes
+1:B6B6	bytes 00 80, tile or pad, not a pointer to 8000
+1:B9A1	bytes 00 80, tile or pad, not a pointer to 8000
+1:B6CD	bytes 00 80, tile or pad, not a pointer to 8000
+1:BAD0	bytes 00 80, tile or pad, not a pointer to 8000
+5:9CEF	bytes 00 80, not a pointer to 8000
+5:9C0D	bytes 00 80, not a pointer to 8000
+3:88D4	bytes 00 80, not a pointer to 8000
+5:9E13	bytes 00 80, not a pointer to 8000
+5:9DB5	bytes 00 80, not a pointer to 8000
+5:A5B3	bytes 00 80, not a pointer to 8000
+1:BC5E	nametable bytes around C0 C1 C3, not code pointers
+1:B975	CHR bytes 80 C8 1C DB 18 D8, not three routines
+0:A683	one word inside sprite tile bytes
+1:B993	sprite bytes A6 C0 40 C0, not a pointer run
+0:A5DF	continues the A6 tile stream at A5D3
+0:A63D	one word inside sprite tile bytes
+0:A820	one word inside sprite tile bytes
+0:A697	one word inside sprite tile bytes
+2:A038	single word inside a sound command stream
+2:A2E9	byte after sound command DF, not a code pointer
+0:A721	one word inside sprite tile bytes
+2:9F5D	byte 01 after sound command DF, not address A001
+2:A3A2	single word inside a sound command stream
+2:A2F9	single word inside a sound command stream
+2:A3B2	single word inside a sound command stream
+5:88A8	sprite or map byte pair, not address 8D4F
+5:90F2	sprite or map byte pair, not address 8D01
+5:9101	sprite or map byte pair, not address 8280
+5:9A8D	metasprite bytes 02 84, not address 8402
+5:9DA3	metasprite bytes, not address 8402
+5:9D63	metasprite bytes, not address 841E
+5:9D05	metasprite bytes, not address 8401
+5:9E41	metasprite bytes, not address 8402
+5:B555	Y bytes 80 90 inside the JP win cursor table
+jp:5:AD33	misaligned pair inside the area intro word tables
+5:AD33	misaligned pair inside the area intro word tables

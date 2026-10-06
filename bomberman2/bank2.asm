@@ -1415,6 +1415,8 @@
   EQUW L2_864C
   EQUB &88
 IF REGION_JP
+
+; (not seen executing during the coverage runs)
 .SFX0A_PROG
   LDA L7_C61D+1,X
 ELSE
