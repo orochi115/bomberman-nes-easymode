@@ -145,6 +145,7 @@ class Emitter:
         self.ram_used = {}         # RAM symbol name -> address in this region
         self.unresolved = []
         self.conflicts = []
+        self.warnings = []
         self.roles = self.pointer_roles()
 
     def pointer_roles(self):
@@ -217,7 +218,12 @@ class Emitter:
             if tb < 0:
                 raise ValueError("pointer to $%04X from the fixed bank needs bank=" % v)
             if not self.d.banks[tb].inside(v):
-                self.conflicts.append("pointers: %d:%04X holds $%04X, not an address in bank %d (skipped)" % (n, la, v, tb))
+                if self.region != "us" and len(row[0].split(":")) == 2:
+                    # US-keyed entry whose JP counterpart differs: US only
+                    self.warnings.append("pointers: US %s does not apply to %s (%d:%04X holds $%04X)" % (
+                        row[0], self.region.upper(), n, la, v))
+                else:
+                    self.conflicts.append("pointers: %d:%04X holds $%04X, not an address in bank %d (skipped)" % (n, la, v, tb))
                 continue
             self.pairs.append((lo_off, hi_off, tb, v, adj))
             for off, part in ((lo_off, "lo"), (hi_off, "hi")):

@@ -262,6 +262,8 @@ def main():
     print("IF REGION_JP blocks %d" % m.ndiff)
     bad = 0
     for e in (m.us, m.jp):
+        for w in sorted(set(e.warnings)):
+            print("  note: " + w)
         if e.conflicts or e.unresolved:
             print("%s: %d conflicts, %d unresolved" % (e.region, len(e.conflicts), len(set(e.unresolved))))
             for c in (e.conflicts + sorted(set(e.unresolved)))[:40]:
