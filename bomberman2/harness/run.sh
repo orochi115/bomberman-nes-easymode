@@ -40,19 +40,31 @@ $(cat "$W/harness/tasks/$TASK.md")
 ---
 你的任务名是 ${TASK}（环境变量 BM2_TASK 已设置）。当前目录是仓库的 bomberman2/ 目录。
 先读 RULES 第 2 节的工具说明和 harness/notes/ 下已有的笔记，然后开始工作。
-完成后运行 tools/check.sh，直到 CHECK PASSED，再在笔记末尾贴上结果。"
+完成后运行 tools/check.sh，直到 CHECK PASSED，再在笔记末尾贴上结果。
+
+重要：你在无人值守的批处理模式下运行，没有人会回复你。不要只描述计划然后结束，
+要一直调用工具执行，直到整个任务完成（笔记里有 CHECK PASSED）才结束回复。"
 
 mkdir -p "$MAIN/harness/logs"
 cd "$W"
-grok -p "$PROMPT" \
-  --sandbox workspace \
-  --permission-mode dontAsk \
-  --allow "Bash(python3 tools/*)" --allow "Bash(tools/*)" --allow "Bash(./tools/*)" \
-  --allow "Edit(harness/notes/**)" --allow "Write(harness/notes/**)" \
-  --deny "Bash(git*)" --deny "Bash(curl*)" --deny "Bash(wget*)" --deny "Bash(rm *)" \
-  --disable-web-search \
-  --max-turns "${BM2_MAX_TURNS:-400}" \
-  2>&1 | tee "$MAIN/harness/logs/$TASK.log"
+LOG="$MAIN/harness/logs/$TASK.jsonl"
+GROK_OPTS=(--sandbox workspace --permission-mode dontAsk
+  --allow "Bash(python3 tools/*)" --allow "Bash(tools/*)" --allow "Bash(./tools/*)"
+  --allow "Edit(harness/notes/**)" --allow "Write(harness/notes/**)"
+  --deny "Bash(git*)" --deny "Bash(curl*)" --deny "Bash(wget*)" --deny "Bash(rm *)"
+  --disable-web-search --max-turns "${BM2_MAX_TURNS:-400}" --output-format streaming-json)
+
+done_yet() { grep -q "CHECK PASSED" "$W/harness/notes/$TASK.md" 2>/dev/null; }
+
+grok -p "$PROMPT" "${GROK_OPTS[@]}" >> "$LOG" 2>&1 || true
+round=1
+while ! done_yet && [ $round -le "${BM2_ROUNDS:-8}" ]; do
+  echo "== round $round: task not finished, continuing the session" | tee -a "$MAIN/harness/logs/$TASK.log"
+  grok -c -p "继续执行任务 ${TASK}，不要停下来汇报计划：直接调用工具完成剩余工作（命名、注释、指针、笔记），最后运行 tools/check.sh 并把 CHECK PASSED 贴进 harness/notes/${TASK}.md。" \
+    "${GROK_OPTS[@]}" >> "$LOG" 2>&1 || true
+  round=$((round + 1))
+done
+done_yet && echo "== task reports CHECK PASSED" | tee -a "$MAIN/harness/logs/$TASK.log"
 
 # Collect results into the main tree
 for f in symbols comments pointers notptr; do
