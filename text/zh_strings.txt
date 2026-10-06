@@ -3,6 +3,7 @@
 #
 # Format: BANK  ID  ROW  COL  TEXT
 #   BANK  GAME / TITLE / TEXT / OPTS (which CHR bank the string is drawn with)
+#   ID    label suffix, ZH_<ID>; ID/US or ID/JP is only used for that region
 #   ROW   top tile row of the string (it is two tiles high), or - for strings
 #         positioned at run time
 #   COL   left tile column, c to centre the string, or - (run time)
@@ -24,11 +25,17 @@ GAME   HUD_LEFT     1   24   剩余
 GAME   PAUSE_HINT   1   c    暂停  ◀▶看地图  SELECT回标题
 
 # Title menu
-TITLE  MENU_START   19  8    开始游戏
-TITLE  MENU_OPTS    19  19   选项
-TITLE  MENU_TOP     21  7    最高分
+TITLE  MENU_START/US 19  8    开始游戏
+TITLE  MENU_OPTS/US 19  19   选项
+TITLE  MENU_TOP/US  21  7    最高分
 TITLE  CURSOR       -   -    ▶
-TITLE  TOP_SCORE    22  14   @
+TITLE  TOP_SCORE/US 22  14   @
+
+# Title menu (Japanese version, below the taller logo)
+TITLE  MENU_START/JP 21  8    开始游戏
+TITLE  MENU_OPTS/JP  21  19   选项
+TITLE  MENU_TOP/JP   24  7    最高分
+TITLE  TOP_SCORE/JP  25  14   @
 
 # Stage intro, bonus stage, game over
 TEXT   STAGE_PRE    14  12   第
@@ -38,13 +45,18 @@ TEXT   BONUS_STAGE  14  c    奖励关卡
 TEXT   GAME_OVER    14  c    游戏结束
 
 # Ending
-TEXT   END_1        3   c    恭喜你！
-TEXT   END_2        6   c    你成功地帮助炸弹人
-TEXT   END_3        8   c    变成了真正的人类。
-TEXT   END_4        11  c    也许你能在另一款
-TEXT   END_5        13  c    哈德森游戏里
-TEXT   END_6        15  c    再次认出他。
-TEXT   END_7        19  c    再见！
+TEXT   END_1/US     3   c    恭喜你！
+TEXT   END_2/US     6   c    你成功地帮助炸弹人
+TEXT   END_3/US     8   c    变成了真正的人类。
+TEXT   END_4/US     11  c    也许你能在另一款
+TEXT   END_5/US     13  c    哈德森游戏里
+TEXT   END_6/US     15  c    再次认出他。
+TEXT   END_7/US     19  c    再见！
+
+# Ending (Japanese version)
+TEXT   END_1/JP     5   c    恭喜你！
+TEXT   END_2/JP     8   c    炸弹人变成了淘金者！
+TEXT   END_3/JP     11  c    我们在《淘金者》里再见！
 
 # Options screen
 OPTS   OPT_TITLE    2   c    选项

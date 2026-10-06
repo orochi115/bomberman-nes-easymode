@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build bomberman-nes with BeebAsm and launch it in ares (macOS).
-# Arguments are passed to build.sh, e.g. run-ares.sh -l en -c config/casual.asm
+# Arguments are passed to build.sh, e.g. run-ares.sh -l en -r jp -c config/casual.asm
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
@@ -15,7 +15,16 @@ fi
 
 BEEBASM="$BEEBASM" "$SRC/build.sh" "$@"
 
-echo "ROM: $SRC/bomberman.nes"
+# The Japanese version is written to bomberman_jp.nes
+ROM="$SRC/bomberman.nes"
+prev=
+for arg in "$@"; do
+  if [ "$arg" = "-rjp" ] || { [ "$prev" = "-r" ] && [ "$arg" = "jp" ]; }; then
+    ROM="$SRC/bomberman_jp.nes"
+  fi
+  prev="$arg"
+done
+
 if [ ! -d "$ARES_APP" ]; then
   echo "ares not found at $ARES_APP" >&2
   exit 1
@@ -28,4 +37,4 @@ if pgrep -x ares >/dev/null 2>&1; then
   sleep 0.4
 fi
 
-open -a "$ARES_APP" --args "$SRC/bomberman.nes"
+open -a "$ARES_APP" --args "$ROM"

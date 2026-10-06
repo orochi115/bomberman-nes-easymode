@@ -1,8 +1,10 @@
 #!/bin/sh
 # Build bomberman.nes: iNES header + 32KB PRG + 32KB CHR (CNROM).
 #
-# Usage: build.sh [-l zh|en] [-c config/NAME.asm]
+# Usage: build.sh [-l zh|en] [-r us|jp] [-c config/NAME.asm]
 #   -l  language of the in-game text (default en)
+#   -r  region of the original game the ROM is built on (default us);
+#       jp builds bomberman_jp.nes from the Japanese version
 #   -c  settings used by "开始游戏" / START and as the options screen
 #       defaults (default config/default.asm, the original rules)
 set -eu
@@ -15,14 +17,22 @@ if [ ! -x "$BEEBASM" ]; then
 fi
 
 LANG_OPT=en
+REGION=us
 CONFIG=config/default.asm
-while getopts "l:c:" opt; do
+while getopts "l:r:c:" opt; do
   case "$opt" in
     l) LANG_OPT="$OPTARG" ;;
+    r) REGION="$OPTARG" ;;
     c) CONFIG="$OPTARG" ;;
-    *) echo "Usage: $0 [-l zh|en] [-c config/NAME.asm]" >&2; exit 1 ;;
+    *) echo "Usage: $0 [-l zh|en] [-r us|jp] [-c config/NAME.asm]" >&2; exit 1 ;;
   esac
 done
+
+case "$REGION" in
+  us) DEFS=""; PRG=bomberman ;;
+  jp) DEFS="-D REGION_JP"; PRG=bomberman_jp ;;
+  *) echo "Unknown region $REGION (expected us or jp)" >&2; exit 1 ;;
+esac
 
 cd "$SRC"
 
@@ -32,7 +42,7 @@ if [ ! -f "$CONFIG" ]; then
 fi
 
 # Generate the CHR banks and the text data for the chosen language
-python3 tools/build_text.py --lang "$LANG_OPT"
+python3 tools/build_text.py --lang "$LANG_OPT" --region "$REGION"
 
 # Settings for the assembler
 cat > build_config.asm <<EOF
@@ -41,7 +51,7 @@ INCLUDE "$CONFIG"
 EOF
 
 "$BEEBASM" -i nes_header.asm
-"$BEEBASM" -i bman.asm
-cat nes_header.bin bomberman bomber_text.chr > bomberman.nes
+"$BEEBASM" $DEFS -i bman.asm
+cat nes_header.bin $PRG bomber_text.chr > $PRG.nes
 
-echo "ROM: $SRC/bomberman.nes ($LANG_OPT, $CONFIG, $(wc -c < bomberman.nes | tr -d ' ') bytes)"
+echo "ROM: $SRC/$PRG.nes ($LANG_OPT, $REGION, $CONFIG, $(wc -c < $PRG.nes | tr -d ' ') bytes)"

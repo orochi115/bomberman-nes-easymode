@@ -19,8 +19,10 @@ letters / digits use the original font in the bottom row; '<', '>', '+' and
 ':' are extra 8x8 symbols; {XX} is the raw tile XX; {} is an empty string.
 A text of '@' only defines the address constant ZH_<ID>_ADDR (the exact tile
 at ROW, COL). "CONST NAME VALUE" lines are passed on as assembler constants.
+An ID ending in /US or /JP is only used for that region (the suffix is not
+part of the label).
 
-Usage: build_text.py [--lang zh|en] [--preview]
+Usage: build_text.py [--lang zh|en] [--region us|jp] [--preview]
   (--preview also writes text/preview_*.png)
 """
 import os
@@ -34,6 +36,8 @@ FONT = os.path.join(SRC, 'fonts', 'fusion-pixel-12px-monospaced-zh_hans.bdf')
 OUT_CHR = os.path.join(SRC, 'bomber_text.chr')
 OUT_ASM = os.path.join(SRC, 'text_data.asm')
 LANGS = ('zh', 'en')
+REGIONS = ('us', 'jp')
+REGION = 'us'  # Set by main()
 
 BANKS = ['GAME', 'TITLE', 'TEXT', 'OPTS']
 BG = 0x1000  # Background pattern table offset within a bank
@@ -54,10 +58,16 @@ def letters(s):
 
 
 def title_tiles():
-    """Tiles used by the title logo, read from MAINMENU_HI/LO in bman.asm."""
+    """Tiles used by the title logo, read from MAINMENU_HI/LO in bman.asm
+    (the IF REGION_JP block for jp, the ELSE block for us)."""
     src = open(os.path.join(SRC, 'bman.asm')).read()
     start = src.index('.MAINMENU_HI')
-    end = src.index('.DRAWMENUTEXT')
+    jp_start = src.rindex('IF REGION_JP', 0, start)
+    jp_end = src.index('\nELSE', start)
+    if REGION == 'jp':
+        start, end = jp_start, jp_end
+    else:
+        start, end = jp_end, src.index('.DRAWMENUTEXT', jp_end)
     used = {int(h, 16) for h in re.findall(r'&([0-9A-F]{2})', src[start:end])}
     return used
 
@@ -65,7 +75,8 @@ def title_tiles():
 KEEP = {
     'GAME': None,  # Special case (see free_tiles)
     'TITLE': lambda: title_tiles() | DIGITS | {BLANK, 0xFD, 0xFE}
-    | letters('TM AND HUDSON SOFT LICENSED BY NINTENDO OF AMERICA INC'),
+    | letters('TM AND HUDSON SOFT LICENSED BY NINTENDO OF AMERICA INC')
+    | letters('COPYRIGHT HUDSON SOFT'),  # Japanese version
     'TEXT': lambda: DIGITS | {BLANK} | set(range(0x68, 0x6C)),  # bricks
     'OPTS': lambda: DIGITS | {BLANK} | letters('START'),
 }
@@ -228,6 +239,12 @@ def parse_strings(path):
             bank, sid, row, col, text = m.groups()
             if bank not in BANKS:
                 sys.exit('%s:%d: unknown bank %s' % (path, n, bank))
+            if '/' in sid:
+                sid, region = sid.split('/')
+                if region.lower() not in REGIONS:
+                    sys.exit('%s:%d: unknown region %s' % (path, n, region))
+                if region.lower() != REGION:
+                    continue
             out.append((bank, sid, row, col, text))
     return out, consts
 
@@ -239,6 +256,11 @@ def main():
         lang = sys.argv[sys.argv.index('--lang') + 1]
     if lang not in LANGS:
         sys.exit('Unknown language %s (expected one of %s)' % (lang, ', '.join(LANGS)))
+    global REGION
+    if '--region' in sys.argv:
+        REGION = sys.argv[sys.argv.index('--region') + 1]
+    if REGION not in REGIONS:
+        sys.exit('Unknown region %s (expected one of %s)' % (REGION, ', '.join(REGIONS)))
     path = os.path.join(SRC, 'text', '%s_strings.txt' % lang)
 
     strings, consts = parse_strings(path)
@@ -246,7 +268,8 @@ def main():
               if isinstance(c, str) and is_wide(c) and c not in SPECIAL}
     font = load_bdf(FONT, wanted) if wanted else {}
 
-    orig = open(os.path.join(SRC, 'bomber.chr'), 'rb').read()
+    chr_name = 'bomber_jp.chr' if REGION == 'jp' else 'bomber.chr'
+    orig = open(os.path.join(SRC, chr_name), 'rb').read()
     assert len(orig) == 8192
     banks = {b: bytearray(orig) for b in BANKS}
     # Letters, digits and raw tiles used by a bank's strings keep their tiles
