@@ -15,6 +15,7 @@ Writes bank0-7.asm, macros.asm, vars.asm and db/jpmap.tsv.
 import argparse
 import difflib
 import os
+import sys
 from collections import Counter
 
 from emit import Emitter, render, ROOT, FIXED
@@ -259,11 +260,17 @@ def main():
     m.run()
     m.write(args.out)
     print("IF REGION_JP blocks %d" % m.ndiff)
+    bad = 0
     for e in (m.us, m.jp):
         if e.conflicts or e.unresolved:
             print("%s: %d conflicts, %d unresolved" % (e.region, len(e.conflicts), len(set(e.unresolved))))
-            for c in (e.conflicts + sorted(set(e.unresolved)))[:20]:
+            for c in (e.conflicts + sorted(set(e.unresolved)))[:40]:
                 print("  " + c)
+            # Problems caused by db/ entries must be fixed by whoever wrote them
+            bad += sum(1 for c in e.conflicts if ".tsv" in c or c.startswith("pointers:"))
+    if bad:
+        print("ERROR: %d db entries could not be applied (see above)" % bad)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

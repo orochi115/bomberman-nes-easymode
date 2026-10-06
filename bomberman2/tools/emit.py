@@ -209,10 +209,16 @@ class Emitter:
         for la, ha in pairs:
             lo_off = n * 0x4000 + (la & 0x3FFF)
             hi_off = hn * 0x4000 + (ha & 0x3FFF)
-            v = (self.d.prg[lo_off] | self.d.prg[hi_off] << 8) + adj
+            raw = self.d.prg[lo_off] | self.d.prg[hi_off] << 8
+            if raw in (0x0000, 0xFFFF):
+                continue                 # null / end marker inside a pointer table
+            v = raw + adj
             tb = FIXED if v >= 0xC000 else int(opts.get("bank", n if n != FIXED else -1))
             if tb < 0:
                 raise ValueError("pointer to $%04X from the fixed bank needs bank=" % v)
+            if not self.d.banks[tb].inside(v):
+                self.conflicts.append("pointers: %d:%04X holds $%04X, not an address in bank %d (skipped)" % (n, la, v, tb))
+                continue
             self.pairs.append((lo_off, hi_off, tb, v, adj))
             for off, part in ((lo_off, "lo"), (hi_off, "hi")):
                 new = (part, (tb, v), adj)

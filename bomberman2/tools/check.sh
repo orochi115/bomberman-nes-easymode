@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 # Self-check after editing db/: lint, regenerate, byte-exact US and JP builds,
 # and a quick relocation test.   Usage: tools/check.sh [--full]
 #   --full  run every relocation scenario for both regions (slow, ~15 min)
@@ -10,7 +11,7 @@ step "db lint"
 python3 tools/db.py lint | tail -20 || fail=1
 
 step "regenerate"
-python3 tools/merge.py | tail -3 || fail=1
+python3 tools/merge.py | grep -v "^  pass " || fail=1
 
 for r in us jp; do
   step "build $r"
