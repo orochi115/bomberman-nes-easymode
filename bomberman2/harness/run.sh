@@ -32,7 +32,7 @@ rsync -a "$MAIN/harness/" "$W/harness/" --exclude logs
 rsync -a "$MAIN/tools/" "$W/tools/" --exclude __pycache__
 for f in make.sh bman2.asm nes_header.asm consts.asm nesregs.asm; do cp "$MAIN/$f" "$W/$f"; done
 mkdir -p "$W/coverage" && rsync -a "$MAIN/coverage/" "$W/coverage/"
-(cd "$W" && tools/regen.sh > /dev/null)
+(cd "$W" && tools/regen.sh > /dev/null) || echo "regen reported problems; the agent will see them in check.sh"
 
 PROMPT="$(cat "$W/harness/RULES.md")
 
