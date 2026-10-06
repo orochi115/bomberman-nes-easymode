@@ -1,0 +1,7 @@
+# Pointers that the runtime taint tracking did not see (checked by hand).
+# KEY	word	[N]			N consecutive little-endian words at KEY
+# KEY	split	HIKEY	N		lo bytes at KEY, hi bytes at HIKEY, N entries
+# KEY	lo	HIKEY			one pointer: lo byte at KEY, hi byte at HIKEY (data or #imm operands)
+# Options (extra columns): bank=B  target bank when it can't be inferred
+#                          adj=1   stored value is target-1 (RTS dispatch)
+# KEY is b:XXXX (US address, mapped to JP automatically) or us:b:XXXX / jp:b:XXXX.

@@ -47,11 +47,12 @@ def h4(v):
 
 class Item:
     """One source element: an instruction, a data byte, a pointer, a fill..."""
-    __slots__ = ("addr", "size", "kind", "text", "labels", "block", "eol", "sub")
+    __slots__ = ("addr", "size", "kind", "text", "labels", "block", "eol", "sub", "rams")
 
     def __init__(self, addr, size, kind, text):
         self.addr, self.size, self.kind, self.text = addr, size, kind, text
         self.labels, self.block, self.eol, self.sub = [], [], None, False
+        self.rams = []
 
     def token(self):
         return ("B%02X" % self.text) if self.kind == "byte" else self.kind[0] + self.text
@@ -72,7 +73,7 @@ def render(items, indent="  "):
         for text in it.block:
             lines.append("")
             lines += ["; " + l if l else ";" for l in text.split("\n")]
-        if it.labels and it.sub:
+        if it.labels and it.sub and not it.block:
             lines.append("")
         lines += ["." + n for n in it.labels]
         if it.kind == "byte":
@@ -90,15 +91,21 @@ def render(items, indent="  "):
 
 
 def load_tsv(name):
-    path = os.path.join(DB, name)
+    """Rows of db/NAME plus db/NAME.d/*.tsv shards (one shard per harness task).
+    Returns [(where, columns)] with where = "file:line"."""
+    import glob
+    stem = name[:-4] if name.endswith(".tsv") else name
+    paths = [os.path.join(DB, name)] + sorted(glob.glob(os.path.join(DB, stem + ".d", "*.tsv")))
     rows = []
-    if not os.path.exists(path):
-        return rows
-    for ln, line in enumerate(open(path, encoding="utf-8"), 1):
-        line = line.rstrip("\n")
-        if not line.strip() or line.startswith("#"):
+    for path in paths:
+        if not os.path.exists(path):
             continue
-        rows.append((ln, line.split("\t")))
+        rel = os.path.relpath(path, ROOT)
+        for ln, line in enumerate(open(path, encoding="utf-8"), 1):
+            line = line.rstrip("\n")
+            if not line.strip() or line.startswith("#"):
+                continue
+            rows.append(("%s:%d" % (rel, ln), line.split("\t")))
     return rows
 
 
@@ -108,24 +115,34 @@ def parse_key(k):
 
 
 class Emitter:
+    prev_spec = False
+
     def __init__(self, region):
         self.d = Disasm(region)
         self.d.trace()
+        self.d.speculate()
         self.region = region
         self.names = {}            # (bank|'ram', addr) -> name
         self.symcomment = {}
         self.comments = defaultdict(list)   # (bank, addr) -> [(kind, text)]
+        # db keys: ram:XXXX, b:XXXX (US address, shared code), us:b:XXXX, jp:b:XXXX
         for ln, row in load_tsv("symbols.tsv"):
-            key = parse_key(row[0])
+            key = self.own_key(row[0])
+            if key is None:
+                continue
             self.names[key] = row[1]
             if len(row) > 2 and row[2]:
                 self.symcomment[key] = row[2]
         for ln, row in load_tsv("comments.tsv"):
-            self.comments[parse_key(row[0])].append((row[1], row[2].replace("\\n", "\n")))
+            key = self.own_key(row[0])
+            if key is not None:
+                self.comments[key].append((row[1], row[2].replace("\\n", "\n")))
         self.labels = {}           # (bank, addr) -> name (ROM labels to define)
         self.kinds = {}            # (bank, addr) -> 'S' | 'L' | 'D'
         self.inner = {}            # (bank, addr) -> (bank, insn addr, offset) labels inside an insn
         self.force_macros = set()
+        self.cur_rams = []
+        self.ram_used = {}         # RAM symbol name -> address in this region
         self.unresolved = []
         self.conflicts = []
         self.roles = self.pointer_roles()
@@ -133,6 +150,7 @@ class Emitter:
     def pointer_roles(self):
         """PRG offset -> ('lo'|'hi', (bank, target), adjust) from runtime pointer uses."""
         roles = {}
+        self.pairs = []          # (lo off, hi off, target bank, target, adj)
         for (lo, hi, kind), vals in self.d.meta["ptrs"].items():
             if len(vals) != 1:
                 self.conflicts.append("pointer %d:%d used with several banks/targets %s" % (lo, hi, sorted(vals)))
@@ -142,6 +160,7 @@ class Emitter:
             if kind == "rts":
                 v, adj = v - 1, 1                 # stored as target - 1
             tb = FIXED if v >= 0xC000 else tb
+            self.pairs.append((lo, hi, tb, v + adj, adj))
             for off, part in ((lo, "lo"), (hi, "hi")):
                 n = off // 0x4000
                 b = self.d.banks[n]
@@ -161,7 +180,83 @@ class Emitter:
                     self.conflicts.append("PRG byte %d:%04X has two pointer roles %r %r" % (n, a, roles[off], new))
                     continue
                 roles[off] = new
+        # Pointers declared in db/pointers.tsv
+        for ln, row in load_tsv("pointers.tsv"):
+            try:
+                self.db_pointer(roles, row)
+            except Exception as e:
+                self.conflicts.append("%s: %s" % (ln, e))
         return roles
+
+    def db_pointer(self, roles, row):
+        """KEY word [N] | KEY split HIKEY N | KEY lo HIKEY  [bank=B] [adj=1]"""
+        opts = dict(x.split("=") for x in row[2:] if "=" in x)
+        args = [x for x in row[1:] if "=" not in x]
+        kind = args[0]
+        lo_key = self.region_key(row[0])
+        if lo_key is None:
+            return
+        n, a = lo_key
+        if kind == "word":
+            pairs = [(a + 2 * i, a + 2 * i + 1) for i in range(int(args[1]) if len(args) > 1 else 1)]
+            hn = n
+        else:
+            hk = self.region_key(args[1])
+            hn, ha = hk
+            cnt = int(args[2]) if kind == "split" else 1
+            pairs = [(a + i, ha + i) for i in range(cnt)]
+        adj = int(opts.get("adj", 0))
+        for la, ha in pairs:
+            lo_off = n * 0x4000 + (la & 0x3FFF)
+            hi_off = hn * 0x4000 + (ha & 0x3FFF)
+            v = (self.d.prg[lo_off] | self.d.prg[hi_off] << 8) + adj
+            tb = FIXED if v >= 0xC000 else int(opts.get("bank", n if n != FIXED else -1))
+            if tb < 0:
+                raise ValueError("pointer to $%04X from the fixed bank needs bank=" % v)
+            self.pairs.append((lo_off, hi_off, tb, v, adj))
+            for off, part in ((lo_off, "lo"), (hi_off, "hi")):
+                new = (part, (tb, v), adj)
+                if off in roles and roles[off] != new:
+                    raise ValueError("byte %d:%04X already has role %r" % (off // 0x4000, off % 0x4000, roles[off]))
+                roles[off] = new
+
+    def region_key(self, k):
+        """db key -> (bank, addr) for this region, or None if it is another region's."""
+        parts = k.split(":")
+        if len(parts) == 3:
+            if parts[0] != self.region:
+                return None
+            parts = parts[1:]
+        elif self.region != "us":
+            return self.alias_key((int(parts[0]), int(parts[1], 16)))
+        return (int(parts[0]), int(parts[1], 16))
+
+    def alias_key(self, us_key):
+        """Map a US address to this region (identity for US; set by the merger)."""
+        return us_key
+
+    def add_pair(self, lo_off, hi_off, tb, v, adj):
+        """Add a pointer (lo/hi PRG offsets -> target) unless it clashes."""
+        new = {}
+        for off, part in ((lo_off, "lo"), (hi_off, "hi")):
+            n, a = off // 0x4000, off % 0x4000
+            b = self.d.banks[n]
+            k = b.kind[a]
+            if k == DATA:
+                return False
+            if k == OPND:
+                st = b.base + a - 1
+                if st not in b.insn or b.insn[st][2] != "imm":
+                    return False
+            elif k != UNKNOWN:
+                return False
+            role = (part, (tb, v), adj)
+            if off in self.roles and self.roles[off] != role:
+                return False
+            new[off] = role
+        self.roles.update(new)
+        self.pairs.append((lo_off, hi_off, tb, v, adj))
+        return True
 
     def ptr_expr(self, role):
         part, (tb, v), adj = role
@@ -182,11 +277,21 @@ class Emitter:
             self.kinds[key] = kind
         return key
 
+    norm = False      # True: all ROM labels render as '@' (for aligning regions)
+    alias = None      # merger: own key -> name of the matching US label
+
     def name_of(self, key):
+        if self.norm:
+            return "@"
+        if self.alias is not None:
+            name = self.alias(key)
+            if name:
+                return name
         if key in self.names:
             return self.names[key]
         bank, addr = key
-        return "%s%d_%04X" % (self.kinds.get(key, "D"), bank, addr)
+        return "%s%s%d_%04X" % ("" if self.region == "us" else self.region[0].upper(),
+                                self.kinds.get(key, "D"), bank, addr)
 
     def expr_of(self, key):
         """Expression for a requested ROM address (handles mid-instruction)."""
@@ -203,13 +308,38 @@ class Emitter:
             return "%s+%d" % (self.name_of(base), addr - start)
         return self.name_of(key)
 
+    ram_alias = None   # merger (JP): own RAM address -> US RAM address
+
+    @staticmethod
+    def ram_placeholder(v):
+        if v < 0x100:
+            return "Z_%02X" % v
+        if v < 0x800:
+            return "W_%04X" % v
+        if 0x6000 <= v < 0x8000:
+            return "X_%04X" % v
+        return None
+
     def ram(self, v, width):
-        key = ("ram", v)
-        if key in self.names:
-            return self.names[key]
+        """RAM/WRAM operands are symbols named after the US address
+        (placeholder Z_xx / W_xxxx / X_xxxx until db/symbols.tsv names them)."""
         if 0x2000 <= v < 0x4020 and v in REGS:
             return REGS[v]
-        return h2(v) if width == 1 else h4(v)
+        if self.ram_placeholder(v) is None:
+            return h2(v) if width == 1 else h4(v)
+        self.cur_rams.append(v)
+        if self.norm:
+            return "@"
+        uv = v
+        if self.ram_alias is not None:
+            uv = self.ram_alias.get(v)
+            if uv is None:
+                name = "J" + self.ram_placeholder(v)
+                self.ram_used[name] = v
+                return name
+        name = self.names.get(("ram", uv)) or self.ram_placeholder(uv)
+        self.ram_used[name] = v
+        return name
 
     # ---------------------------------------------------------- operands
     def rom_target(self, bank, pc, mnem, mode, v):
@@ -354,7 +484,9 @@ class Emitter:
                     tkey = (fb if ft < 0xC000 else FIXED, ft)
                     it = Item(pc, 6, "insn", "FARCALL %d, %s" % (fb, self.expr_of(tkey)))
                 else:
+                    self.cur_rams = []
                     it = Item(pc, insn[3], "insn", self.fmt_insn(b, pc, insn))
+                    it.rams = self.cur_rams
             else:
                 boff = b.n * 0x4000 + off
                 role = self.roles.get(boff)
@@ -388,6 +520,9 @@ class Emitter:
 
     def decorate(self, it, key):
         """Attach labels and comments for key to an item."""
+        if it.kind == "insn" and key in self.d.spec and not self.prev_spec:
+            it.block.append("(not seen executing during the coverage runs)")
+        self.prev_spec = it.kind == "insn" and key in self.d.spec
         if key in self.kinds:
             it.labels.append(self.name_of(key))
             it.sub = self.kinds[key] == "S"
@@ -396,6 +531,16 @@ class Emitter:
                 it.block.append(text)
             else:
                 it.eol = text
+
+    def own_key(self, k):
+        """db key -> key in this region's address space (None: not ours).
+        Unprefixed ROM keys are US addresses; the merger maps them for JP."""
+        parts = k.split(":")
+        if parts[0] == "ram":
+            return ("ram", int(parts[1], 16))
+        if len(parts) == 3:
+            return (int(parts[1]), int(parts[2], 16)) if parts[0] == self.region else None
+        return (int(parts[0]), int(parts[1], 16)) if self.region == "us" else None
 
     def ckey(self, key):
         """Key into the comments database for a ROM address of this region."""
@@ -458,13 +603,30 @@ class Emitter:
         out.append("ENDMACRO")
         return "\n".join(out) + "\n"
 
-    def emit_vars(self):
-        out = ["; RAM, WRAM and register names (generated from db/symbols.tsv)", ""]
-        for key in sorted(k for k in self.names if k[0] == "ram"):
-            name = self.names[key]
-            c = self.symcomment.get(key)
-            line = "%-24s= %s" % (name, h4(key[1]) if key[1] > 0xFF else h2(key[1]))
-            out.append(line + (" ; " + c if c else ""))
+    def emit_vars(self, other=None):
+        """RAM symbols. other: the JP Emitter when generating the merged source."""
+        def lines(used):
+            out = []
+            for name, v in sorted(used.items(), key=lambda x: (x[1], x[0])):
+                key = ("ram", v)
+                line = "%-24s= %s" % (name, h4(v) if v > 0xFF else h2(v))
+                c = self.symcomment.get(("ram", v)) if other is None or name in self.names.values() else None
+                out.append(line + (" ; " + c if c else ""))
+            return out
+        out = ["; RAM, WRAM and register names", "; Generated from db/symbols.tsv (ram:XXXX keys, US addresses).",
+               "; Z_xx / W_xxxx / X_xxxx are unnamed zero page / RAM / WRAM ($6000) locations.", ""]
+        if other is None:
+            out += lines(self.ram_used)
+        else:
+            shared = {k: v for k, v in self.ram_used.items() if other.ram_used.get(k) == v}
+            us_only = {k: v for k, v in self.ram_used.items() if k not in shared}
+            jp_only = {k: v for k, v in other.ram_used.items() if k not in shared}
+            out += lines(shared)
+            out += ["", "; Variables at different addresses in the Japanese version", "IF REGION_JP"]
+            out += ["  " + l for l in lines(jp_only)]
+            out += ["ELSE"]
+            out += ["  " + l for l in lines(us_only)]
+            out += ["ENDIF"]
         out.append("")
         out.append("MMC1_CONTROL            = &9FFF")
         out.append("MMC1_CHR0               = &BFFF")
@@ -474,6 +636,7 @@ class Emitter:
 
     def run(self, outdir):
         self.collect()
+        self.ram_used = {}
         banks = {b.n: self.emit_bank(b) for b in self.d.banks}
         for n, text in banks.items():
             open(os.path.join(outdir, "bank%d.asm" % n), "w").write(text)

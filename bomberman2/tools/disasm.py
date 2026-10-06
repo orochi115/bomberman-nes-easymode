@@ -73,7 +73,9 @@ class Disasm:
 
     # ------------------------------------------------------------- coverage
     def load_coverage(self):
-        for f in glob.glob(os.path.join(ROOT, "cov", self.region + "_*.cdl")):
+        files = glob.glob(os.path.join(ROOT, "cov", self.region + "_*.cdl"))
+        files += glob.glob(os.path.join(ROOT, "coverage", self.region + ".cdl"))
+        for f in files:
             data = open(f, "rb").read()
             for i, v in enumerate(data):
                 self.cdl[i] |= v
@@ -198,6 +200,89 @@ class Disasm:
             elif mnem in ("RTS", "RTI", "BRK"):
                 return
             pc = nxt
+
+    # ----------------------------------------------------------- speculate
+    def plausible(self, n, pc):
+        """Check that a never-executed run starting at pc looks like real code.
+
+        Linear decode until RTS/RTI/JMP; every byte must be unclassified and
+        never read as data, operands must hit RAM, registers or ROM, and
+        branches must stay within the run or land on known code."""
+        b = self.banks[n]
+        start, seen = pc, []
+        while True:
+            if not b.inside(pc):
+                return None
+            off = pc - b.base
+            if b.kind[off] != UNKNOWN or self.cdl[n * 0x4000 + off] & 4:
+                return None
+            op = b.byte(pc)
+            if op not in OPS or op == 0x00:
+                return None
+            mnem, mode = OPS[op]
+            size = SIZE[mode]
+            for i in range(1, size):
+                if not b.inside(pc + i) or b.kind[off + i] != UNKNOWN:
+                    return None
+            v = None
+            if size == 3:
+                v = b.byte(pc + 1) | b.byte(pc + 2) << 8
+                if 0x0800 <= v < 0x2000 or 0x2008 <= v < 0x4000 or 0x4018 <= v < 0x6000:
+                    return None
+                if mnem in ("JSR", "JMP") and mode == "abs":
+                    tb = self.bank_for(n, v)
+                    if tb is None or self.banks[tb].kind[v - self.banks[tb].base] not in (OP, UNKNOWN):
+                        return None
+            if mode == "rel":
+                v = (pc + 2 + ((b.byte(pc + 1) ^ 0x80) - 0x80)) & 0xFFFF
+            seen.append((pc, mode, v))
+            pc += size
+            if mnem in ("RTS", "RTI") or (mnem == "JMP"):
+                break
+            if len(seen) > 400:
+                return None
+        if len(seen) < 3:
+            return None
+        for p, mode, v in seen:
+            if mode == "rel" and not start <= v < pc:
+                if not b.inside(v) or b.kind[v - b.base] != OP:
+                    return None
+        return pc
+
+    def speculate(self):
+        """Trace plausible code in unclassified gaps that follow code."""
+        self.spec = set()
+        changed = True
+        while changed:
+            changed = False
+            for b in self.banks:
+                for off in range(1, 0x4000):
+                    if b.kind[off] != UNKNOWN or b.kind[off - 1] == UNKNOWN:
+                        continue
+                    if b.mem[off] == 0xFF:
+                        continue
+                    pc = b.base + off
+                    if self.plausible(b.n, pc) is None:
+                        continue
+                    before = sum(1 for k in b.kind if k == OP)
+                    snapshot = bytes(b.kind)
+                    nprob = len(self.problems)
+                    self.trace_from(b.n, pc, None, work := [])
+                    while work:
+                        n2, pc2, ctx = work.pop()
+                        self.trace_from(n2, pc2, ctx, work)
+                    if len(self.problems) > nprob:
+                        # Ran into data: undo
+                        b.kind[:] = snapshot
+                        for a in list(b.insn):
+                            if b.kind[a - b.base] != OP:
+                                del b.insn[a]
+                        del self.problems[nprob:]
+                        continue
+                    for i in range(0x4000):
+                        if snapshot[i] == UNKNOWN and b.kind[i] == OP:
+                            self.spec.add((b.n, b.base + i))
+                    changed = True
 
     # --------------------------------------------------------------- report
     def report(self):

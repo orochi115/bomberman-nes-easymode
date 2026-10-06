@@ -140,6 +140,12 @@ def make_stage(area):
 for _a in range(6):
     globals()["scen_stage%d" % _a] = make_stage(_a)
 
+
+def scen_quick(nes, rng):
+    """Short smoke test for tools/check.sh: menu, then area 3 round 2."""
+    to_menu(nes)
+    nes.extra = [play_stage(nes, 3, 2, 600, rng)]
+
 SCENARIOS = {k[5:]: v for k, v in globals().items() if k.startswith("scen_")}
 
 

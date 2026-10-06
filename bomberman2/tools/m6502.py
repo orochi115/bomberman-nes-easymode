@@ -35,7 +35,7 @@ SIZE = {"imp": 1, "acc": 1, "imm": 2, "zp": 2, "zpx": 2, "zpy": 2, "izx": 2,
 BRANCHES = {"BPL", "BMI", "BVC", "BVS", "BCC", "BCS", "BNE", "BEQ"}
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROMDIR = os.path.normpath(os.path.join(HERE, "..", "..", ".."))
+ROMDIR = os.environ.get("BM2_ROMDIR") or os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 ROMS = {"us": os.path.join(ROMDIR, "Bomberman II (USA).nes"),
         "jp": os.path.join(ROMDIR, "Bomberman II (Japan).nes")}
 

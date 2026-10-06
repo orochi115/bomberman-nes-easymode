@@ -5,6 +5,7 @@
 #             (output build/bomberman2_REGION_shiftN.nes, no checksum compare)
 cd "$(dirname "$0")"
 BEEBASM=${BEEBASM:-../../beebasm/beebasm}
+ROMDIR=${BM2_ROMDIR:-../..}
 region=${1:-us}
 shift_n=0
 [ "$2" == "shift" ] && shift_n=${3:-1}
@@ -29,11 +30,11 @@ cat build/nes_header.bin build/bank{0,1,2,3,4,5,6,7}.bin > ${out}
 echo "${out}"
 
 if [ ${shift_n} -eq 0 ]; then
-  if cmp -s "${out}" "../../${want}"; then
+  if cmp -s "${out}" "${ROMDIR}/${want}"; then
     echo "OK: identical to ${want}"
   else
     echo "MISMATCH with ${want}:"
-    cmp -l "${out}" "../../${want}" | head
+    cmp -l "${out}" "${ROMDIR}/${want}" | head
     exit 1
   fi
 fi
