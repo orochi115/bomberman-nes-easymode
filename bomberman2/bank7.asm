@@ -1793,6 +1793,30 @@ ENDIF
 IF ZH
   LDA #ZH_SET_HUD
   JSR ZH_LOAD_SET
+  LDA GAME_MODE
+  BEQ zh_gfx_done
+  ; VS / battle: round result sprites, copied to WRAM for UPDATE_ROUND
+  LDA #ZH_SET_ROUND
+  JSR ZH_LOAD_SET
+  LDY #&00
+.zh_round_copy
+  LDA ZH_ROUND_PTRS,Y
+  STA ZH_SRC
+  LDA ZH_ROUND_PTRS+1,Y
+  STA ZH_SRC_HI
+  TYA
+  PHA
+  LSR A
+  CLC
+  ADC #ZH_RD_WIN1
+  JSR ZH_SPRITE_TO
+  PLA
+  TAY
+  INY
+  INY
+  CPY #&0A
+  BCC zh_round_copy
+.zh_gfx_done
 ENDIF
   JMP L7_CB14
 .L7_CB14

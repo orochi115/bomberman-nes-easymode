@@ -156,6 +156,28 @@ class Shooter:
             cover.random_play(nes, 100, rng, pads=(0, 1), start_every=0)
             self.shot(nes, "%s_%03d" % (name, i))
 
+    def vs_result(self, pick=1, name="vsres"):
+        """VS (or battle) to the result screen: one win is enough."""
+        import random
+        nes = self.to_menu()
+        for _ in range(pick):
+            press(nes, DOWN)
+        press(nes, START)
+        wait(nes, 60)
+        for _ in range(6):
+            press(nes, START)
+            press(nes, A)
+            wait(nes, 30)
+        goal = 0x0563 if self.region == "us" else 0x0561
+        death = 0x84 if self.region == "us" else 0x76      # ACTOR_DEATH
+        nes.ram[goal] = 1
+        wait(nes, 300)
+        nes.ram[0x055E if self.region == "us" else 0x055C] = 4   # MATCH_0: P1 has 4 wins
+        nes.ram[death + 1] = 1                              # player 2 dies
+        for i in range(30):
+            wait(nes, 40)
+            self.shot(nes, "%s_%03d" % (name, i))
+
     def battle_long(self):
         self.vs_long(2, "btlong")
 
