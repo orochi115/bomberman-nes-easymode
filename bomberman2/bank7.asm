@@ -1601,6 +1601,10 @@ ENDIF
 ; Build one stage: area card, mode setup, clear nametables, CHR, palettes, enemies.
 ; Enables the PPU, the top split and the area BGM, then falls into STAGE_LOOP.
 .STAGE_SETUP
+IF MOD
+  JSR MOD_SNAPSHOT
+.stage_setup_body
+ENDIF
   JSR MAYBE_AREA_CARD
   JSR SETUP_BY_MODE
   JSR NMI_OFF
@@ -1754,6 +1758,13 @@ ENDIF
   BMI L7_CACC
   JMP STAGE_SETUP
 .L7_CACC
+IF MOD
+  LDA GAME_REVIVE
+  BEQ game_over
+  JSR MOD_RESTORE           ; revive mode: the stage again, as it was entered
+  JMP stage_setup_body
+.game_over
+ENDIF
   JSR RUN_GAME_OVER
   LDA KEEP_STAGE
   BNE L7_CAD6
@@ -3929,6 +3940,9 @@ ENDIF
 ; 13 frame counts, DMC ids 1E-2A.
 .SND_DMC_FRAMES
   EQUB &00,&06,&01,&14,&14,&14,&14,&14,&28,&3C,&0A,&07,&0A
+IF MOD
+INCLUDE "hud.asm"
+ENDIF
   FILLTO &E000                            ; DPCM samples must stay put
 
 ; DPCM sample bits from E000 up to the vector area. Not code.

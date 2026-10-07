@@ -47,3 +47,6 @@ OPT_LIVE        = &6623 ; 1 while the screen is on (items are queued)
 OPT_SEL         = &6624 ; 1 while composing the selected item
 OPT_TMP         = &6625
 OPT_BUF         = &6640 ; 64 bytes: two rows of an item (top, top + 32)
+SNAP_SCORE      = &6680 ; 8 bytes: score when the stage was entered (revive mode)
+SNAP_FIRE       = &6688
+SNAP_BOMBS      = &6689
