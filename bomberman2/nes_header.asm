@@ -7,6 +7,17 @@ INCLUDE "consts.asm"
 ORG &0000
 
 .HEADERSTART
+IF INES1
+  ; iNES 1.0 (make.sh ... 1): for emulators and loaders that only know iNES
+  EQUS "NES", &1A
+  EQUB 8                ; 8 x 16K PRG-ROM
+  EQUB 0                ; CHR-RAM
+  EQUB &10              ; Mapper 1, no battery
+  EQUB &00              ; mapper high nibble 0, iNES 1.0
+  EQUB 0                ; PRG-RAM: 0 = the usual 8K
+  EQUB 0                ; NTSC
+  EQUB 0, 0, 0, 0, 0, 0
+ELSE
   EQUS "NES", &1A
   EQUB 8                ; 8 x 16K PRG-ROM
   EQUB 0                ; CHR-RAM
@@ -21,6 +32,7 @@ IF REGION_JP
   EQUB &03
 ELSE
   EQUB &02
+ENDIF
 ENDIF
 .HEADEREND
 

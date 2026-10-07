@@ -6,6 +6,7 @@ rebuilds **both** the USA and the Japanese ROM byte for byte from one source.
 ```
 ./make.sh us     # build/bomberman2_us.nes = Bomberman II (USA).nes
 ./make.sh jp     # build/bomberman2_jp.nes = Bomberman II (Japan).nes
+./make.sh us 1   # the same with an iNES 1.0 header (only the PRG is compared)
 ```
 
 Needs [beebasm](https://github.com/stardot/beebasm) (default `../../beebasm/beebasm`, or set
