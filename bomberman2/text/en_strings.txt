@@ -33,3 +33,6 @@ OPTS   !VAL_NORM      -   -    NORM
 OPTS   !VAL_TIMED     -   -    TIMED
 OPTS   !VAL_SHORT     -   -    SHORT
 OPTS   !VAL_LONG      -   -    LONG
+
+# Sound room: the controls (the rest is the original text)
+SOUND  SND_HINT       22  c    A PLAY  SELECT STOP  B BACK

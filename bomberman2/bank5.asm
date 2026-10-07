@@ -3424,24 +3424,25 @@ ENDIF
   STA GAME_MODE
   JSR CLEAR_ATTRS
   JSR LOAD_MODE_GFX
-IF ZH
+IF MOD
   LDA #ZH_SET_SOUND
   JSR ZH_LOAD_SET
 ENDIF
   JSR NMI_ON
   JSR DRAW_SND_ROOM_TEXT
+IF MOD AND NOT(ZH)
+  LDA #ZH_SND_HINT
+  JSR ZH_QUEUE
+ENDIF
   JSR INIT_MODE1_SEL
   JSR PPU_ON
   JSR MARK_PALETTE
 .L5_9FE1
   JSR WAIT_NMI
 IF MOD
-  ; SELECT held and START: leave (ENTER_Z49_1 goes to the mode menu)
-  LDA JOY_HELD
-  AND #&20
-  BEQ snd_stay
+  ; B: leave (ENTER_Z49_1 goes back to the options screen)
   LDA JOY_NEW
-  AND #&10
+  AND #&40
   BEQ snd_stay
   LDA #&80
   JSR AUDIO_CALL
@@ -3472,6 +3473,49 @@ ENDIF
 ; B/A clamp SNDROOM_P0,X to SND_PARAM_MIN/MAX.
 ; Start plays that byte; Select plays command 80h.
 .SND_ROOM_INPUT
+IF MOD
+  ; The options screen's controls: Up/Down choose, Left/Right change (held
+  ; directions repeat), A or START play, SELECT stops, B leaves (the loop)
+  LDA JOY_HELD
+  AND #&0F
+  BEQ snd_input
+  LDA JOY_NEW
+  AND #&0F
+  BEQ snd_held
+  LDA #20
+  STA OPT_REPEAT
+  BNE snd_input
+.snd_held
+  DEC OPT_REPEAT
+  BNE snd_input
+  LDA #4
+  STA OPT_REPEAT
+  LDA JOY_HELD
+  AND #&0F
+  ORA JOY_NEW
+  STA JOY_NEW
+.snd_input
+  LDX JOY_NEW
+  TXA
+  AND #&08
+  BNE SND_CUR_UP
+  TXA
+  AND #&04
+  BNE SND_CUR_DOWN
+  TXA
+  AND #&20
+  BNE L5_A048
+  TXA
+  AND #&90
+  BNE SND_PLAY_PARAM
+  TXA
+  AND #&02
+  BNE SND_PARAM_DOWN
+  TXA
+  AND #&01
+  BNE SND_PARAM_UP
+  RTS
+ENDIF
   LDX JOY_NEW
   TXA
   AND #&08

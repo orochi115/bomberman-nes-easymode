@@ -49,6 +49,16 @@
   STA MENU_BONUS            ; bonus stage
   RTS
 
+; After the sound room or the bonus stage (both entered from the options
+; screen): the options screen again, then on as after the mode menu
+.MOD_BACK_TO_OPTIONS
+  LDA #0
+  STA MENU_MODE1
+  STA MENU_BONUS
+  STA MENU_REDRAW
+  JSR MOD_OPTIONS
+  JMP mode_menu_done
+
 ; Lives at the start of a game (STAGE_BOOT): GAME_LIVES - 1, or the original
 ; 2 when it is 0. Unlimited lives (10) start with 2 and never lose one.
 .MOD_START_LIVES
