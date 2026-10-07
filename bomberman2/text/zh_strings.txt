@@ -27,7 +27,9 @@ MENU   MENU_OPTIONS  16  12   选项
 # Story mode status bar (replaces T: and LEFT)
 HUD    HUD_TIME      -   -    时间
 HUD    HUD_LEFT      1   22   剩余
-HUD    !HUD_PAUSE    1   46   暂停
+HUD    !HUD_PAUSE    1   35   暂停
+HUD    !HUD_PAUSE_MAP 1  42   ◀▶地图
+HUD    !HUD_PAUSE_QUIT 1 51   SELECT退出
 
 # Story stage card: SC, AREA (orange, palette 1 there), LEFT
 CARD   CARD_SCORE    4   8    得分

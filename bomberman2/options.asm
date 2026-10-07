@@ -567,3 +567,112 @@ ENDMACRO
   STA ZH_ADDR_HI
   PLA
   JMP ZH_COPY
+
+; ---------------------------------------------------------------------------
+; Pause (UPDATE_PAUSE after the pause sound): the HUD slides to the hint,
+; START resumes, SELECT goes back to the title, Left / Right look round a
+; wide map (the player and the enemies are drawn at the view).
+.MOD_PAUSE
+IF ZH
+  LDA #ZH_HUD_PAUSE
+  JSR ZH_QUEUE
+  LDA LAYOUT_VAR
+  BEQ pause_narrow
+  LDA #ZH_HUD_PAUSE_MAP
+  JSR ZH_QUEUE
+.pause_narrow
+  LDA #ZH_HUD_PAUSE_QUIT
+  JSR ZH_QUEUE
+ELSE
+  LDX #&2D
+  LDY #&02
+  JSR XY_TO_NT_ADDR
+  LDA #LO(PAUSE_TEXT)
+  STA DATA_PTR
+  LDA #HI(PAUSE_TEXT)
+  STA DATA_PTR_HI
+  LDA #&00
+  STA PPU_RUN_CTRL
+  LDX #&05
+  JSR QUEUE_PPU_RUN
+ENDIF
+.pause_loop
+  JSR WAIT_NMI
+  LDA JOY_NEW
+  AND #&10
+  BNE pause_done
+  LDA JOY_NEW
+  AND #&20
+  BNE pause_quit
+  ; Slide the HUD to the hint (as the original)
+  LDA SPLIT_SCROLL_X
+  CMP #&FC
+  BCS pause_view
+  CLC
+  ADC #&08
+  BCC pause_slide
+  LDA #&FC
+.pause_slide
+  STA SPLIT_SCROLL_X
+.pause_view
+  LDA LAYOUT_VAR
+  BEQ pause_loop
+  LDA JOY_HELD
+  AND #&03
+  BEQ pause_loop
+  ; Scroll by 4 between -8 and F8h (FOLLOW_ACTOR_SCROLL's limits)
+  AND #&01
+  BEQ pause_left
+  LDA SCROLL_X
+  CLC
+  ADC #&04
+  TAX
+  LDA SCROLL_NT
+  ADC #&00
+  BMI pause_scroll
+  CPX #&F9
+  BCC pause_scroll
+  LDX #&F8
+  LDA #&00
+  BEQ pause_scroll
+.pause_left
+  LDA SCROLL_X
+  SEC
+  SBC #&04
+  TAX
+  LDA SCROLL_NT
+  SBC #&00
+  BPL pause_scroll
+  CPX #&F8
+  BCS pause_scroll
+  LDX #&F8
+  LDA #&FF
+.pause_scroll
+  STX SCROLL_X
+  STA SCROLL_NT
+  FARCALL 5, MOD_DRAW_PLAYER
+  LDA GAME_MODE
+  BNE pause_drawn
+  FARCALL 0, DRAW_ALL_ENEMIES
+.pause_drawn
+  JSR MARK_OAM
+  JMP pause_loop
+.pause_done
+  RTS
+
+.pause_quit
+  LDA #&06
+  JSR AUDIO_CALL
+  LDX PAUSE_X
+  LDA #&83
+  JSR AUDIO_CALL            ; undo the audio pause
+  LDA #&80
+  JSR AUDIO_CALL            ; and stop the music
+  JSR FADE_PALETTE
+  JSR PPU_OFF
+  LDA #&00
+  STA SPLIT_SCROLL_X
+  STA SPLIT_CTRL_BIT
+  LDX #&FF
+  TXS
+  JMP MENU_LOOP
