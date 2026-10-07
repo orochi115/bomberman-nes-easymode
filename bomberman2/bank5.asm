@@ -69,7 +69,7 @@ ENDIF
   JMP UPLOAD_CHR_RAW
 
 ; Pick TILESET for this area and stage from LEVEL_CHR_PICK.
-; In: AREA_NUM, STAGE_NUM, POWER_STAGE, ACT_PASSBOMB, ACT_PASSWALL, ACT_REMOTE. Out: TILESET. Uses NEXT_RNG.
+; In: AREA_NUM, STAGE_NUM, POWER_STAGE, ACT_PASSWALL, ACT_PASSBOMB, ACT_REMOTE. Out: TILESET. Uses NEXT_RNG.
 .CHOOSE_LEVEL_CHR
   ABS_LDA AREA_NUM
   ASL A
@@ -113,7 +113,7 @@ ENDIF
   BEQ L5_80AA
   RTS
 .L5_80AA
-  ABS_LDA ACT_PASSWALL
+  ABS_LDA ACT_PASSBOMB
   BEQ L5_80CA
 
 ; (not seen executing during the coverage runs)
@@ -121,7 +121,7 @@ ENDIF
   STA TILESET
   RTS
 .L5_80B5
-  ABS_LDA ACT_PASSBOMB
+  ABS_LDA ACT_PASSWALL
   BEQ L5_80CA
 
 ; (not seen executing during the coverage runs)
@@ -137,7 +137,7 @@ ENDIF
   RTS
 
 ; 48 stages, 3 bytes each: tile id, alternate id, RNG threshold.
-; Index is (area*8+stage)*3. CHOOSE_LEVEL_CHR reads the threshold two bytes later. Ids 02, 06 and 07 are replaced when ACT_REMOTE, ACT_PASSBOMB or ACT_PASSWALL is set.
+; Index is (area*8+stage)*3. CHOOSE_LEVEL_CHR reads the threshold two bytes later. Ids 02, 06 and 07 are replaced when ACT_REMOTE, ACT_PASSWALL or ACT_PASSBOMB is set.
 .LEVEL_CHR_PICK
   EQUB &01,&09
 .D5_80CD
@@ -302,10 +302,10 @@ ENDIF
   STA ACT_W_TFR
   LDA ACTOR_TSTEP,X
   STA ACT_W_TSTEP
-  LDA ACTOR_FIRE,X
-  STA ACT_W_FIRE
   LDA ACTOR_BOMBS,X
   STA ACT_W_BOMBS
+  LDA ACTOR_FIRE,X
+  STA ACT_W_FIRE
   LDA ACTOR_SPDLO,X
   STA ACT_W_SPDLO
   LDA ACTOR_SPDHI,X
@@ -341,10 +341,10 @@ ENDIF
   STA ACTOR_TFRAME,X
   LDA ACT_W_TSTEP
   STA ACTOR_TSTEP,X
-  LDA ACT_W_FIRE
-  STA ACTOR_FIRE,X
   LDA ACT_W_BOMBS
   STA ACTOR_BOMBS,X
+  LDA ACT_W_FIRE
+  STA ACTOR_FIRE,X
   LDA ACT_W_SPDLO
   STA ACTOR_SPDLO,X
   LDA ACT_W_SPDHI
@@ -1186,7 +1186,7 @@ ENDIF
   JMP CLR_ACTOR_FLASH
 
 ; In: A is a map byte. Out: A is 0 if the actor may enter.
-; Bit 6 or a zero byte returns 0. Bit 5 returns ACT_PASSBOMB EOR 1. Bit 4 returns ACT_PASSWALL EOR 1. Any other nonzero byte returns 0.
+; Bit 6 or a zero byte returns 0. Bit 5 returns ACT_PASSWALL EOR 1. Bit 4 returns ACT_PASSBOMB EOR 1. Any other nonzero byte returns 0.
 .CELL_BLOCKS_MOVE
   TAX
   BEQ L5_879B
@@ -1202,11 +1202,11 @@ ENDIF
 .L5_879B
   RTS
 .L5_879C
-  LDA ACT_PASSBOMB
+  LDA ACT_PASSWALL
   EOR #&01
   RTS
 .L5_87A1
-  LDA ACT_PASSWALL
+  LDA ACT_PASSBOMB
   EOR #&01
   RTS
 
@@ -1702,16 +1702,16 @@ ENDIF
 ; 16 words. Index is the low nibble of the bomb flag. Targets are the item handlers, and the last four entries are ITEM_RETURN.
 ; One entry is ROLL_ACTOR_A6.
 .ITEM_HANDLERS
-  EQUB LO(INC_FIRE)
+  EQUB LO(INC_BOMBS)
 .D5_9045
-  EQUB HI(INC_FIRE)
-  EQUW INC_BOMBS
+  EQUB HI(INC_BOMBS)
+  EQUW INC_FIRE
   EQUW GIVE_REMOTE
   EQUW INC_SPEED
   EQUW START_POWER_18
   EQUW START_POWER_10
-  EQUW GIVE_BOMB_PASS
   EQUW GIVE_WALL_PASS
+  EQUW GIVE_BOMB_PASS
   EQUW SET_CLEAR_FLAG
   EQUW SPAWN_RAND_EXTRA
   EQUW ROLL_LIFE_OR_MOB
@@ -1735,22 +1735,22 @@ ENDIF
   JSR AUDIO_CALL
   RTS
 
-; Increment ACT_W_FIRE up to 7, then MARK_PWR_STAGE.
-.INC_FIRE
-  LDA ACT_W_FIRE
+; Increment ACT_W_BOMBS up to 7, then MARK_PWR_STAGE.
+.INC_BOMBS
+  LDA ACT_W_BOMBS
   CMP #&07
   BCS L5_907C
-  INC ACT_W_FIRE
+  INC ACT_W_BOMBS
 .L5_907C
   JSR MARK_PWR_STAGE
   RTS
 
-; Increment ACT_W_BOMBS up to 4, then MARK_PWR_STAGE.
-.INC_BOMBS
-  LDA ACT_W_BOMBS
+; Increment ACT_W_FIRE up to 4, then MARK_PWR_STAGE.
+.INC_FIRE
+  LDA ACT_W_FIRE
   CMP #&04
   BCS L5_9088
-  INC ACT_W_BOMBS
+  INC ACT_W_FIRE
 .L5_9088
   JSR MARK_PWR_STAGE
   RTS
@@ -1790,16 +1790,16 @@ ENDIF
   STA ITEM_FRAME
   JMP SET_ACTOR_FLASH
 
-; Store 1 in ACT_PASSBOMB. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 5.
-.GIVE_BOMB_PASS
-  LDA #&01
-  STA ACT_PASSBOMB
-  RTS
-
-; Store 1 in ACT_PASSWALL. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 4.
+; Store 1 in ACT_PASSWALL. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 5.
 .GIVE_WALL_PASS
   LDA #&01
   STA ACT_PASSWALL
+  RTS
+
+; Store 1 in ACT_PASSBOMB. CELL_BLOCKS_MOVE then lets the actor into map cells with bit 4.
+.GIVE_BOMB_PASS
+  LDA #&01
+  STA ACT_PASSBOMB
   RTS
 
 ; Store 1 in EXIT_OPEN. STAGE_WON checks EXIT_OPEN after the stage.
@@ -2442,7 +2442,7 @@ ENDIF
   BPL L5_954E
   RTS
 
-; Build an eight-nybble code in PASS_EDIT from RNG, AREA_NUM, STAGE_NUM, ACTOR_FIRE and ACTOR_BOMBS, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
+; Build an eight-nybble code in PASS_EDIT from RNG, AREA_NUM, STAGE_NUM, ACTOR_BOMBS and ACTOR_FIRE, XOR it, and queue the tiles. Called from MIX_STAGE_BYTES.
 
 ; Same 38/3A PPU-run low byte as DRAW_PASS_LINE.
 .MAKE_STAGE_CODE
@@ -2461,11 +2461,11 @@ ENDIF
   LDX #&02
   STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  ABS_LDA ACTOR_FIRE
+  ABS_LDA ACTOR_BOMBS
   LDX #&04
   STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
-  ABS_LDA ACTOR_BOMBS
+  ABS_LDA ACTOR_FIRE
   LDX #&06
   STA PASS_EDIT,X
   JSR ADD_PASS_NIBBLE
@@ -2622,7 +2622,7 @@ ENDIF
   CMP W_0545
   RTS
 
-; Store the decoded nybbles into AREA_NUM, STAGE_NUM, ACTOR_FIRE and ACTOR_BOMBS when they are below 6, 8, 8 and 5. Carry set means reject.
+; Store the decoded nybbles into AREA_NUM, STAGE_NUM, ACTOR_BOMBS and ACTOR_FIRE when they are below 6, 8, 8 and 5. Carry set means reject.
 .APPLY_PASS_STAGE
   LDA W_0543
   ABS_STA AREA_NUM
@@ -2633,11 +2633,11 @@ ENDIF
   CMP #&08
   BCS L5_96C4
   LDA W_0546
-  ABS_STA ACTOR_FIRE
+  ABS_STA ACTOR_BOMBS
   CMP #&08
   BCS L5_96C4
   LDA W_0548
-  ABS_STA ACTOR_BOMBS
+  ABS_STA ACTOR_FIRE
   CMP #&05
   BCS L5_96C4
 
@@ -3229,25 +3229,25 @@ ENDIF
 
 ; (not seen executing during the coverage runs)
 
-; Bonus stage. Saves ACTOR_FIRE, ACTOR_BOMBS, AREA_NUM and STAGE_NUM, sets SPECIAL_STAGE, area 0, stage 7, ACTOR_FIRE to 8 and ACTOR_BOMBS to 5, then runs its own frame loop until CLEAR_PHASE reaches F0h.
+; Bonus stage. Saves ACTOR_BOMBS, ACTOR_FIRE, AREA_NUM and STAGE_NUM, sets SPECIAL_STAGE, area 0, stage 7, ACTOR_BOMBS to 8 and ACTOR_FIRE to 5, then runs its own frame loop until CLEAR_PHASE reaches F0h.
 ; Restores the saved bytes, clears SPECIAL_STAGE and EXIT_OPEN, and returns. SHOW_BONUS_CARD runs first.
 .RUN_BONUS_STAGE
   JSR SHOW_BONUS_CARD
   JSR NMI_OFF
   LDA #&01
   STA SPECIAL_STAGE
-  ABS_LDA ACTOR_FIRE
-  STA BONUS_FIRE
   ABS_LDA ACTOR_BOMBS
   STA BONUS_BOMBS
+  ABS_LDA ACTOR_FIRE
+  STA BONUS_FIRE
   LDA AREA_NUM
   STA BONUS_AREA
   LDA STAGE_NUM
   STA BONUS_STAGE
   LDA #&08
-  ABS_STA ACTOR_FIRE
-  LDA #&05
   ABS_STA ACTOR_BOMBS
+  LDA #&05
+  ABS_STA ACTOR_FIRE
   LDA #&07
   STA STAGE_NUM
   LDA #&00
@@ -3296,10 +3296,10 @@ ENDIF
   JSR MARK_OAM
   JMP BONUS_FRAME
 .L5_9F44
-  LDA BONUS_FIRE
-  ABS_STA ACTOR_FIRE
   LDA BONUS_BOMBS
   ABS_STA ACTOR_BOMBS
+  LDA BONUS_FIRE
+  ABS_STA ACTOR_FIRE
   LDA BONUS_AREA
   STA AREA_NUM
   LDA BONUS_STAGE
@@ -6532,7 +6532,7 @@ ENDIF
   LSR A
   AND #&03
   TAY
-  LDA ACTOR_BOMBS,Y
+  LDA ACTOR_FIRE,Y
   STA BLAST_RADIUS
   LDA ACTOR_TIMED,Y
   BPL L5_BAEB
@@ -6624,7 +6624,7 @@ ENDIF
 
 ; Find a free bomb slot for player ACTOR_INDEX.
 ; Empty map cell (bits 0..6 clear) required. Packs that player's 8 BOMB_FLAG slots down from BOMB_SLOT_BASE.
-; C=1 if the free index is in range and ACT_W_FIRE >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
+; C=1 if the free index is in range and ACT_W_BOMBS >= BOMB_SLOT_LIMIT[X]. C=0 otherwise.
 .ALLOC_BOMB_SLOT
   LDX TEMP1
   LDY TEMP2
@@ -6663,7 +6663,7 @@ ENDIF
   BPL L5_BBDF
   TXA
   BMI L5_BC24
-  LDA ACT_W_FIRE
+  LDA ACT_W_BOMBS
   CMP BOMB_SLOT_LIMIT,X
   BCC L5_BC24
   SEC
@@ -6672,7 +6672,7 @@ ENDIF
   CLC
   RTS
 
-; 24 bytes, three copies of 07h..00h. After ALLOC_BOMB_SLOT packs a player's bombs, ACT_W_FIRE must be >= the byte at the free slot index.
+; 24 bytes, three copies of 07h..00h. After ALLOC_BOMB_SLOT packs a player's bombs, ACT_W_BOMBS must be >= the byte at the free slot index.
 .BOMB_SLOT_LIMIT
   EQUB &07,&06,&05,&04,&03,&02,&01,&00,&07,&06,&05,&04,&03,&02,&01,&00
   EQUB &07,&06,&05,&04,&03,&02,&01,&00

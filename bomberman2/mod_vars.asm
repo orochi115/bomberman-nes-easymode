@@ -30,8 +30,8 @@ GAME_FIREPROOF  = &E5   ; flames do not hurt
 GAME_INF_TIME   = &E6   ; the stage clock does not run
 GAME_INF_LIVES  = &E7   ; lives are not lost
 GAME_XRAY       = &E8   ; buried item and exit are visible
-GAME_WPASS      = &E9   ; walk through soft blocks (sets ACT_PASSBOMB, see vars.asm)
-GAME_BPASS      = &EA   ; walk through bombs (sets ACT_PASSWALL)
+GAME_WPASS      = &E9   ; walk through soft blocks (sets ACT_PASSWALL)
+GAME_BPASS      = &EA   ; walk through bombs (sets ACT_PASSBOMB)
 GAME_SPEED      = &EB   ; speed gear at the start of every life
 GAME_LIVES      = &EC   ; lives at the start of a game (1-10), 0 = the original 3
 GAME_TICK       = &ED   ; slow mode game clock

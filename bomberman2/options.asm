@@ -169,14 +169,12 @@ ENDMACRO
   LDY #O_STAGE
   LDA (ZH_SRC),Y
   STA STAGE_NUM
-  ; The names are swapped: ACTOR_BOMBS is the flame length (DETONATE_BOMB),
-  ; ACTOR_FIRE the number of bombs (ALLOC_BOMB_SLOT)
   LDY #O_FIRE
   LDA (ZH_SRC),Y
-  STA ACTOR_BOMBS
+  STA ACTOR_FIRE
   LDY #O_BOMBS
   LDA (ZH_SRC),Y
-  STA ACTOR_FIRE
+  STA ACTOR_BOMBS
 .apply_rules
   LDY #O_LIVES
   LDA (ZH_SRC),Y
