@@ -4,8 +4,8 @@ ram:004B	AREA_NUM	Area 0-5. Area 6 is the ending, not a map.
 ram:004C	STAGE_NUM	Stage 0-7 inside the area.
 ram:004D	INTRO_AREA	Last area whose intro card has played.
 ram:004E	SPECIAL_STAGE	Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
-ram:004F	BONUS_FIRE	RUN_BONUS_STAGE saves actor 0 firepower here.
-ram:0050	BONUS_BOMBS	RUN_BONUS_STAGE saves actor 0 bomb count here.
+ram:004F	BONUS_BOMBS	RUN_BONUS_STAGE saves actor 0 bomb count here.
+ram:0050	BONUS_FIRE	RUN_BONUS_STAGE saves actor 0 flame length here.
 ram:0051	BONUS_STAGE	RUN_BONUS_STAGE saves STAGE_NUM here.
 ram:0052	BONUS_AREA	RUN_BONUS_STAGE saves AREA_NUM here.
 ram:0053	STAGE_PHASE	0 in play. Counts after a round. F0h exits as a loss or a demo abort.
@@ -26,8 +26,8 @@ ram:0084	ACTOR_DEATH	3 bytes. Nonzero while the death animation runs.
 ram:0087	ACTOR_TIMED	3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
 ram:008A	ACTOR_TFRAME	3 bytes. Timed-state frame count.
 ram:008D	ACTOR_TSTEP	3 bytes. Timed-state steps left.
-ram:0090	ACTOR_FIRE	3 bytes. Firepower, max 7. Demo records and the mode table also write slot 0.
-ram:0093	ACTOR_BOMBS	3 bytes. Bomb capacity, max 4.
+ram:0090	ACTOR_BOMBS	3 bytes. Bombs at a time minus 1, max 7 (ALLOC_BOMB_SLOT). Demo records and the mode table also write slot 0.
+ram:0093	ACTOR_FIRE	3 bytes. Flame length minus 1, max 4 (BLAST_RADIUS in DETONATE_BOMB).
 ram:0096	ACTOR_SPDLO	3 bytes. Speed accumulator low.
 ram:0099	ACTOR_SPDHI	3 bytes. Speed accumulator high.
 ram:009C	ACT_W_FLAG	Work copy of ACTOR_FLAG for ACTOR_INDEX.
@@ -43,12 +43,12 @@ ram:00A5	ACT_W_DEATH	Work copy of the death flag.
 ram:00A6	ACT_W_TIMED	Work copy of ACTOR_TIMED.
 ram:00A7	ACT_W_TFR	Work copy of the timed frame count.
 ram:00A8	ACT_W_TSTEP	Work copy of timed steps left.
-ram:00A9	ACT_W_FIRE	Work copy of firepower.
-ram:00AA	ACT_W_BOMBS	Work copy of bomb capacity.
+ram:00A9	ACT_W_BOMBS	Work copy of the bomb count.
+ram:00AA	ACT_W_FIRE	Work copy of the flame length.
 ram:00AB	ACT_W_SPDLO	Work copy of speed low.
 ram:00AC	ACT_W_SPDHI	Work copy of speed high.
-ram:00AD	ACT_PASSBOMB	Nonzero: the actor walks through bomb cells.
-ram:00AE	ACT_PASSWALL	Nonzero: the actor walks through soft blocks.
+ram:00AD	ACT_PASSWALL	Nonzero: the actor walks through soft blocks (map bit 5, CELL_BLOCKS_MOVE).
+ram:00AE	ACT_PASSBOMB	Nonzero: the actor walks through bombs (map bit 4, CELL_BLOCKS_MOVE).
 ram:00AF	ACT_REMOTE	1: B detonates. Bombs with kick 0 do not count down.
 ram:00B0	ITEM_KIND	Kind of the active timed item.
 ram:00B1	ITEM_FRAME	Frame counter for ITEM_KIND.

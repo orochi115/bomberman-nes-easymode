@@ -1699,7 +1699,7 @@ ENDIF
 ; (not seen executing during the coverage runs)
 
 ; EXIT_OPEN was nonzero after a clear. FARCALL bank 5 at RUN_BONUS_STAGE, which saves the area and stage,
-; forces stage 7, ACTOR_FIRE=8, ACTOR_BOMBS=5 and SPECIAL_STAGE=1, then returns to STAGE_WON.
+; forces stage 7, ACTOR_BOMBS=8, ACTOR_FIRE=5 and SPECIAL_STAGE=1, then returns to STAGE_WON.
 .PREP_STAGE_B4
   FARCALL 5, RUN_BONUS_STAGE
   JMP STAGE_WON
@@ -2086,8 +2086,8 @@ ENDIF
 ; Zero A9h and AAh, clear the round flags, then fall into INIT_PLAYERS.
 .RESET_PLAYERS
   LDA #&00
-  STA ACT_W_FIRE
   STA ACT_W_BOMBS
+  STA ACT_W_FIRE
   JSR CLEAR_ROUND_FLAGS
 
 ; Set up three actor slots. Each ACTOR_FLAG entry is 1. X and Y come from PLAYER_SPAWN_X/Y.
@@ -2138,8 +2138,8 @@ ENDIF
   EQUB &18,&B8,&78
 .L7_CDF7
   LDA #&00
-  STA ACT_PASSWALL
   STA ACT_PASSBOMB
+  STA ACT_PASSWALL
   STA ITEM_KIND
   STA EXIT_OPEN
   STA KNOCK_DIR
@@ -2161,20 +2161,20 @@ ENDIF
   LDX #&02
 .L7_CE1E
   LDA MODE_BYTE_90,Y
-  STA ACTOR_FIRE,X
-  LDA MODE_BYTE_93,Y
   STA ACTOR_BOMBS,X
+  LDA MODE_BYTE_93,Y
+  STA ACTOR_FIRE,X
   DEX
   BPL L7_CE1E
 .L7_CE2B
   RTS
 
 ; Zero AE AE-adjacent round bytes AD, B0, B3, B4, B5, AF (AF is replaced by 03EEh when GAME_MODE is 0).
-; Then copy MODE_BYTE_90/93, indexed by GAME_MODE, into ACTOR_FIRE and ACTOR_BOMBS.
+; Then copy MODE_BYTE_90/93, indexed by GAME_MODE, into ACTOR_BOMBS and ACTOR_FIRE.
 .CLEAR_ROUND_FLAGS
   LDA #&00
-  STA ACT_PASSWALL
   STA ACT_PASSBOMB
+  STA ACT_PASSWALL
   STA ITEM_KIND
   STA ACT_SPEED
   STA EXIT_OPEN
@@ -2189,18 +2189,18 @@ ENDIF
   LDX #&02
 .L7_CE4B
   LDA MODE_BYTE_90,Y
-  STA ACTOR_FIRE,X
-  LDA MODE_BYTE_93,Y
   STA ACTOR_BOMBS,X
+  LDA MODE_BYTE_93,Y
+  STA ACTOR_FIRE,X
   DEX
   BPL L7_CE4B
   RTS
 
-; Three bytes indexed by GAME_MODE and stored in ACTOR_FIRE: 00, 01, 00. Also used by the demo setup path.
+; Three bytes indexed by GAME_MODE and stored in ACTOR_BOMBS: 00, 01, 00. Also used by the demo setup path.
 .MODE_BYTE_90
   EQUB &00,&01,&00
 
-; Three bytes indexed by GAME_MODE and stored in ACTOR_BOMBS: 00, 02, 01.
+; Three bytes indexed by GAME_MODE and stored in ACTOR_FIRE: 00, 02, 01.
 .MODE_BYTE_93
   EQUB &00,&02,&01
 
@@ -2758,7 +2758,7 @@ ENDIF
 ; (not seen executing during the coverage runs)
   RTS
 
-; FARCALL bank 5 at MAKE_STAGE_CODE. Stores a nonzero RNG nibble, the area, the stage and ACTOR_FIRE into PASS_EDIT and the following bytes.
+; FARCALL bank 5 at MAKE_STAGE_CODE. Stores a nonzero RNG nibble, the area, the stage and ACTOR_BOMBS into PASS_EDIT and the following bytes.
 .MIX_STAGE_BYTES
   FARCALL 5, MAKE_STAGE_CODE
   RTS
@@ -2868,7 +2868,7 @@ ENDIF
   RTS
 
 ; Load demo record DEMO_SLOT (0-3) and set the demo flag.
-; Each record is 8 bytes: area, stage, ACTOR_FIRE, ACTOR_BOMBS, RNG_1, RNG_2, RNG_3, and one unused byte.
+; Each record is 8 bytes: area, stage, ACTOR_BOMBS, ACTOR_FIRE, RNG_1, RNG_2, RNG_3, and one unused byte.
 ; Also sets KEEP_STAGE, ACT_REMOTE and DEMO_MODE to 1, clears STAGE_PHASE and FRAME_CNT, and advances the stored index modulo 4.
 .START_DEMO
   JSR CLEAR_ROUND_FLAGS
@@ -2896,9 +2896,9 @@ ENDIF
   LDA DEMO_STAGE,X
   ABS_STA STAGE_NUM
   LDA DEMO_BYTE_90,X
-  ABS_STA ACTOR_FIRE
-  LDA DEMO_BYTE_93,X
   ABS_STA ACTOR_BOMBS
+  LDA DEMO_BYTE_93,X
+  ABS_STA ACTOR_FIRE
   LDA DEMO_RNG_1,X
   STA RNG_1
   LDA DEMO_RNG_2,X
@@ -2914,7 +2914,7 @@ ENDIF
   RTS
 
 ; Four demo records of 8 bytes, indexed by DEMO_SLOT*8.
-; Bytes at this label and the next six labels are area, stage, ACTOR_FIRE, ACTOR_BOMBS, RNG_1, RNG_2, RNG_3.
+; Bytes at this label and the next six labels are area, stage, ACTOR_BOMBS, ACTOR_FIRE, RNG_1, RNG_2, RNG_3.
 ; The eighth byte of each record is not read by START_DEMO.
 .DEMO_AREA
   EQUB &00
