@@ -25,24 +25,56 @@ Differences between the regions are `IF REGION_JP ... ELSE ... ENDIF` blocks
 ## Chinese / options mod (branch bomberman2-cn)
 
 ```
-./build.sh [-r us|jp] [-l zh|en]   # build/bomberman2_cn_REGION_LANG.nes (256K PRG)
+./build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm]   # build/bomberman2_cn_REGION_LANG.nes
+./run-ares.sh [same options]                            # build and open in ares (macOS)
 ```
 
-On this branch the generator is frozen: `bank*.asm` are edited by hand and
-`tools/merge.py` / `tools/regen.sh` are no longer used (`db/` and the tools stay
-for reference). Every change is inside `IF MOD` (or `IF ZH` = MOD and Chinese),
-so `make.sh` still builds and checks the unmodified US and JP ROMs.
+`-r` picks the original the mod is based on (USA or Japan), `-l` the language
+(Chinese, or English with only the new screens added), `-c` the rules of
+普通模式 / NORMAL MODE and the initial options (`config/default.asm` = the
+original game, `config/casual.asm` = unlimited lives, revive, slow, remote).
 
-- 256K PRG (MMC1, 16 banks): banks 0-6 as before, `mod_bank7.asm` (mod code),
-  `mod_bank8.asm` + banks 9-14 (text data), the original fixed bank is bank 15.
+What it changes:
+
+- **Chinese text** on every screen: title prompt (sprites), mode menu, stage
+  card, HUD (时间 / 剩余), pause, game over, VS / battle cards, win count,
+  winner screen, round results, bonus stage, sound room, credits. 12px
+  Fusion Pixel font everywhere.
+- **选项 / OPTIONS** replaces CONTINUE (the password screen is gone): area,
+  stage, lives (1-9 or unlimited), fire, bombs, speed, time (or unlimited),
+  revive, slow, remote control (no / yes / with fuse: the PACHINKO and
+  PANICMAN words), wall pass, bomb pass, fire pass, x-ray, invincible, fuse
+  (short / normal / long: the BOMBACE / BOMBMAN / BOMBOLD words), and the
+  sound room and the bonus stage (the PCDEFGAB and PONEJACK words). Up/Down,
+  SELECT (other column), Left/Right/A change, START plays, B goes back. The
+  options stay until power off. The title, the demo, VS and battle always
+  use the original rules.
+- **Revive**: lose a life and get up where you died, invulnerable for about
+  4 s with a full clock; losing the last life restarts the stage as it was
+  entered. **Slow mode**: the game only moves while you hold the d-pad or B
+  (A still drops a bomb). **X-ray** shows the item and the exit on their
+  soft blocks.
+- **Pause**: SELECT goes back to the title, Left/Right look round a wide map.
+  The HUD flashes in the last 10 seconds. SELECT+START leaves the sound room.
+
+How it is built:
+
+- On this branch the generator is frozen: `bank*.asm` are edited by hand and
+  `tools/merge.py` / `tools/regen.sh` refuse to run (`tools/check.sh` skips
+  them). Every change is inside `IF MOD` (or `IF ZH` = MOD and Chinese), so
+  `make.sh` still builds and checks the unmodified US and JP ROMs.
+- 256K PRG (MMC1, 16 banks): banks 0-6 as before, `mod_bank7.asm` (options,
+  pause), `mod_bank8.asm` + banks 9-14 (text data), the original fixed bank
+  is bank 15 (`text.asm`, `mod.asm`, `hud.asm` in its free space).
+  `mod_vars.asm` lists the RAM the mod uses.
 - Text: `text/{zh,en}_strings.txt` -> `tools/build_text.py` -> `build/text_*.asm`.
-  Chinese is the Fusion Pixel 12px font (`fonts/`, OFL) in 16x16 cells. The game
-  has CHR-RAM, so each screen uploads the glyphs it needs into tiles that screen
-  does not use (`SETS` in build_text.py, measured with `tools/freetiles.py`).
-  `text.asm` (fixed bank) uploads sets and prints records (`ZH_SCREEN`,
-  `ZH_PRINT`, `ZH_QUEUE`, `ZH_SPRITE`).
-- `tools/shots.py ROM OUTDIR [title menu stage pause areas gameover]` takes
-  screenshots with the bundled emulator.
+  The game has CHR-RAM, so each screen uploads the glyphs it needs into tiles
+  that screen does not show (`SETS` in build_text.py, measured with
+  `tools/tileuse.py`, `tools/screentiles.py`, `tools/freetiles.py`).
+  `text.asm` uploads sets and prints records (`ZH_SCREEN`, `ZH_QUEUE`, ...).
+- Checks: `tools/democheck.py ROM` (the attract demo plays exactly as in the
+  original), `tools/shots.py ROM OUTDIR flow...` (screenshots of scripted
+  flows: title, menu, options, stage, pause, gameover, vs_result, ending ...).
 
 ## Relocatable
 
