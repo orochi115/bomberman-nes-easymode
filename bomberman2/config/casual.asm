@@ -1,8 +1,8 @@
-; Casual rules: unlimited lives, revive, slow mode and remote control.
+; Casual rules: revive, slow mode and remote control.
 
 CFG_AREA    = 1     ; 1-6
 CFG_STAGE   = 1     ; 1-8
-CFG_LIVES   = 10    ; 1-9, 10 = unlimited
+CFG_LIVES   = 3     ; 1-9, 10 = unlimited
 CFG_FIRE    = 1     ; 1-5 (flame length)
 CFG_BOMBS   = 1     ; 1-8 (bombs at a time)
 CFG_SPEED   = 0     ; 0-4

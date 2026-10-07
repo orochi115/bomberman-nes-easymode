@@ -191,9 +191,10 @@
   RTS
 
 ; Slow mode (STAGE_LOOP): the game only moves while the player holds the
-; d-pad or B. A (drop a bomb) works on frozen frames. Dying, the end of a
-; stage and the time after a death always move. TICK_NOW is 0 only between
-; here and the end of UPDATE_PLAYERS on a frozen frame.
+; d-pad, B or SELECT (SELECT does nothing else in play; as in the first
+; game). A (drop a bomb) works on frozen frames. Dying, the end of a stage
+; and the time after a death always move. TICK_NOW is 0 only between here
+; and the end of UPDATE_PLAYERS on a frozen frame.
 .MOD_SLOW_TICK
   LDA #1
   STA TICK_NOW
@@ -206,7 +207,7 @@
   LDA ACTOR_FLAG
   BEQ mod_tick_done
   LDA JOY_HELD
-  AND #&4F                  ; B and the d-pad
+  AND #&6F                  ; B, SELECT and the d-pad
   BNE mod_tick_done
   LDA #0
   STA TICK_NOW
