@@ -79,7 +79,7 @@ SOUND  SND_TITLE      4   c    炸弹人2　音乐室
 SOUND  SND_MUSIC      9   10   音乐
 SOUND  SND_EFFECT     11  10   音效　
 SOUND  SND_PCM        13  10   采样
-SOUND  SND_HINT       22  c    SELECT START 返回
+SOUND  SND_HINT       22  c    A 播放　SELECT 停止　B 返回
 
 # Credits. CREDROW lines replace credit rows: ROW is the bottom row (the top
 # half goes in the row before), COL a column of the 26-tile line, {} blanks

@@ -58,7 +58,9 @@ What it changes:
   exit blink between the block and what they hide (they still have to be
   bombed).
 - **Pause**: SELECT goes back to the title, Left/Right look round a wide map.
-  The HUD flashes in the last 10 seconds. SELECT+START leaves the sound room.
+  The HUD flashes in the last 10 seconds.
+- **Sound room** works like the options screen: Up/Down choose, Left/Right
+  change, A (or START) plays, SELECT stops, B goes back to the options.
 
 How it is built:
 
