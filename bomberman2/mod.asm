@@ -204,7 +204,7 @@
   RTS
 
 ; Frozen frame: enemies are drawn where they are (the NMI clears the
-; sprites every frame)
+; sprites every frame), bombs keep pulsing
 .MOD_FROZEN_ENEMIES
   LDA GAME_MODE
   BNE mod_frozen_done
@@ -213,6 +213,9 @@
   LDX #&00
   JSR BANK_SWITCH
   JSR DRAW_ALL_ENEMIES
+  LDX #&05
+  JSR BANK_SWITCH
+  JSR MOD_FROZEN_BOMBS
   PLA
   TAX
   JMP BANK_SWITCH

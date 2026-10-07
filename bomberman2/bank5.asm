@@ -266,6 +266,39 @@ IF MOD
   CLC
   RTS
 
+; Slow mode, frozen frame: bombs keep pulsing (STEP_BOMB's animation, every
+; 10h frames) while their fuses wait
+.MOD_FROZEN_BOMBS
+  INC FROZEN_ANIM
+  LDA FROZEN_ANIM
+  AND #&0F
+  BNE frozen_bombs_done
+  LDX #&17
+.frozen_bomb
+  STX TEMP4
+  LDA BOMB_FLAG,X
+  BEQ frozen_next
+  BMI frozen_next           ; re-arming slot, no bomb on the map
+  LDA BOMB_FRAME,X
+  CLC
+  ADC #&01
+  AND #&03
+  STA BOMB_FRAME,X
+  TAY
+  LDA BOMB_ANIM_TILE,Y
+  PHA
+  LDY BOMB_ROW,X
+  LDA BOMB_COL,X
+  TAX
+  PLA
+  JSR QUEUE_TILE_Y2
+.frozen_next
+  LDX TEMP4
+  DEX
+  BPL frozen_bomb
+.frozen_bombs_done
+  RTS
+
 ; Draw the player where it is (the pause screen's map view)
 .MOD_DRAW_PLAYER
   LDX #&00

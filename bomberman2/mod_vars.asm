@@ -52,4 +52,5 @@ SNAP_SCORE      = &6680 ; 8 bytes: score when the stage was entered (revive mode
 SNAP_FIRE       = &6688
 SNAP_BOMBS      = &6689
 XRAY_CELLS      = &668A ; x-ray: item, exit: column, row (FF = none), tile
+FROZEN_ANIM     = &6690 ; slow mode: frame counter of the bomb animation
 
