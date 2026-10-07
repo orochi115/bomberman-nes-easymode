@@ -77,6 +77,7 @@ SOUND  SND_TITLE      4   c    炸弹人2　音乐室
 SOUND  SND_MUSIC      9   10   音乐
 SOUND  SND_EFFECT     11  10   音效　
 SOUND  SND_PCM        13  10   采样
+SOUND  SND_HINT       22  c    SELECT START 返回
 
 # Credits. CREDROW lines replace credit rows: ROW is the bottom row (the top
 # half goes in the row before), COL a column of the 26-tile line, {} blanks
@@ -91,6 +92,36 @@ CREDROW CR_THANKS     120 0    特别鸣谢
 CREDROW CR_PASS       136 0    {}
 CREDROW CR_PASS2      139 0    {}
 CREDITS !CR_END       22  c    完
+
+# Options screen (labels 6 tiles wide at most, values 5)
+OPTS   !OPT_AREA      -   -    区域
+OPTS   !OPT_STAGE     -   -    关卡
+OPTS   !OPT_LIVES     -   -    命数
+OPTS   !OPT_FIRE      -   -    火力
+OPTS   !OPT_BOMBS     -   -    炸弹
+OPTS   !OPT_SPEED     -   -    加速
+OPTS   !OPT_TIME      -   -    时间
+OPTS   !OPT_REVIVE    -   -    复活
+OPTS   !OPT_SLOW      -   -    缓动
+OPTS   !OPT_REMOTE    -   -    遥控
+OPTS   !OPT_WPASS     -   -    穿墙
+OPTS   !OPT_BPASS     -   -    穿弹
+OPTS   !OPT_FPASS     -   -    防火
+OPTS   !OPT_XRAY      -   -    透视
+OPTS   !OPT_INVINC    -   -    无敌
+OPTS   !OPT_FUSE      -   -    引信
+OPTS   !OPT_SOUND     -   -    音乐室
+OPTS   !OPT_BONUS     -   -    奖励关
+OPTS   !OPT_CURSOR    -   -    ▶
+OPTS   !OPT_LARROW    -   -    ◀
+OPTS   !OPT_RARROW    -   -    ▶
+OPTS   !VAL_YES       -   -    有
+OPTS   !VAL_NO        -   -    无
+OPTS   !VAL_INF       -   -    无限
+OPTS   !VAL_NORM      -   -    标准
+OPTS   !VAL_TIMED     -   -    定时
+OPTS   !VAL_SHORT     -   -    短
+OPTS   !VAL_LONG      -   -    长
 
 # Title (sprites, replaces PUSH START)
 TITLE  PUSH_START    -   -    按开始键

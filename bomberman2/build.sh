@@ -1,19 +1,22 @@
 #!/bin/bash
 # Build the Chinese / options mod (256K PRG).
-# Usage: build.sh [-r us|jp] [-l zh|en]
+# Usage: build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm]
 #   -r  region of the base ROM (default us)
 #   -l  language (default zh)
+#   -c  rules of NORMAL MODE and options defaults (default config/default.asm)
 # Output: build/bomberman2_cn_REGION_LANG.nes
 # (make.sh still builds the unmodified originals and compares them.)
 cd "$(dirname "$0")"
 BEEBASM=${BEEBASM:-../../beebasm/beebasm}
 region=us
 lang=zh
-while getopts "r:l:" opt; do
+config=config/default.asm
+while getopts "r:l:c:" opt; do
   case $opt in
     r) region=$OPTARG ;;
     l) lang=$OPTARG ;;
-    *) echo "Usage: $0 [-r us|jp] [-l zh|en]"; exit 1 ;;
+    c) config=$OPTARG ;;
+    *) echo "Usage: $0 [-r us|jp] [-l zh|en] [-c config/NAME.asm]"; exit 1 ;;
   esac
 done
 case $region in
@@ -33,6 +36,8 @@ esac
 mkdir -p build
 rm -f build/*.bin
 python3 tools/build_text.py --lang ${lang} --region ${region} || exit 1
+[ -f "${config}" ] || { echo "no such config: ${config}"; exit 1; }
+echo "INCLUDE \"${config}\"" > build/build_config.asm
 ${BEEBASM} ${defs} -D MOD=1 -i nes_header.asm || exit 1
 ${BEEBASM} ${defs} -D MOD=1 -i bman2.asm || exit 1
 out=build/bomberman2_cn_${region}_${lang}.nes

@@ -101,6 +101,8 @@ SETS = {
     # Credits (UI_SPR_CHR; blank 40, letters and digits). Strings of the
     # pseudo set CREDROW are credit lines (see credits_table)
     'CREDITS': dict(table='bg', colors=(2, 0, 0), blank=0x40, free=tiles('00-2F 5B-FF')),
+    # Options screen (UI_SPR_CHR, fill 13, digits; letters for English)
+    'OPTS': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=tiles('01-12 14-2F 3A-40 5B-FF')),
     # Title: the background table is full, the text is drawn with sprites.
     'TITLE': dict(table='spr', colors=(2, 3, 0), blank=None, attr=0,
                   free=tiles('30-FF')),

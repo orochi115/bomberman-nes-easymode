@@ -194,6 +194,27 @@ class Shooter:
         press(nes, START)
         self.film(nes, "bonus", 600, 30)
 
+    def options(self):
+        """Options screen: change a few values, then START a game."""
+        nes = self.to_menu()
+        for _ in range(3):
+            press(nes, DOWN)
+        press(nes, START)
+        wait(nes, 60)
+        self.shot(nes, "options_0")
+        press(nes, RIGHT)           # area 2
+        press(nes, DOWN)
+        press(nes, RIGHT)           # stage 2
+        press(nes, DOWN)
+        press(nes, LEFT)            # lives 2
+        press(nes, SELECT)          # right column: remote
+        press(nes, RIGHT)
+        press(nes, RIGHT)
+        wait(nes, 10)
+        self.shot(nes, "options_1")
+        press(nes, START)
+        self.film(nes, "options_game", 600, 100)
+
     def ending(self):
         nes = self.start_stage(self.to_menu(), 5, 7)
         nes.ram[0xB7 if self.region == "us" else 0xA9] = 0xF0     # CLEAR_PHASE

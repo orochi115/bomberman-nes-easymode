@@ -3,3 +3,33 @@
 
 # Game over: no password any more
 GAMEOVER !GO_ERASE    20  11   {13}{13}{13}{13}{13}{13}{13}{13}{13}{13}
+
+# Options screen (labels 6 tiles wide at most, values 5)
+OPTS   !OPT_AREA      -   -    AREA
+OPTS   !OPT_STAGE     -   -    STAGE
+OPTS   !OPT_LIVES     -   -    LIVES
+OPTS   !OPT_FIRE      -   -    FIRE
+OPTS   !OPT_BOMBS     -   -    BOMBS
+OPTS   !OPT_SPEED     -   -    SPEED
+OPTS   !OPT_TIME      -   -    TIME
+OPTS   !OPT_REVIVE    -   -    REVIVE
+OPTS   !OPT_SLOW      -   -    SLOW
+OPTS   !OPT_REMOTE    -   -    REMOTE
+OPTS   !OPT_WPASS     -   -    WPASS
+OPTS   !OPT_BPASS     -   -    BPASS
+OPTS   !OPT_FPASS     -   -    FPASS
+OPTS   !OPT_XRAY      -   -    XRAY
+OPTS   !OPT_INVINC    -   -    INVINC
+OPTS   !OPT_FUSE      -   -    FUSE
+OPTS   !OPT_SOUND     -   -    SOUND
+OPTS   !OPT_BONUS     -   -    BONUS
+OPTS   !OPT_CURSOR    -   -    ▶
+OPTS   !OPT_LARROW    -   -    ◀
+OPTS   !OPT_RARROW    -   -    ▶
+OPTS   !VAL_YES       -   -    YES
+OPTS   !VAL_NO        -   -    NO
+OPTS   !VAL_INF       -   -    INF
+OPTS   !VAL_NORM      -   -    NORM
+OPTS   !VAL_TIMED     -   -    TIMED
+OPTS   !VAL_SHORT     -   -    SHORT
+OPTS   !VAL_LONG      -   -    LONG

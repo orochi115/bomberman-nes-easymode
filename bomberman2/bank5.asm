@@ -3393,6 +3393,20 @@ ENDIF
   JSR MARK_PALETTE
 .L5_9FE1
   JSR WAIT_NMI
+IF MOD
+  ; SELECT held and START: leave (ENTER_Z49_1 goes to the mode menu)
+  LDA JOY_HELD
+  AND #&20
+  BEQ snd_stay
+  LDA JOY_NEW
+  AND #&10
+  BEQ snd_stay
+  LDA #&80
+  JSR AUDIO_CALL
+  JSR FADE_PALETTE
+  JMP PPU_OFF
+.snd_stay
+ENDIF
   JSR SND_ROOM_INPUT
   JSR DRAW_SND_CURSOR
   JSR DRAW_SND_PARAMS
@@ -5241,7 +5255,11 @@ ENDIF
 .MODE_TEXT_3
   EQUB &0B,&0F,&0B,&42,&41,&54,&54,&4C,&45,&20,&4D,&4F,&44,&45
 .MODE_TEXT_4
+IF MOD
+  EQUB &0B,&11,&0B,&20,&20,&4F,&50,&54,&49,&4F,&4E,&53,&20,&20   ; "  OPTIONS  "
+ELSE
   EQUB &0B,&11,&0B,&20,&20,&43,&4F,&4E,&54,&49,&4E,&55,&45,&20
+ENDIF
 
 ; Continue / game-over screen. RUN_GAME_OVER enters here.
 ; Draws a map, sets KEEP_STAGE to 1, plays sound 19h.
