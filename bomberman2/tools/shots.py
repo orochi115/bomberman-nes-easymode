@@ -88,16 +88,82 @@ class Shooter:
     def gameover(self):
         nes = self.start_stage(self.to_menu())
         AREA, ROUND, LIVES = STAGE_VARS[self.region]
-        nes.force = {LIVES: lambda v: 0}
+        clock = 0x055B if self.region == "us" else 0x0559
+        nes.ram[LIVES] = 0
+        nes.ram[clock + 1] = 0      # tens
+        nes.ram[clock + 2] = 0      # hundreds
+        nes.ram[clock] = 1          # one second left
+        self.film(nes, "gameover", 600, 50)
+
+    def film(self, nes, name, frames, every, button=0):
+        """A shot every `every` frames (button held for the first frame)."""
+        for i in range(frames // every):
+            if button and i == 0:
+                press(nes, button)
+            wait(nes, every)
+            self.shot(nes, "%s_%03d" % (name, i))
+
+    def opening(self):
+        self.film(self.boot(), "opening", 1500, 100)
+
+    def normal_flow(self):
+        nes = self.to_menu()
+        press(nes, START)
+        self.film(nes, "normal", 800, 16)
+
+    def vs_flow(self):
+        nes = self.to_menu()
+        press(nes, DOWN)
+        press(nes, START)
+        self.film(nes, "vs", 400, 40)
+        for i in range(4):
+            press(nes, START)
+            press(nes, A)
+            self.film(nes, "vs%d" % i, 120, 40)
+
+    def battle_flow(self):
+        nes = self.to_menu()
+        press(nes, DOWN)
+        press(nes, DOWN)
+        press(nes, START)
+        self.film(nes, "battle", 400, 40)
+        for i in range(4):
+            press(nes, START)
+            press(nes, A)
+            self.film(nes, "battle%d" % i, 120, 40)
+
+    def continue_flow(self):
+        nes = self.to_menu()
+        for _ in range(3):
+            press(nes, DOWN)
+        press(nes, START)
+        self.film(nes, "continue", 120, 60)
+
+
+    def vs_long(self, pick=1, name="vslong"):
+        import random
+        nes = self.to_menu()
+        for _ in range(pick):
+            press(nes, DOWN)
+        press(nes, START)
         wait(nes, 60)
-        nes.force = None
-        # wait for the clock to run out
-        for i in range(400):
-            wait(nes, 60)
-            if nes.ram[LIVES] == 0xFF:
-                break
-        wait(nes, 400)
-        self.shot(nes, "gameover_0")
+        for _ in range(6):
+            press(nes, START)
+            press(nes, A)
+            wait(nes, 30)
+        rng = random.Random(2)
+        for i in range(60):
+            cover.random_play(nes, 100, rng, pads=(0, 1), start_every=0)
+            self.shot(nes, "%s_%03d" % (name, i))
+
+    def battle_long(self):
+        self.vs_long(2, "btlong")
+
+
+    def ending(self):
+        nes = self.start_stage(self.to_menu(), 5, 7)
+        nes.ram[0xB7 if self.region == "us" else 0xA9] = 0xF0     # CLEAR_PHASE
+        self.film(nes, "ending", 12000, 150)
 
 
 def main():

@@ -27,5 +27,16 @@ MENU   MENU_OPTIONS  16  12   选项
 HUD    HUD_TIME      1   13   时间
 HUD    HUD_LEFT      1   22   剩余
 
+# Story stage card: SC, AREA (orange, palette 1 there), LEFT
+CARD   CARD_SCORE    4   8    得分
+CARD:1,0,0 CARD_AREA 11  12   　区域　
+CARD   CARD_LEFT     20  13   剩余
+
+# Game over (GAME OVER in pink: palette 3 there)
+GAMEOVER:2,1,3 GO_TITLE 9  7    {13}　　游戏结束　　{13}
+GAMEOVER GO_CONTINUE  13  12   继续　　
+GAMEOVER GO_END       15  12   结束　
+GAMEOVER !GO_ERASE    20  11   {13}{13}{13}{13}{13}{13}{13}{13}{13}{13}
+
 # Title (sprites, replaces PUSH START)
 TITLE  PUSH_START    -   -    按开始键
