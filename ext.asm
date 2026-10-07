@@ -751,7 +751,8 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 }
 
 ; =============== S U B R O U T I N E =======================================
-; Draw the enemies without moving them (slow mode, frozen frames)
+; Draw the enemies without moving them (slow mode, frozen frames); they
+; keep their walking animation
 .DRAW_ENEMIES
 {
   ; Count the enemies like THINK does, otherwise CHECK_BONUSES sees 0 left
@@ -775,6 +776,31 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
   BNE next
 
   JSR ENEMY_SAVE
+
+  ; Keep walking on the spot: every 8 frozen frames step through the
+  ; type's 4 animation frames (ENEMY_ADVANCE_FRAME's ranges are 4-aligned)
+  LDA M_TYPE
+  CMP #9
+  BCS draw ; Dying monster or score: as it is
+  LDA COSMETIC_CNT
+  AND #%00000111
+  BNE draw
+  LDA M_FRAME
+  AND #3
+  CMP #3
+  BEQ first_frame
+  INC M_FRAME
+  BNE stepped ; Always
+
+.first_frame
+  LDA M_FRAME
+  AND #%11111100
+  STA M_FRAME
+
+.stepped
+  JSR ENEMY_LOAD
+
+.draw
   JSR loc_D006
   LDX M_ID
 
