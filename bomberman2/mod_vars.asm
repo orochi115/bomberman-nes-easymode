@@ -36,6 +36,7 @@ GAME_SPEED      = &EB   ; speed gear at the start of every life
 GAME_LIVES      = &EC   ; lives at the start of a game (1-10), 0 = the original 3
 GAME_TICK       = &ED   ; slow mode game clock
 TICK_NOW        = &EE   ; slow mode: 1 if the game moves this frame
+TIME_FLASH_ON   = &EF   ; 1 while the HUD shows the last-10-seconds palette
 
 ; Options (WRAM is not cleared by a reset: the options stay until power off)
 OPT_SIG         = &6600 ; 2 bytes, OPT_SIGNATURE when the values below are valid

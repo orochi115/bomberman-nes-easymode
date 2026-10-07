@@ -10,6 +10,7 @@
   BEQ mod_clock
   RTS                       ; unlimited time: no clock
 .mod_clock
+  JSR MOD_TIME_FLASH
 IF ZH
   ; 时间 is drawn once by ZH_TIME_LABEL, only the digits here, at
   ; MOD_CLOCK_COL + 4 (the label takes the columns from MOD_CLOCK_COL - 1)
@@ -41,8 +42,59 @@ ELSE
   JMP clock_original
 ENDIF
 
+; Last 10 seconds of a story stage: the HUD flashes in the flame palette
+; (BG palette 1) for 10 frames after each of the clock's warning beeps
+; (CLOCK_FRAME 3Bh and 1Dh). Attributes of HUD rows 0-3 are $23C0-$23C7.
+.MOD_TIME_FLASH
+  LDX #0
+  LDA GAME_MODE
+  BNE mod_flash_set
+  LDA CLOCK_DIG2
+  ORA CLOCK_DIG1
+  BNE mod_flash_set
+  LDA CLOCK_FRAME
+  BMI mod_flash_set         ; the clock has stopped
+  CMP #&32
+  BCS mod_flash_on
+  CMP #&14
+  BCC mod_flash_set
+  CMP #&1E
+  BCS mod_flash_set
+.mod_flash_on
+  INX
+.mod_flash_set
+  CPX TIME_FLASH_ON
+  BEQ mod_flash_done
+  STX TIME_FLASH_ON
+  LDA #LO(MOD_HUD_ATTR_OFF)
+  LDY #HI(MOD_HUD_ATTR_OFF)
+  CPX #0
+  BEQ mod_flash_queue
+  LDA #LO(MOD_HUD_ATTR_ON)
+  LDY #HI(MOD_HUD_ATTR_ON)
+.mod_flash_queue
+  STA DATA_PTR
+  STY DATA_PTR_HI
+  LDA #&23
+  STA DEST_PTR_HI
+  LDA #&C0
+  STA DEST_PTR
+  LDA #&00
+  STA PPU_RUN_CTRL
+  LDX #&08
+  JMP QUEUE_PPU_RUN
+.mod_flash_done
+  RTS
+
+.MOD_HUD_ATTR_ON
+  EQUB &55, &55, &55, &55, &55, &55, &55, &55
+.MOD_HUD_ATTR_OFF
+  EQUB &00, &00, &00, &00, &00, &00, &00, &00
+
 ; DRAW_LIVES_HUD (story mode and the bonus stage)
 .MOD_LIVES_HUD
+  LDA #0
+  STA TIME_FLASH_ON         ; the attributes were cleared with the screen
 IF ZH
   JSR ZH_TIME_LABEL
 ENDIF
