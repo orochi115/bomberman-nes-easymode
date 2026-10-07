@@ -5,8 +5,8 @@
 CFG_AREA    = 1     ; 1-6
 CFG_STAGE   = 1     ; 1-8
 CFG_LIVES   = 3     ; 1-9, 10 = unlimited
-CFG_FIRE    = 1     ; 1-8
-CFG_BOMBS   = 1     ; 1-5
+CFG_FIRE    = 1     ; 1-5 (flame length)
+CFG_BOMBS   = 1     ; 1-8 (bombs at a time)
 CFG_SPEED   = 0     ; 0-4
 CFG_TIME    = 0     ; 0 normal, 1 unlimited
 CFG_REVIVE  = 0     ; 1: revive where you died

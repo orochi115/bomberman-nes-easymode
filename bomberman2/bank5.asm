@@ -231,6 +231,41 @@ ENDIF
 
 ; Copy actor slot ACTOR_INDEX from ACTOR_FLAG through ACTOR_SPDHI into the work bytes ACT_W_FLAG through ACT_W_SPDHI.
 IF MOD
+; Revive mode, end of the death animation (MOVE_ACTOR, bank 5 mapped). If a
+; life is left (or lives are unlimited): lose it and get up where you died,
+; flashing and invulnerable for about 4 seconds (the heart item's
+; POWER_TIME), with a full clock. C=1 if revived. The last life dies
+; normally; STAGE_LOST then restarts the stage (MOD_RESTORE).
+.MOD_REVIVE
+  LDA GAME_MODE
+  BNE mod_no_revive
+  LDA GAME_REVIVE
+  BEQ mod_no_revive
+  LDA GAME_INF_LIVES
+  BNE mod_revive
+  LDA LIVES
+  BEQ mod_no_revive
+  DEC LIVES
+.mod_revive
+  LDA #0
+  STA ACT_W_DEATH
+  STA ACT_W_FRAME
+  STA KNOCK_DIR
+  STA POWER_FRAME
+  LDA #1
+  STA ACT_W_FTMR
+  STA POWER_TIME
+  LDA #4
+  STA POWER_LEFT
+  JSR SET_ACTOR_FLASH
+  JSR INIT_STAGE_CLOCK
+  JSR PLAY_AREA_BGM
+  SEC
+  RTS
+.mod_no_revive
+  CLC
+  RTS
+
 ; Draw the player where it is (the pause screen's map view)
 .MOD_DRAW_PLAYER
   LDX #&00

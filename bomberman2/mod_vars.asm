@@ -51,3 +51,5 @@ OPT_BUF         = &6640 ; 64 bytes: two rows of an item (top, top + 32)
 SNAP_SCORE      = &6680 ; 8 bytes: score when the stage was entered (revive mode)
 SNAP_FIRE       = &6688
 SNAP_BOMBS      = &6689
+XRAY_CELLS      = &668A ; x-ray: item, exit: column, row (FF = none), tile
+

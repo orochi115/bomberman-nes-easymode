@@ -56,8 +56,9 @@ What it changes:
 - **Revive**: lose a life and get up where you died, invulnerable for about
   4 s with a full clock; losing the last life restarts the stage as it was
   entered. **Slow mode**: the game only moves while you hold the d-pad or B
-  (A still drops a bomb). **X-ray** shows the item and the exit on their
-  soft blocks.
+  (A still drops a bomb). **X-ray**: the soft blocks hiding the item and the
+  exit blink between the block and what they hide (they still have to be
+  bombed).
 - **Pause**: SELECT goes back to the title, Left/Right look round a wide map.
   The HUD flashes in the last 10 seconds. SELECT+START leaves the sound room.
 
