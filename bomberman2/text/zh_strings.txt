@@ -24,7 +24,7 @@ MENU   MENU_BATTLE   14  12   混战模式
 MENU   MENU_OPTIONS  16  12   选项
 
 # Story mode status bar (replaces T: and LEFT)
-HUD    HUD_TIME      1   13   时间
+HUD    HUD_TIME      -   -    时间
 HUD    HUD_LEFT      1   22   剩余
 
 # Story stage card: SC, AREA (orange, palette 1 there), LEFT
@@ -37,6 +37,35 @@ GAMEOVER:2,1,3 GO_TITLE 9  7    {13}　　游戏结束　　{13}
 GAMEOVER GO_CONTINUE  13  12   继续　　
 GAMEOVER GO_END       15  12   结束　
 GAMEOVER !GO_ERASE    20  11   {13}{13}{13}{13}{13}{13}{13}{13}{13}{13}
+
+# Versus and battle cards (5 WIN MATCH, READY; the digit moves to column 12)
+VSCARD VS_ERASE_L     6   6    　　　
+VSCARD VS_WINS        6   14   胜制　　　　
+VSCARD:2,1,3 VS_READY 9   11   {13}　准备　{13}
+
+# Battle: number of wins (PLEASE / SELECT MATCH, n WIN MATCH)
+BTSEL:2,1,3 BS_TITLE  6   10   {13}{13}{13}请选择{13}{13}{13}
+BTSEL  BS_ERASE       8   10   {13}{13}{13}{13}{13}{13}{13}{13}{13}{13}{13}{13}
+BTSEL:2,1,3 BS_TITLE2 10  4    　　　　胜利局数　　　　
+BTSEL  BS_ATTR        2   4    =FF
+BTSEL  BS_1           13  14   胜制　　{13}
+BTSEL  BS_2           15  14   胜制　　{13}
+BTSEL  BS_3           17  14   胜制　　{13}
+BTSEL  BS_4           19  14   胜制　　{13}
+BTSEL  BS_5           21  14   胜制　　{13}
+
+# Versus result (WINNER orange, PLAYER pink, CONTINUE / END)
+VSRES:1,0,3 VR_WINNER 6   12   {13}胜利者{13}
+VSRES:2,1,3 VR_PLAYER 9   9    　　　{13}玩家{13}
+VSRES  VR_CONTINUE    19  12   继续　　
+VSRES  VR_END         21  12   结束　
+
+# Round result sprites (PLAYER n!, DRAW!, TIME OUT)
+ROUND  RD_WIN1        -   -    玩家1胜
+ROUND  RD_WIN2        -   -    玩家2胜
+ROUND  RD_WIN3        -   -    玩家3胜
+ROUND  RD_DRAW        -   -    平局！
+ROUND  RD_TIMEUP      -   -    时间到！
 
 # Title (sprites, replaces PUSH START)
 TITLE  PUSH_START    -   -    按开始键

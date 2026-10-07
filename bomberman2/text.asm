@@ -14,22 +14,7 @@
 ;                           DRAW_METASPRITE
 ; The caller's bank is mapped again before returning. X and Y are not kept.
 
-; Zero page $F0-$FB is unused by the game in both regions.
-ZH_PTR      = &F0       ; data pointer in the text bank
-ZH_PTR_HI   = &F1
-ZH_SRC      = &F2       ; tile data pointer
-ZH_SRC_HI   = &F3
-ZH_ADDR     = &F4       ; PPU address for records without one
-ZH_ADDR_HI  = &F5
-ZH_CNT      = &F6
-ZH_CNT2     = &F7
-ZH_BANK     = &F8       ; bank of the current set
-ZH_SAVED    = &F9       ; caller's bank
-ZH_W        = &FA       ; record width
-ZH_TMP      = &FB
-ZH_MODE     = &E0       ; ZH_SCREEN / ZH_QUEUE_SCREEN: 0 print, 1 queue
-
-ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
+; RAM: mod_vars.asm
 
 ; Map bank A, remembering the caller's bank
 .ZH_ENTER
@@ -175,7 +160,15 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
 .zh_width
   LDY #&02
   LDA (ZH_PTR),Y
+  AND #&7F
   STA ZH_W
+  LDA (ZH_PTR),Y
+  ASL A                     ; bit 7: a one-row record (attributes)
+  LDA #&02
+  BCC zh_rows
+  LDA #&01
+.zh_rows
+  STA ZH_ROWS
   RTS
 
 .ZH_PRINT
@@ -237,7 +230,7 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   DEC ZH_CNT
   BNE zh_col
   INX
-  CPX #&02
+  CPX ZH_ROWS
   BCS zh_print_done
   LDA DEST_PTR
   CLC
@@ -270,6 +263,9 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   STA DATA_PTR_HI
   LDX ZH_W
   JSR QUEUE_PPU_RUN
+  LDA ZH_ROWS
+  LSR A
+  BEQ zh_queue_done
   LDA DEST_PTR
   CLC
   ADC #&20
@@ -289,8 +285,14 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
 .zh_queue_done
   RTS
 
-; Copy sprite string A (count, then 4 bytes per sprite) to ZH_SPR_BUF
+; Copy sprite string A (count, then 4 bytes per sprite) to ZH_SPR_BUF, or
+; to the RAM at ZH_SRC (ZH_SPRITE_TO)
 .ZH_SPRITE
+  LDX #LO(ZH_SPR_BUF)
+  STX ZH_SRC
+  LDX #HI(ZH_SPR_BUF)
+  STX ZH_SRC_HI
+.ZH_SPRITE_TO
   JSR ZH_STR_PTR
   LDY #&00
   LDA (ZH_PTR),Y
@@ -300,10 +302,16 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   INX
 .zh_spr_copy
   LDA (ZH_PTR),Y
-  STA ZH_SPR_BUF,Y
+  STA (ZH_SRC),Y
   INY
   DEX
   BNE zh_spr_copy
   JMP ZH_LEAVE
+
+; WRAM copies of the round result sprites: player 1-3 win, draw, time out
+.ZH_ROUND_PTRS
+  FOR i, 0, 4
+    EQUW ZH_ROUND_SPR + i * &40
+  NEXT
 
 INCLUDE "build/text_index.asm"
