@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build bomberman.nes: iNES header + 32KB PRG + 32KB CHR (CNROM).
 #
-# Usage: build.sh [-l zh|en] [-r us|jp] [-c config/NAME.asm]
+# Usage: build.sh [-l zh|en] [-r us|jp] [-c config/NAME.asm] [-H 1|2]
 #   -l  language of the in-game text (default en)
 #   -r  region of the original game the ROM is built on (default us);
 #       jp builds bomberman_jp.nes from the Japanese version
@@ -19,12 +19,14 @@ fi
 LANG_OPT=en
 REGION=us
 CONFIG=config/default.asm
-while getopts "l:r:c:" opt; do
+HEADER=2
+while getopts "l:r:c:H:" opt; do
   case "$opt" in
     l) LANG_OPT="$OPTARG" ;;
     r) REGION="$OPTARG" ;;
     c) CONFIG="$OPTARG" ;;
-    *) echo "Usage: $0 [-l zh|en] [-r us|jp] [-c config/NAME.asm]" >&2; exit 1 ;;
+    H) HEADER="$OPTARG" ;;
+    *) echo "Usage: $0 [-l zh|en] [-r us|jp] [-c config/NAME.asm] [-H 1|2]" >&2; exit 1 ;;
   esac
 done
 
@@ -50,7 +52,12 @@ cat > build_config.asm <<EOF
 INCLUDE "$CONFIG"
 EOF
 
-"$BEEBASM" -i nes_header.asm
+case "$HEADER" in
+  1) HDEFS="-D INES1=1" ;;
+  2) HDEFS="" ;;
+  *) echo "Unknown header $HEADER (expected 1 or 2)" >&2; exit 1 ;;
+esac
+"$BEEBASM" $HDEFS -i nes_header.asm
 "$BEEBASM" $DEFS -i bman.asm
 cat nes_header.bin $PRG bomber_text.chr > $PRG.nes
 

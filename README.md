@@ -28,11 +28,14 @@ Needs [BeebAsm](https://github.com/stardot/beebasm) and Python 3.
     ./build.sh -l zh              # Chinese
     ./build.sh -l zh -r jp        # Chinese, on the Japanese version
     ./build.sh -c config/casual.asm
-    ./run-casual.sh               # Chinese with config/casual.asm, in ares
+    ./build.sh -H 1               # iNES 1.0 header instead of NES 2.0
+    ./run-casual.sh               # Chinese, config/casual.asm, Japanese version, iNES 1.0, in ares
     ./run-ares.sh [same options]  # builds and runs it in ares (macOS)
 
 `-c` picks the settings file used by "开始游戏" (START) and as the options
-screen defaults; `config/default.asm` is the original game.
+screen defaults; `config/default.asm` is the original game. `-H` picks the
+header: NES 2.0 like the original dumps (default) or iNES 1.0 for old
+emulators and loaders.
 
 `-r jp` builds `bomberman_jp.nes` from the Japanese version instead. It is
 selected with the `REGION_JP` symbol (`beebasm -D REGION_JP -i bman.asm`),
