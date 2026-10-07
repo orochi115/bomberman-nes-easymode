@@ -10,6 +10,7 @@
   BPL mod_clear
   STA GAME_LIVES
   STA PASS_MARK
+  STA REVIVE_TIMER
   LDA #&4B                  ; normal fuse (RESET_MARKS)
   STA FUSE_INIT
   RTS
