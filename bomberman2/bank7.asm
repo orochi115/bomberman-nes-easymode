@@ -2933,8 +2933,6 @@ ENDIF
   EQUB &A3,&00,&03,&00,&02,&02,&00,&00,&00,&00
 
 ; One byte, value 01h. Bank 5 at SERVICE_DEMO_PAD skips copying JOYPAD1 into the demo slots when this byte is nonzero.
-
-; Both sides FILLTO D800+SHIFT. The fill length differs with the bytes above.
 .DEMO_PAD_LOCK
   EQUB &01
   FILLTO &D800 + SHIFT

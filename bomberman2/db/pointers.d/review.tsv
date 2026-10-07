@@ -4,3 +4,14 @@
 jp:4:BBDF	word	14
 jp:0:AC1C	word	188
 jp:0:A6C5	word	1
+5:801E	lo	5:8022	ram=1
+5:953C	lo	5:9540	ram=1
+5:95D2	lo	5:95D6	ram=1
+5:9923	lo	5:9927	ram=1
+5:99BD	lo	5:99C1	ram=1
+5:99DD	lo	5:99E1	ram=1
+5:A0EA	lo	5:A0EE	ram=1
+5:ACB2	lo	5:ACB6	ram=1
+5:B97C	lo	5:B980	ram=1
+5:B9B7	lo	5:B9BB	ram=1
+0:B0B4	lo	0:B0BA

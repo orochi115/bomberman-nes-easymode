@@ -34,6 +34,8 @@ class Merger:
         self.extra = {"us": [], "jp": []}
         self.pair_alias = {}   # JP target -> US target, from pointers at the same position
         self.no_alias = set()  # pairs dropped because they would define a label twice
+        self.name_alias = {}   # JP key -> US name: same object, one name per region
+        self.no_name = set()
 
     # ------------------------------------------------------------ align
     @staticmethod
@@ -111,6 +113,8 @@ class Merger:
                 jp.kinds[jk] = kind
                 changed = True
         def alias(key):
+            if key in self.name_alias:
+                return self.name_alias[key]
             if key in self.pair_alias:
                 return us.name_of(self.pair_alias[key])
             return us.name_of(self.amap[key]) if key in self.amap else None
@@ -167,7 +171,7 @@ class Merger:
                     continue
                 own = lo // 0x4000
                 dtb = FIXED if dv >= 0xC000 else (kl[0] if tb == own else tb)
-                if back.get((dtb, dv)) != (tb, v):
+                if not self.corresponds(dst, (dtb, dv), (tb, v)):
                     continue
                 if dst.add_pair(dlo, dhi, dtb, dv, adj):
                     self.extra[dst.region].append((dlo, dhi, dtb, dv, adj))
@@ -187,6 +191,15 @@ class Merger:
                             dst.d.trace_from(w[0], w[1], w[2], work)
                         changed += 1
         return changed
+
+    def corresponds(self, dst, dkey, skey):
+        """Is dkey (in region dst) the counterpart of skey (other region)?
+        Exact address map, or the JP/US target pairing from pointers."""
+        if dst is self.jp:
+            jk, uk = dkey, skey
+        else:
+            jk, uk = skey, dkey
+        return self.amap.get(jk) == uk or self.pair_alias.get(jk) == uk
 
     def cross_pointers(self):
         """Raw words that are pointers in both regions: the US word V_us and the
@@ -221,7 +234,7 @@ class Merger:
                     tb = FIXED if vu >= 0xC000 else n
                     tbj = FIXED if vj >= 0xC000 else kl[0]
                     if tb == tbj or tb == FIXED:
-                        ok = self.amap.get((tbj, vj)) == (tb, vu)
+                        ok = self.corresponds(jp, (tbj, vj), (tb, vu))
                 if ok and us.add_pair(uo, uo + 1, tb, vu, 0):
                     jp.add_pair(jo, jo + 1, tbj, vj, 0)
                     self.extra["jp"].append((jo, jo + 1, tbj, vj, 0))
@@ -240,6 +253,7 @@ class Merger:
             self.jp.roles = self.jp.pointer_roles()
             for p in self.extra["jp"]:
                 self.jp.add_pair(*p)
+            self.pair_targets()
             moved = self.propagate() + self.cross_pointers()
             if moved:
                 self.us.collect()
@@ -279,6 +293,57 @@ class Merger:
             k = self.jp.kinds.get(jt, "D")
             if prio[k] > prio.get(self.us.kinds.get(ut), 0):
                 self.us.kinds[ut] = k
+
+    def unify_names(self, outdir):
+        """Lines that differ only by one label name, where the JP label is
+        defined only in the JP build and the US label only in the US build, are
+        the same object: give the JP label the US name."""
+        import re
+        defs = {"us": set(), "jp": set()}
+        blocks = []
+        for n in range(8):
+            region, jp_lines, us_lines = None, [], []
+            for line in open(os.path.join(outdir, "bank%d.asm" % n)):
+                s = line.rstrip("\n").strip()
+                if s == "IF REGION_JP":
+                    region, jp_lines, us_lines = "jp", [], []
+                    continue
+                if s == "ELSE" and region == "jp":
+                    region = "us"
+                    continue
+                if s == "ENDIF" and region:
+                    blocks.append((jp_lines, us_lines))
+                    region = None
+                    continue
+                if s.startswith("."):
+                    for r in ([region] if region else ["us", "jp"]):
+                        defs[r].add(s[1:].split()[0])
+                elif s and not s.startswith(";") and region:
+                    (jp_lines if region == "jp" else us_lines).append(s.split(";")[0].strip())
+        tok = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+        names = {}
+        for key in self.jp.kinds:
+            names.setdefault(self.jp.name_of(key), key)
+        found = {}
+        for jl, ul in blocks:
+            if len(jl) != len(ul):
+                continue
+            for a, b in zip(jl, ul):
+                ta, tb = tok.findall(a), tok.findall(b)
+                if len(ta) != len(tb) or tok.sub("@", a) != tok.sub("@", b):
+                    continue
+                d = [(x, y) for x, y in zip(ta, tb) if x != y]
+                if len(d) != 1:
+                    continue
+                jn, un = d[0]
+                if jn in defs["us"] or un in defs["jp"] or jn not in names:
+                    continue
+                found.setdefault(names[jn], set()).add(un)
+        new = {k: next(iter(v)) for k, v in found.items()
+               if len(v) == 1 and (k, next(iter(v))) not in self.no_name}
+        changed = any(self.name_alias.get(k) != v for k, v in new.items())
+        self.name_alias.update(new)
+        return changed
 
     @staticmethod
     def duplicate_labels(outdir):
@@ -457,18 +522,25 @@ def main():
     m = Merger()
     m.run()
     m.pair_targets()
-    for _ in range(5):
+    for _ in range(12):
         m.write(args.out)
         dups = m.duplicate_labels(args.out)
-        if not dups:
+        if dups:
+            names = {jt: m.us.name_of(ut) for jt, ut in m.pair_alias.items()}
+            dropped = {(jt, m.pair_alias[jt]) for jt, nm in names.items() if nm in dups}
+            dropped_n = {(k, v) for k, v in m.name_alias.items() if v in dups}
+            if not dropped and not dropped_n:
+                print("ERROR: duplicate labels %s" % sorted(dups))
+                sys.exit(2)
+            m.no_alias |= dropped
+            m.no_name |= dropped_n
+            for k, v in dropped_n:
+                m.name_alias.pop(k, None)
+            m.pair_targets()
+            continue
+        if not m.unify_names(args.out):
             break
-        names = {jt: m.us.name_of(ut) for jt, ut in m.pair_alias.items()}
-        dropped = {(jt, m.pair_alias[jt]) for jt, nm in names.items() if nm in dups}
-        if not dropped:
-            print("ERROR: duplicate labels %s" % sorted(dups))
-            sys.exit(2)
-        m.no_alias |= dropped
-        m.pair_targets()
+    print("unified JP names: %d" % len(m.name_alias))
     print("pointer-paired JP labels: %d" % len(m.pair_alias))
     print("IF REGION_JP blocks %d" % m.ndiff)
     bad = 0

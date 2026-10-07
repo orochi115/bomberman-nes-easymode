@@ -213,6 +213,21 @@ class Emitter:
             cnt = int(args[2]) if kind == "split" else 1
             pairs = [(a + i, ha + i) for i in range(cnt)]
         adj = int(opts.get("adj", 0))
+        if opts.get("ram"):
+            # #LO/#HI of a RAM address: rendered with the RAM symbol, whose value
+            # is per region (vars.asm)
+            for la, ha in pairs:
+                lo_off = n * 0x4000 + (la & 0x3FFF)
+                hi_off = hn * 0x4000 + (ha & 0x3FFF)
+                v = self.d.prg[lo_off] | self.d.prg[hi_off] << 8
+                bad = self.bad_pointer_bytes("lo", lo_off, hi_off)
+                if bad or self.ram_placeholder(v) is None:
+                    (self.warnings if self.region != "us" else self.conflicts).append(
+                        "pointers: %s ram: %s" % (row[0], bad or "$%04X is not RAM" % v))
+                    continue
+                roles[lo_off] = ("lo", ("ram", v), 0)
+                roles[hi_off] = ("hi", ("ram", v), 0)
+            return
         for la, ha in pairs:
             lo_off = n * 0x4000 + (la & 0x3FFF)
             hi_off = hn * 0x4000 + (ha & 0x3FFF)
@@ -302,6 +317,8 @@ class Emitter:
 
     def ptr_expr(self, role):
         part, (tb, v), adj = role
+        if tb == "ram":
+            return "%s(%s)" % ("LO" if part == "lo" else "HI", self.ram(v, 2))
         e = self.expr_of((tb, v))
         if adj:
             e = "%s-%d" % (e, adj)
@@ -428,6 +445,8 @@ class Emitter:
             if key[0] != "ram":
                 self.want(key[0], key[1], "D")
         for off, (part, (tb, v), adj) in self.roles.items():
+            if tb == "ram":
+                continue
             b = self.d.banks[tb]
             if b.inside(v):
                 self.want(tb, v, "L" if b.kind[v - b.base] == OP else "D")

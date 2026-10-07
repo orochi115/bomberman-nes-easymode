@@ -1223,8 +1223,6 @@ ENDIF
   EQUB &21,&10,&20,&0F,&21,&38,&28,&0F,&21,&3A,&2A,&0F,&21,&36,&26,&0F
 
 ; 16 ending sprite palette bytes. LOAD_ENDING_CHR copies them to PAL_BUF row 4.
-
-; Both sides FILLTO B800+SHIFT. The fill length differs because the bytes above are not the same length.
 .ENDING_SPR_PAL
   EQUB &0F,&0F,&35,&00,&0F,&0F,&26,&30,&0F,&0F,&10,&20,&0F,&0F,&21,&20
   FILLTO &B800 + SHIFT
@@ -1835,8 +1833,6 @@ ENDIF
 
 ; 14 words. Layout pointer for (area * 2 + variant). Areas 0-6, variant from LAYOUT_VARIANT.
 ; Area 6 uses AREA6_LAYOUT for both variants. Area 5 variant A is AREA5_LAYOUT_A inside the area-4 blob.
-
-; JP words A108, A1BA, A22D are AREA1_LAYOUT_B, AREA2_LAYOUT_B, AREA3_LAYOUT_B (jpmap 4:A108, 4:A1BA, 4:A22D). US names those labels directly.
 .STAGE_LAYOUT_PTR
   EQUB LO(AREA0_LAYOUT_A)
 .STAGE_LAYOUT_PTR_HI
