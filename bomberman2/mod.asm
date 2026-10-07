@@ -179,3 +179,42 @@
   JSR MOD_START_LIVES
   STA LIVES
   RTS
+
+; Slow mode (STAGE_LOOP): the game only moves while the player holds the
+; d-pad or B. A (drop a bomb) works on frozen frames. Dying, the end of a
+; stage and the time after a death always move. TICK_NOW is 0 only between
+; here and the end of UPDATE_PLAYERS on a frozen frame.
+.MOD_SLOW_TICK
+  LDA #1
+  STA TICK_NOW
+  LDA GAME_SLOW
+  BEQ mod_tick_done
+  LDA CLEAR_PHASE
+  ORA STAGE_PHASE
+  ORA ACTOR_DEATH
+  BNE mod_tick_done
+  LDA ACTOR_FLAG
+  BEQ mod_tick_done
+  LDA JOY_HELD
+  AND #&4F                  ; B and the d-pad
+  BNE mod_tick_done
+  LDA #0
+  STA TICK_NOW
+.mod_tick_done
+  RTS
+
+; Frozen frame: enemies are drawn where they are (the NMI clears the
+; sprites every frame)
+.MOD_FROZEN_ENEMIES
+  LDA GAME_MODE
+  BNE mod_frozen_done
+  LDA CUR_BANK
+  PHA
+  LDX #&00
+  JSR BANK_SWITCH
+  JSR DRAW_ALL_ENEMIES
+  PLA
+  TAX
+  JMP BANK_SWITCH
+.mod_frozen_done
+  RTS
