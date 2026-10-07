@@ -1,2 +1,5 @@
 # English strings of the mod's new screens, processed by tools/build_text.py
 # (format: see text/zh_strings.txt). The original screens keep their text.
+
+# Game over: no password any more
+GAMEOVER !GO_ERASE    20  11   {13}{13}{13}{13}{13}{13}{13}{13}{13}{13}

@@ -7,6 +7,7 @@
 ;
 ; ZH_LOAD_SET   A = set     upload the set's tiles (rendering off)
 ; ZH_SCREEN     A = set     upload the tiles and print the set's strings
+; ZH_QUEUE_SCREEN A = set   queue the set's strings (tiles already loaded)
 ; ZH_PRINT      A = string  write a record to the nametable (rendering off)
 ; ZH_QUEUE      A = string  queue a record as two PPU runs (rendering on)
 ; ZH_SPRITE     A = string  copy a sprite record to ZH_SPR_BUF (RAM), for
@@ -26,6 +27,7 @@ ZH_BANK     = &F8       ; bank of the current set
 ZH_SAVED    = &F9       ; caller's bank
 ZH_W        = &FA       ; record width
 ZH_TMP      = &FB
+ZH_MODE     = &E0       ; ZH_SCREEN / ZH_QUEUE_SCREEN: 0 print, 1 queue
 
 ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
 
@@ -51,10 +53,17 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   LDA ZH_SET_BANK,X
   JMP ZH_ENTER
 
+.ZH_QUEUE_SCREEN
+  LDX #&01
+  BNE zh_screen_strings
+
 .ZH_SCREEN
   PHA
   JSR ZH_LOAD_SET
   PLA
+  LDX #&00
+.zh_screen_strings
+  STX ZH_MODE
   JSR ZH_SET_PTR
   JSR ZH_SKIP_RUNS
   LDA (ZH_PTR),Y            ; number of strings
@@ -188,7 +197,13 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   TSX
   LDA &0105,X
   JSR ZH_STR_PTR
+  LDA ZH_MODE
+  BNE zh_mapped_queue
   JSR zh_print_rec
+  JMP zh_mapped_done
+.zh_mapped_queue
+  JSR zh_queue_rec
+.zh_mapped_done
   PLA
   STA ZH_BANK
   TAX
@@ -237,6 +252,10 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
 ; Queue string A as two PPU runs (QUEUE_PPU_RUN copies the bytes at once)
 .ZH_QUEUE
   JSR ZH_STR_PTR
+  JSR zh_queue_rec
+  JMP ZH_LEAVE
+
+.zh_queue_rec
   JSR ZH_REC_ADDR
   LDA #&00
   STA PPU_RUN_CTRL
@@ -266,9 +285,9 @@ ZH_SPR_BUF  = &6500     ; WRAM, free in both regions
   INC DATA_PTR_HI
 .zh_queue_run
   LDX ZH_W
-  JSR QUEUE_PPU_RUN
+  JMP QUEUE_PPU_RUN
 .zh_queue_done
-  JMP ZH_LEAVE
+  RTS
 
 ; Copy sprite string A (count, then 4 bytes per sprite) to ZH_SPR_BUF
 .ZH_SPRITE

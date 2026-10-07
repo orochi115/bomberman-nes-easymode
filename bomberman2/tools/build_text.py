@@ -26,7 +26,8 @@ set's 8x8 font tile (same code as ASCII) in the bottom row; a space is one
 8px blank column, a full-width space two; ◀ ▶ are 8x16 arrows; {XX} is raw
 tile XX in the bottom row; {} is an empty string. A text of '@' only
 defines ZH_<ID>_ADDR. An ID starting with '!' is not printed by ZH_SCREEN.
-An ID ending in /US or /JP is only used for that region.
+An ID ending in /US or /JP is only used for that region. SET:B,S,G draws the
+string's glyphs with other colours (body, shadow, background).
 
 Usage: build_text.py [--lang zh|en] [--region us|jp] [--preview]
 """
@@ -72,6 +73,15 @@ SETS = {
     # (B D G-K M-O Q R V-Z) and 84-9F (never uploaded during play).
     'HUD': dict(table='bg', colors=(2, 3, 3), blank=0x65,
                 free=tiles('42 44 47-4B 4D-4F 51 52 56-5A 84-9F')),
+    # Story stage card (UI_SPR_CHR via LOAD_MODE_GFX). It shows 00 04 05 13
+    # 14 15 30-39 (score) 43 45 46 4C 53 54 62 63 72 73 and the big digits
+    # and AREA (C0-FF kept).
+    'CARD': dict(table='bg', colors=(2, 0, 0), blank=0x00,
+                 free=tiles('01-03 06-12 16-2F 3A-42 44 47-4B 4D-52 55-61 64-71 74-BF')),
+    # Game over (UI_SPR_CHR via LOAD_MENU_CHR): box 00-03 10-13, GAME OVER
+    # 6C-7F 81 90 91, CONTINUE END, password brackets FA FB.
+    'GAMEOVER': dict(table='bg', colors=(2, 0, 3), blank=0x13,
+                     free=tiles('04-0F 14-2F 3A-40 5B-6B 82-8F 92-F9')),
     # Title: the background table is full, the text is drawn with sprites.
     'TITLE': dict(table='spr', colors=(2, 3, 0), blank=None, attr=0,
                   free=tiles('30-FF')),
@@ -203,10 +213,16 @@ def parse_strings(path, region):
                 _, name, value = line.split()
                 consts.append((name, value))
                 continue
-            m = re.match(r'(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s*$', line)
+            # (not \s: the full-width space is part of the text)
+            m = re.match(r'([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)[ \t]+(.*?)[ \t]*$',
+                         line.rstrip('\n'))
             if not m:
                 sys.exit('%s:%d: bad line' % (path, n))
             sset, sid, row, col, text = m.groups()
+            colors = None
+            if ':' in sset:
+                sset, c = sset.split(':')
+                colors = tuple(int(x) for x in c.split(','))
             if sset not in SETS:
                 sys.exit('%s:%d: unknown set %s' % (path, n, sset))
             if '/' in sid:
@@ -217,7 +233,8 @@ def parse_strings(path, region):
                     continue
             auto = not sid.startswith('!')
             sid = sid.lstrip('!')
-            out.append(dict(set=sset, id=sid, row=row, col=col, text=text, auto=auto))
+            out.append(dict(set=sset, id=sid, row=row, col=col, text=text, auto=auto,
+                            colors=colors))
     return out, consts
 
 
@@ -234,10 +251,11 @@ class SetBuilder:
         if t in self.free:
             self.free.remove(t)
 
-    def glyph(self, ch):
-        if ch in self.alloc:
-            return self.alloc[ch]
-        cols, px = cell_for(ch, self.font, self.spec['colors'])
+    def glyph(self, ch, colors=None):
+        colors = colors or self.spec['colors']
+        if (ch, colors) in self.alloc:
+            return self.alloc[(ch, colors)]
+        cols, px = cell_for(ch, self.font, colors)
         if len(self.free) < cols * 2:
             sys.exit('Out of tiles in set %s at %r (%d glyphs placed); '
                      'shorten the text or use 8px text there' % (self.name, ch, len(self.alloc)))
@@ -247,7 +265,7 @@ class SetBuilder:
                 t = self.free.pop(0)
                 self.data[t] = encode_tile(px, c * 8, row)
                 lst.append(t)
-        self.alloc[ch] = (top, bot)
+        self.alloc[(ch, colors)] = (top, bot)
         return top, bot
 
     def runs(self):
@@ -301,7 +319,7 @@ def build(lang, region):
                 top.append(blank)
                 bot.append(ch)
             elif is_wide(ch):
-                t, bb = b.glyph(ch)
+                t, bb = b.glyph(ch, s['colors'])
                 top += t
                 bot += bb
             elif ch in (' ', '　'):
