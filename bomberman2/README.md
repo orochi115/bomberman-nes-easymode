@@ -35,7 +35,7 @@ Differences between the regions are `IF` / `ELIF` / `ELSE` blocks
 `-r` picks the original the mod is based on (USA or Japan), `-l` the language
 (Chinese, or English with only the new screens added), `-c` the rules of
 普通模式 / NORMAL MODE and the initial options (`config/default.asm` = the
-original game, `config/casual.asm` = unlimited lives, revive, slow, remote).
+original game, `config/casual.asm` = revive, slow, remote).
 `-H` picks the header: NES 2.0 like the original dumps (default; it also
 names the Four Score / Famicom four-player adapter, so emulators can plug it
 in for battle mode), or iNES 1.0 for old emulators and loaders.
@@ -59,7 +59,7 @@ What it changes:
   use the original rules.
 - **Revive**: lose a life and get up where you died, invulnerable for about
   4 s with a full clock; losing the last life restarts the stage as it was
-  entered. **Slow mode**: the game only moves while you hold the d-pad or B
+  entered. **Slow mode**: the game only moves while you hold the d-pad, B or SELECT
   (A still drops a bomb). **X-ray**: the soft blocks hiding the item and the
   exit blink between the block and what they hide (they still have to be
   bombed).
