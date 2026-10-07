@@ -6429,7 +6429,8 @@ ENDIF
 IF MOD
   LDA GAME_INF_LIVES
   BEQ card_lives
-  RTS                       ; unlimited lives: no count
+  LDA #ZH_CARD_NOLEFT       ; unlimited lives: blank the layout's LEFT, no count
+  JMP ZH_QUEUE
 .card_lives
 ENDIF
 IF ZH

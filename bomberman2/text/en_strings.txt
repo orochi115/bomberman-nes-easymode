@@ -36,3 +36,6 @@ OPTS   !VAL_LONG      -   -    LONG
 
 # Sound room: the controls (the rest is the original text)
 SOUND  SND_HINT       22  c    A PLAY  SELECT STOP  B BACK
+
+# Stage card with unlimited lives: no LEFT (rows 20-21, the layout draws it)
+CARD   !CARD_NOLEFT  20  12   {13}{13}{13}{13}{13}{13}{13}
