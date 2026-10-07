@@ -230,6 +230,15 @@ ENDIF
   RTS
 
 ; Copy actor slot ACTOR_INDEX from ACTOR_FLAG through ACTOR_SPDHI into the work bytes ACT_W_FLAG through ACT_W_SPDHI.
+IF MOD
+; Draw the player where it is (the pause screen's map view)
+.MOD_DRAW_PLAYER
+  LDX #&00
+  STX ACTOR_INDEX
+  JSR LOAD_ACTOR_WORK
+  JMP DRAW_ACTOR
+ENDIF
+
 .LOAD_ACTOR_WORK
   LDX ACTOR_INDEX
   LDA ACTOR_FLAG,X

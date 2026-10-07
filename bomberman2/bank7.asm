@@ -1950,9 +1950,9 @@ ENDIF
   LDX #&00
   JSR AUDIO_CALL
   STX PAUSE_X
-IF ZH
-  LDA #ZH_HUD_PAUSE
-  JSR ZH_QUEUE
+IF MOD
+  FARCALL 7, MOD_PAUSE      ; hint, SELECT quits, the map scrolls
+  JMP L7_CC8B
 ELSE
   LDX #&2D
   LDY #&02
