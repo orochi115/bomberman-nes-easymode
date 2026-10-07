@@ -83,3 +83,31 @@
   STA ACT_SPEED
 .mod_powers_done
   RTS
+
+; Unlimited time (not on the bonus stage): Z clear = the clock is frozen
+.MOD_TIME_FROZEN
+  LDA SPECIAL_STAGE
+  BNE mod_time_runs
+  LDA GAME_INF_TIME
+  RTS
+.mod_time_runs
+  LDA #0
+  RTS
+
+; Tile of a soft block that hides an item (A = TILESET) or the exit (A =
+; 0Ch): the soft block 39h, or with x-ray the tile OPEN_BURIED reveals
+; (BURIED_REVEAL_TILE). The map byte stays a soft block. X, Y are kept.
+.MOD_XRAY_TILE
+  STX ZH_TMP
+  LDX GAME_XRAY
+  BEQ mod_soft_block
+  TAX
+  LDA MOD_REVEAL_TILE,X
+  LDX ZH_TMP
+  RTS
+.mod_soft_block
+  LDX ZH_TMP
+  LDA #&39
+  RTS
+.MOD_REVEAL_TILE            ; = BURIED_REVEAL_TILE (bank 5)
+  EQUB &20,&21,&22,&22,&22,&22,&22,&22,&22,&22,&22,&2C,&29

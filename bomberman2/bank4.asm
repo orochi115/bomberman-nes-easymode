@@ -1634,7 +1634,12 @@ ENDIF
   STA (MAP_PTR),Y
   LDX CELL_COL
   LDY CELL_ROW
+IF MOD
+  LDA #&0C                  ; x-ray: the exit tile on its soft block
+  JSR MOD_XRAY_TILE
+ELSE
   LDA #&39
+ENDIF
   JMP QUEUE_TILE_Y2
 
 ; Find an empty cell, store map 21h, queue tile 39h, and fill one bomb slot.
@@ -1656,7 +1661,12 @@ ENDIF
   STA (MAP_PTR),Y
   LDX CELL_COL
   LDY CELL_ROW
+IF MOD
+  LDA TILESET               ; x-ray: the item tile on its soft block
+  JSR MOD_XRAY_TILE
+ELSE
   LDA #&39
+ENDIF
   JSR QUEUE_TILE_Y2
   JSR FIND_FREE_BOMB
   LDA CELL_COL
