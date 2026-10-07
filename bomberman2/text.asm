@@ -10,6 +10,9 @@
 ; ZH_QUEUE_SCREEN A = set   queue the set's strings (tiles already loaded)
 ; ZH_PRINT      A = string  write a record to the nametable (rendering off)
 ; ZH_QUEUE      A = string  queue a record as two PPU runs (rendering on)
+; ZH_WIDTH      A = string  A = width of the record in tiles
+; ZH_COPY       A = string  copy the record's rows to RAM at ZH_ADDR (top row)
+;                           and ZH_ADDR + 32 (bottom row)
 ; ZH_SPRITE     A = string  copy a sprite record to ZH_SPR_BUF (RAM), for
 ;                           DRAW_METASPRITE
 ; The caller's bank is mapped again before returning. X and Y are not kept.
@@ -284,6 +287,63 @@
   JMP QUEUE_PPU_RUN
 .zh_queue_done
   RTS
+
+.ZH_WIDTH
+  JSR ZH_STR_PTR
+  LDY #&02
+  LDA (ZH_PTR),Y
+  AND #&7F
+  PHA
+  JSR ZH_LEAVE
+  PLA
+  RTS
+
+.ZH_COPY
+  JSR ZH_STR_PTR
+  LDY #&02
+  LDA (ZH_PTR),Y
+  AND #&7F
+  STA ZH_W
+  BEQ zh_copy_done
+  ; ZH_SRC = record tiles, top row then bottom row
+  LDA ZH_PTR
+  CLC
+  ADC #&03
+  STA ZH_SRC
+  LDA ZH_PTR_HI
+  ADC #&00
+  STA ZH_SRC_HI
+  LDY #&00
+.zh_copy_top
+  LDA (ZH_SRC),Y
+  STA (ZH_ADDR),Y
+  INY
+  CPY ZH_W
+  BNE zh_copy_top
+  ; bottom row: source + W, destination + 32
+  LDA ZH_SRC
+  CLC
+  ADC ZH_W
+  STA ZH_SRC
+  BCC zh_copy_src
+  INC ZH_SRC_HI
+.zh_copy_src
+  LDA ZH_ADDR
+  CLC
+  ADC #&20
+  STA ZH_ADDR
+  BCC zh_copy_dst
+  INC ZH_ADDR_HI
+.zh_copy_dst
+  LDY #&00
+.zh_copy_bot
+  LDA (ZH_SRC),Y
+  STA (ZH_ADDR),Y
+  INY
+  CPY ZH_W
+  BNE zh_copy_bot
+.zh_copy_done
+  JMP ZH_LEAVE
 
 ; Copy sprite string A (count, then 4 bytes per sprite) to ZH_SPR_BUF, or
 ; to the RAM at ZH_SRC (ZH_SPRITE_TO)

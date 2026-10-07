@@ -78,5 +78,19 @@ SOUND  SND_MUSIC      9   10   音乐
 SOUND  SND_EFFECT     11  10   音效　
 SOUND  SND_PCM        13  10   采样
 
+# Credits. CREDROW lines replace credit rows: ROW is the bottom row (the top
+# half goes in the row before), COL a column of the 26-tile line, {} blanks
+CREDROW CR_STAFF      18  c    制作人员
+CREDROW CR_PROGRAM    33  0    主程序
+CREDROW CR_GRAPHIC    47  0    美术设计
+CREDROW CR_GAME       61  0    游戏设计
+CREDROW CR_MUSIC      75  0    作曲
+CREDROW CR_SOUND      89  0    音效程序
+CREDROW CR_PRODUCE    106 0    制作人
+CREDROW CR_THANKS     120 0    特别鸣谢
+CREDROW CR_PASS       136 0    {}
+CREDROW CR_PASS2      139 0    {}
+CREDITS !CR_END       22  c    完
+
 # Title (sprites, replaces PUSH START)
 TITLE  PUSH_START    -   -    按开始键
