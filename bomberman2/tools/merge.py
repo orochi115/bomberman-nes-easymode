@@ -515,6 +515,8 @@ class Merger:
 
 
 def main():
+    if os.path.exists(os.path.join(ROOT, "mod.asm")) and "--out" not in sys.argv:
+        sys.exit("frozen source (bomberman2-cn): merge.py would overwrite the mod; use --out DIR")
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=ROOT)
     ap.add_argument("--notes", action="store_true")
