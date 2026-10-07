@@ -20,6 +20,9 @@
   JSR FILL_PAL_BLACK
   JSR INIT_MAPPER
   JSR CLEAR_LOW_RAM
+IF MOD
+  FARCALL 7, OPTS_INIT
+ENDIF
   JSR RESET_VIDEO
   JSR NMI_ON
   JMP GAME_LOOP
@@ -1453,6 +1456,9 @@ ENDIF
 ; Otherwise RUN_MODE_MENU. MENU_REDRAW repeats this loop. MENU_MODE1 goes to ENTER_Z49_1.
 ; MENU_BONUS goes to ENTER_W0550.
 .MENU_LOOP
+IF MOD
+  JSR MOD_CLEAR_RULES
+ENDIF
   JSR SHOW_FRONT
   LDA DEMO_MODE
   BNE STAGE_BOOT
@@ -1486,7 +1492,11 @@ ENDIF
 .STAGE_BOOT
   JSR PPU_OFF
   JSR WAIT_FRAME
+IF MOD
+  JSR MOD_START_LIVES
+ELSE
   LDA #&02
+ENDIF
   STA LIVES
   LDA KEEP_STAGE
   BNE STAGE_SETUP
@@ -1974,7 +1984,11 @@ ENDIF
 ; That call does not return; the following jump back to GAME_LOOP is not reached.
 .ENTER_Z49_1
   FARCALL 5, RUN_MODE1_MENU
+IF MOD
+  JMP L7_C954               ; SELECT + START leave the sound room
+ELSE
   JMP GAME_LOOP
+ENDIF
 
 ; MENU_BONUS was nonzero. Set lives to 1, clear 8 bytes at 03D0h, FARCALL bank 5 at RUN_BONUS_STAGE,
 ; fade out, blank the PPU and jump to GAME_LOOP.
@@ -1985,7 +1999,11 @@ ENDIF
   FARCALL 5, RUN_BONUS_STAGE
   JSR FADE_PALETTE
   JSR PPU_OFF
+IF MOD
+  JMP L7_C954               ; back to the mode menu
+ELSE
   JMP GAME_LOOP
+ENDIF
 
 ; Draw a metasprite into the OAM buffer at OAM_INDEX.
 ; 54h/55h = data. First byte is the number of 4-byte groups (tile, dx, dy, attr), then FF-terminated runs.
@@ -2200,7 +2218,11 @@ ENDIF
   DEX
   BPL L7_CE1E
 .L7_CE2B
+IF MOD
+  JMP MOD_STAGE_POWERS
+ELSE
   RTS
+ENDIF
 
 ; Zero AE AE-adjacent round bytes AD, B0, B3, B4, B5, AF (AF is replaced by 03EEh when GAME_MODE is 0).
 ; Then copy MODE_BYTE_90/93, indexed by GAME_MODE, into ACTOR_FIRE and ACTOR_BOMBS.
@@ -2227,7 +2249,11 @@ ENDIF
   STA ACTOR_BOMBS,X
   DEX
   BPL L7_CE4B
+IF MOD
+  JMP MOD_STAGE_POWERS
+ELSE
   RTS
+ENDIF
 
 ; Three bytes indexed by GAME_MODE and stored in ACTOR_FIRE: 00, 01, 00. Also used by the demo setup path.
 .MODE_BYTE_90
@@ -2605,6 +2631,9 @@ ENDIF
 ; FARCALL bank 5 at MODE_MENU_LOOP. That routine clears MENU_REDRAW, MENU_MODE1 and MENU_BONUS, fills the nametable with tile 13h, and zeros GAME_MODE and START_AREA before its own input loop.
 .RUN_MODE_MENU
   FARCALL 5, MODE_MENU_LOOP
+IF MOD
+  JMP MOD_MODE_CHOSEN
+ENDIF
   ABS_LDA GAME_MODE
   CMP #&03
   BNE L7_D093
@@ -2786,6 +2815,9 @@ ENDIF
   FARCALL 5, INIT_PASS_BYTES
   RTS
 .L7_D1BE
+IF MOD
+  JMP MOD_OPTIONS
+ENDIF
   FARCALL 5, RUN_PASS_SCREEN
 
 ; (not seen executing during the coverage runs)
@@ -2970,6 +3002,7 @@ ENDIF
   EQUB &01
 IF MOD
 INCLUDE "text.asm"
+INCLUDE "mod.asm"
 ENDIF
   FILLTO &D800 + SHIFT
 

@@ -8,6 +8,7 @@ INCLUDE "macros.asm"
 IF MOD
 INCLUDE "build/text_consts.asm"
 INCLUDE "mod_vars.asm"
+INCLUDE "build/build_config.asm"
 ENDIF
 
 ; Banks 0-6 are switched in at $8000, bank 7 is fixed at $C000.
