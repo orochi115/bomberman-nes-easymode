@@ -52,6 +52,7 @@
 ; Lives at the start of a game (STAGE_BOOT): GAME_LIVES - 1, or the original
 ; 2 when it is 0. Unlimited lives (10) start with 2 and never lose one.
 .MOD_START_LIVES
+  JSR MOD_GAME_POWERS
   LDA GAME_LIVES
   BEQ mod_lives_2
   CMP #10
@@ -62,6 +63,24 @@
 .mod_lives_2
   LDA #&02
   RTS
+
+; Start of a game (STAGE_BOOT): the round flags of CLEAR_ROUND_FLAGS (it is
+; not called when a game starts on another stage, KEEP_STAGE, like the
+; options do), then the options' powers
+.MOD_GAME_POWERS
+  LDA DEMO_MODE
+  BNE mod_powers_done       ; the demo sets up its own flags
+  LDA #0
+  STA ACT_PASSWALL
+  STA ACT_PASSBOMB
+  STA ITEM_KIND
+  STA ACT_SPEED
+  STA ACT_REMOTE
+  LDA GAME_MODE
+  BNE mod_powers_done
+  LDA PASS_MARK
+  STA ACT_REMOTE
+  ; fall into MOD_STAGE_POWERS
 
 ; Every life of a story stage (end of INIT_PLAYERS' round flags): the pass
 ; and speed options. ACT_PASSBOMB lets the player through soft blocks and
