@@ -245,6 +245,7 @@ OPT_W               = &0186 ; Width of the value being drawn
 PAUSE_SHOWN         = &0187 ; Boolean, status bar shows the pause message
 PAUSE_SCROLL        = &0188 ; Horizontal scroll while looking round the map
 GAME_LIVES          = &0189 ; Lives setting of the game in progress (revive restarts)
+XRAY_PHASE          = &018A ; X-ray: half second shown (0 brick, 32 what it hides)
 
 stage_buffer        = &0200
 

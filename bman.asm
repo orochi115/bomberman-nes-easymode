@@ -829,6 +829,7 @@ INCLUDE "input.asm"
   JSR BOMB_ANIMATE_IDLE ; Keep bombs flashing
 
 .ticked
+  JSR XRAY_BLINK     ; X-ray: hidden exit / bonus blink
   JSR CHECK_BONUSES  ; Check bonus criteria
 
   ; If we've been killed, loose a life
@@ -2155,15 +2156,8 @@ INCLUDE "input.asm"
   LDA #0:STA CACHE_X ; Set X position to 0
 
 .loop_x
-  ; If debug enabled, show hidden tiles, otherwise hidden tiles become brick wall
-  LDA DEBUG
-  BEQ debug_off
-
-  LDA (OAM_PTR),Y
-  JMP show_tile_normally
-; ---------------------------------------------------------------------------
-
-.debug_off
+  ; Hidden tiles are drawn as brick wall (x-ray, DEBUG, makes them blink
+  ; later: XRAY_BLINK)
   ; If tile is a hidden one, show as brick wall instead
   LDA (OAM_PTR),Y
   CMP #MAP_HIDDEN_EXIT

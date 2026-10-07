@@ -751,6 +751,79 @@ SAFE_DISTANCE = 4 ; Minimum distance (x + y) to a monster
 }
 
 ; =============== S U B R O U T I N E =======================================
+; X-ray (透视, the DEBUG flag): the bricks hiding the exit and the bonus blink
+; between the brick and what they hide, half a second each (they still have
+; to be bombed). The original DEBUG drew them as burning bricks instead.
+.XRAY_BLINK
+{
+  LDA DEBUG
+  BEQ done
+  ; Redraw when the half second changes (STAGE_LOOP does not run on every
+  ; frame, so FRAME_CNT can skip a value)
+  LDA FRAME_CNT
+  AND #32
+  CMP XRAY_PHASE
+  BEQ done
+  STA XRAY_PHASE
+
+  LDA CACHE_X:PHA
+  LDA CACHE_Y:PHA
+  LDA STAGE_MAP:PHA
+  LDA STAGE_MAP+1:PHA
+
+  LDY #0
+
+.row
+  STY CACHE_Y
+  JSR FIX_STAGE_PTR
+  LDY #0
+
+.col
+  LDA (STAGE_MAP),Y
+  CMP #MAP_HIDDEN_EXIT
+  BEQ hidden
+  CMP #MAP_HIDDEN_BONUS
+  BNE next
+
+.hidden
+  STY CACHE_X
+  TAX
+  LDA XRAY_PHASE
+  BEQ brick
+  ; What it hides, as it is drawn when it is bombed open: tile 40 the exit
+  ; door, 40 + EXIT_ENEMY_TYPE (the stage's bonus) the bonus item
+  LDA #40
+  CPX #MAP_HIDDEN_EXIT
+  BEQ draw
+  CLC:ADC EXIT_ENEMY_TYPE
+  BNE draw ; Always
+
+.brick
+  LDA #MAP_BRICK
+
+.draw
+  JSR DRAW_TILE ; Keeps X and Y
+
+.next
+  INY
+  CPY #MAP_WIDTH
+  BNE col
+
+  LDY CACHE_Y
+  INY
+  CPY #MAP_HEIGHT
+  BNE row
+
+  PLA:STA STAGE_MAP+1
+  PLA:STA STAGE_MAP
+  PLA:STA CACHE_Y
+  PLA:STA CACHE_X
+
+.done
+  RTS
+}
+
+; =============== S U B R O U T I N E =======================================
 ; Draw the enemies without moving them (slow mode, frozen frames); they
 ; keep their walking animation
 .DRAW_ENEMIES

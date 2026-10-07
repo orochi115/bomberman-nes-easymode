@@ -12,7 +12,8 @@ options:
   - 复活 (revive): losing a life keeps the stage as it is and respawns you
     in a safe spot; only when all lives are gone is the stage restarted.
   - 缓动 (slow mode): game time only passes while a direction or B is held.
-  - 透视 (show hidden exit / bonus) and 无敌 (invincible).
+  - 透视 (the bricks hiding the exit and the bonus blink between the brick
+    and what they hide; they still have to be bombed) and 无敌 (invincible).
 - Pause shows a message in the status bar; left / right scroll round the
   map, SELECT (or SELECT + START during play) returns to the title screen.
 - Title menu: d-pad / SELECT choose, A / B / START confirm.
