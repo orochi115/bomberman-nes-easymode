@@ -3,7 +3,7 @@
 ; actions at the bottom (sound room, bonus stage).
 ;
 ; 18 positions in two columns of 9: rows 0-7 are settings, row 8 the
-; actions. An item is two rows of OPT_W tiles:
+; actions. Up/Down go through both columns, SELECT jumps to the other one. An item is two rows of OPT_W tiles:
 ;   0 cursor, 1-6 label, 7 left arrow, 8-12 value, 13 right arrow
 ; (cursor and arrows only on the selected item).
 
@@ -74,9 +74,10 @@ L_FUSE = P% - OPT_LISTS
   EQUB ZH_VAL_SHORT, ZH_VAL_NORM, ZH_VAL_LONG
 
 ; Position (column * 9 + row) -> item
+; Left: rules of the game. Right: the power-ups of the original game.
 .OPT_POS_ITEM
-  EQUB O_AREA, O_STAGE, O_LIVES, O_FIRE, O_BOMBS, O_SPEED, O_TIME, O_REVIVE, I_SOUND
-  EQUB O_SLOW, O_REMOTE, O_WPASS, O_BPASS, O_FPASS, O_XRAY, O_INVINC, O_FUSE, I_BONUS
+  EQUB O_AREA, O_STAGE, O_LIVES, O_TIME, O_REVIVE, O_SLOW, O_XRAY, O_FUSE, I_SOUND
+  EQUB O_FIRE, O_BOMBS, O_SPEED, O_REMOTE, O_WPASS, O_BPASS, O_FPASS, O_INVINC, I_BONUS
 
 ; PPU address of each position (top left of the item)
 MACRO OPT_ADDR row, col
@@ -308,33 +309,21 @@ ENDMACRO
   JSR FADE_PALETTE
   JMP PPU_OFF
 
+; Up / Down run through both columns: past the bottom of the left column
+; is the top of the right one, and the ends wrap round
 .opt_up
   LDX OPT_CURSOR
-  TXA
-  BEQ opt_up_wrap
-  CPX #OPT_ROWS
-  BEQ opt_up_wrap
   DEX
-  JMP opt_move
-.opt_up_wrap
-  TXA
-  CLC
-  ADC #OPT_ROWS - 1
-  TAX
+  BPL opt_move
+  LDX #OPT_ROWS * 2 - 1
   JMP opt_move
 
 .opt_down
   LDX OPT_CURSOR
   INX
-  CPX #OPT_ROWS
-  BEQ opt_down_wrap
   CPX #OPT_ROWS * 2
-  BNE opt_move
-.opt_down_wrap
-  TXA
-  SEC
-  SBC #OPT_ROWS
-  TAX
+  BCC opt_move
+  LDX #0
   JMP opt_move
 
 .opt_column
