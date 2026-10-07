@@ -7,11 +7,17 @@ cd "$(dirname "$0")/.."
 fail=0
 step() { echo "== $*"; }
 
+# Branch bomberman2-cn: the generator is frozen (bank*.asm are edited by hand),
+# so db lint and regeneration are skipped: tools/merge.py would overwrite them.
+if [ -f mod.asm ]; then
+  echo "== frozen source: no db lint / regenerate"
+else
 step "db lint"
 python3 tools/db.py lint | tail -20 || fail=1
 
 step "regenerate"
 python3 tools/merge.py | grep -v "^  pass " || fail=1
+fi
 
 for r in us jp eu; do
   step "build $r"
