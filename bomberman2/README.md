@@ -27,14 +27,18 @@ Differences between the regions are `IF` / `ELIF` / `ELSE` blocks
 ## Chinese / options mod (branch bomberman2-cn)
 
 ```
-./build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm]   # build/bomberman2_cn_REGION_LANG.nes
+./build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm] [-H 1|2]   # build/bomberman2_cn_REGION_LANG.nes
 ./run-ares.sh [same options]                            # build and open in ares (macOS)
+./run-casual.sh                                         # = run-ares.sh -l zh -c config/casual.asm -r jp
 ```
 
 `-r` picks the original the mod is based on (USA or Japan), `-l` the language
 (Chinese, or English with only the new screens added), `-c` the rules of
 普通模式 / NORMAL MODE and the initial options (`config/default.asm` = the
 original game, `config/casual.asm` = unlimited lives, revive, slow, remote).
+`-H` picks the header: NES 2.0 like the original dumps (default; it also
+names the Four Score / Famicom four-player adapter, so emulators can plug it
+in for battle mode), or iNES 1.0 for old emulators and loaders.
 
 What it changes:
 
