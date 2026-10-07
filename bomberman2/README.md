@@ -22,6 +22,28 @@ Needs [beebasm](https://github.com/stardot/beebasm) (default `../../beebasm/beeb
 Differences between the regions are `IF REGION_JP ... ELSE ... ENDIF` blocks
 (`beebasm -D REGION_JP=1`).
 
+## Chinese / options mod (branch bomberman2-cn)
+
+```
+./build.sh [-r us|jp] [-l zh|en]   # build/bomberman2_cn_REGION_LANG.nes (256K PRG)
+```
+
+On this branch the generator is frozen: `bank*.asm` are edited by hand and
+`tools/merge.py` / `tools/regen.sh` are no longer used (`db/` and the tools stay
+for reference). Every change is inside `IF MOD` (or `IF ZH` = MOD and Chinese),
+so `make.sh` still builds and checks the unmodified US and JP ROMs.
+
+- 256K PRG (MMC1, 16 banks): banks 0-6 as before, `mod_bank7.asm` (mod code),
+  `mod_bank8.asm` + banks 9-14 (text data), the original fixed bank is bank 15.
+- Text: `text/{zh,en}_strings.txt` -> `tools/build_text.py` -> `build/text_*.asm`.
+  Chinese is the Fusion Pixel 12px font (`fonts/`, OFL) in 16x16 cells. The game
+  has CHR-RAM, so each screen uploads the glyphs it needs into tiles that screen
+  does not use (`SETS` in build_text.py, measured with `tools/freetiles.py`).
+  `text.asm` (fixed bank) uploads sets and prints records (`ZH_SCREEN`,
+  `ZH_PRINT`, `ZH_QUEUE`, `ZH_SPRITE`).
+- `tools/shots.py ROM OUTDIR [title menu stage pause areas gameover]` takes
+  screenshots with the bundled emulator.
+
 ## Relocatable
 
 All ROM addresses are labels, including pointer tables and `#LO()/#HI()` immediates, so

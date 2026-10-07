@@ -4,3 +4,9 @@ REGION_JP =? FALSE ; FALSE = USA, TRUE = Japan
 ; Relocation test: insert SHIFT padding bytes at the start of every bank
 ; (and after every relocatable anchor). make.sh shift N builds this.
 SHIFT =? 0
+
+; Chinese / options mod (build.sh builds it): 256K PRG, the original fixed
+; bank becomes bank 15, mod code and text data live in banks 7-14.
+MOD =? 0
+LANG_ZH =? 0            ; build.sh -l zh: Chinese text (MOD builds only)
+ZH = MOD AND LANG_ZH    ; Chinese screens replace the original text

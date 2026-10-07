@@ -2850,6 +2850,33 @@ ENDIF
 
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_STAGE_CLOCK
+IF ZH
+  LDA GAME_MODE
+  BNE clock_original
+  ; Story mode: 时间 is drawn by DRAW_LIVES_HUD, only the digits here
+  LDA CLOCK_DIG2
+  ORA #&30
+  STA W_052A
+  LDA CLOCK_DIG1
+  ORA #&30
+  STA W_052B
+  LDA W_055B
+  ORA #&30
+  STA W_052C
+  LDA #LO(ZH_HUD_TIME_ADDR + 32 + 5)
+  STA DEST_PTR
+  LDA #HI(ZH_HUD_TIME_ADDR + 32 + 5)
+  STA DEST_PTR_HI
+  LDA #LO(W_052A)
+  STA DATA_PTR
+  LDA #HI(W_052A)
+  STA DATA_PTR_HI
+  LDA #&00
+  STA PPU_RUN_CTRL
+  LDX #&03
+  JMP QUEUE_PPU_RUN
+.clock_original
+ENDIF
   LDA #&54
   STA W_052A
   LDA #&7E
@@ -2935,6 +2962,27 @@ ENDIF
 
 ; Queue LIVES_TEXT and the LIVES digit at column 16h, row 2. Called for story mode and from the bonus stage.
 .DRAW_LIVES_HUD
+IF ZH
+  ; 时间 and 剩余 (two rows each), then the lives digit
+  LDA #ZH_HUD_TIME
+  JSR ZH_QUEUE
+  LDA #ZH_HUD_LEFT
+  JSR ZH_QUEUE
+  LDA LIVES
+  ORA #&30
+  STA W_052A
+  LDX #&1B
+  LDY #&02
+  JSR XY_TO_NT_ADDR
+  LDA #LO(W_052A)
+  STA DATA_PTR
+  LDA #HI(W_052A)
+  STA DATA_PTR_HI
+  LDA #&00
+  STA PPU_RUN_CTRL
+  LDX #&01
+  JMP QUEUE_PPU_RUN
+ENDIF
   LDX #&00
 
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
@@ -3593,6 +3641,12 @@ ENDIF
   JSR FILL_NAMETABLE
   JSR CLEAR_ATTRS
   JSR LOAD_TITLE_CHR
+IF ZH
+  LDA #ZH_SET_TITLE
+  JSR ZH_LOAD_SET
+  LDA #ZH_PUSH_START
+  JSR ZH_SPRITE
+ENDIF
   JSR LOAD_TITLE_PAL
   JSR DRAW_TITLE_MAP
   LDA #&00
@@ -3836,6 +3890,40 @@ ENDIF
 ; Blink the title prompt while TITLE_PHASE is 0.
 ; TITLE_BLINK counts to 20h (draw START_TEXT_ON) and 38h (blank START_TEXT_OFF, reset).
 .BLINK_START_TEXT
+IF ZH
+  ; The background tiles are all used: 按开始键 is drawn with sprites
+  ; (ZH_SPR_BUF, made by ZH_TITLE_SETUP), on for 20h of every 38h frames
+  LDA TITLE_PHASE
+  BNE zh_blink_done
+  INC TITLE_BLINK
+  LDA TITLE_BLINK
+  CMP #&38
+  BCC zh_blink_count
+  LDA #&00
+  STA TITLE_BLINK
+.zh_blink_count
+  CMP #&20
+  BCS zh_blink_done
+  LDA #&80
+  ABS_STA SPR_X
+IF REGION_JP
+  LDA #179
+ELSE
+  LDA #171
+ENDIF
+  ABS_STA SPR_Y
+  LDA #&00
+  ABS_STA SPR_X_HI
+  ABS_STA SPR_Y_HI
+  ABS_STA SPR_FLIP
+  LDA #LO(ZH_SPR_BUF)
+  STA SPR_PTR
+  LDA #HI(ZH_SPR_BUF)
+  STA SPR_PTR_HI
+  JMP DRAW_METASPRITE
+.zh_blink_done
+  RTS
+ENDIF
   LDA TITLE_PHASE
   BNE L5_A32C
   INC TITLE_BLINK
@@ -4391,6 +4479,10 @@ ENDIF
 ; Records are column, row, count, tiles.
 .DRAW_MODE_MENU
   JSR DRAW_TOP_SCORE
+IF ZH
+  LDA #ZH_SET_MENU
+  JMP ZH_SCREEN
+ENDIF
   LDA #LO(MODE_TEXT_0)
   STA DATA_PTR
   LDA #HI(MODE_TEXT_0)

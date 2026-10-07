@@ -1,0 +1,2 @@
+# English strings of the mod's new screens, processed by tools/build_text.py
+# (format: see text/zh_strings.txt). The original screens keep their text.

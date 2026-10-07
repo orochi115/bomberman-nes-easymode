@@ -7,7 +7,11 @@ ORG &0000
 
 .HEADERSTART
   EQUS "NES", &1A
+IF MOD
+  EQUB 16               ; 16 x 16K PRG-ROM
+ELSE
   EQUB 8                ; 8 x 16K PRG-ROM
+ENDIF
   EQUB 0                ; CHR-RAM
   EQUB &10              ; Mapper 1
   EQUB &08              ; NES 2.0

@@ -1708,6 +1708,10 @@ ENDIF
 ; CB14h also copies 16 bytes of area palette data from bank 4 and mirrors the background color.
 .LOAD_STAGE_GFX
   JSR LOAD_AREA_CHR
+IF ZH
+  LDA #ZH_SET_HUD
+  JSR ZH_LOAD_SET
+ENDIF
   JMP L7_CB14
 .L7_CB14
   LDA CUR_BANK
@@ -2935,6 +2939,9 @@ ENDIF
 ; One byte, value 01h. Bank 5 at SERVICE_DEMO_PAD skips copying JOYPAD1 into the demo slots when this byte is nonzero.
 .DEMO_PAD_LOCK
   EQUB &01
+IF MOD
+INCLUDE "text.asm"
+ENDIF
   FILLTO &D800 + SHIFT
 
 ; Fixed-bank entry. JMP SND_INIT with bank 2 mapped.

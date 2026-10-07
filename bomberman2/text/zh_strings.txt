@@ -1,0 +1,31 @@
+# Chinese strings, processed by tools/build_text.py (text/en_strings.txt holds
+# the English strings of the mod's new screens)
+#
+# Format: SET  ID  ROW  COL  TEXT
+#   SET   screen set (tools/build_text.py SETS): the glyphs of a set are
+#         uploaded into tiles that screen does not use
+#   ID    ZH_<ID>; !ID is not printed by ZH_SCREEN; ID/US or ID/JP is only
+#         used for that region
+#   ROW   top tile row (strings are two tiles high), or - (run time)
+#   COL   left tile column, c to centre, or - (run time)
+#   TEXT  CJK characters are 16x16 (2x2 tiles); ASCII letters and digits use
+#         the screen's 8x8 font in the bottom row; space = 8px, full-width
+#         space = 16px; ◀ ▶ are 8x16 arrows; {XX} raw tile; {} empty;
+#         @ only defines ZH_<ID>_ADDR
+#
+# CONST lines become assembler constants
+
+# Mode menu (replaces TOP and the five lines)
+MENU   MENU_TOP      2   7    最高分
+MENU   MENU_TITLE    5   c    请选择游戏模式
+MENU   MENU_NORMAL   10  12   普通模式
+MENU   MENU_VS       12  12   对战模式
+MENU   MENU_BATTLE   14  12   混战模式
+MENU   MENU_OPTIONS  16  12   选项
+
+# Story mode status bar (replaces T: and LEFT)
+HUD    HUD_TIME      1   13   时间
+HUD    HUD_LEFT      1   22   剩余
+
+# Title (sprites, replaces PUSH START)
+TITLE  PUSH_START    -   -    按开始键
