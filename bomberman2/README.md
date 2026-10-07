@@ -47,8 +47,10 @@ What it changes:
   revive, slow, remote control (no / yes / with fuse: the PACHINKO and
   PANICMAN words), wall pass, bomb pass, fire pass, x-ray, invincible, fuse
   (short / normal / long: the BOMBACE / BOMBMAN / BOMBOLD words), and the
-  sound room and the bonus stage (the PCDEFGAB and PONEJACK words). Up/Down,
-  SELECT (other column), Left/Right/A change, START plays, B goes back. The
+  sound room and the bonus stage (the PCDEFGAB and PONEJACK words). Rules on
+  the left, the original power-ups on the right. Up/Down move through both
+  columns (past the bottom of one is the top of the other), SELECT jumps to
+  the other column, Left/Right/A change, START plays, B goes back. The
   options stay until power off. The title, the demo, VS and battle always
   use the original rules.
 - **Revive**: lose a life and get up where you died, invulnerable for about
