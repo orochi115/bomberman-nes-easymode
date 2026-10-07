@@ -71,8 +71,8 @@
   LDA DEMO_MODE
   BNE mod_powers_done       ; the demo sets up its own flags
   LDA #0
-  STA ACT_PASSWALL
   STA ACT_PASSBOMB
+  STA ACT_PASSWALL
   STA ITEM_KIND
   STA ACT_SPEED
   STA ACT_REMOTE
@@ -83,18 +83,17 @@
   ; fall into MOD_STAGE_POWERS
 
 ; Every life of a story stage (end of INIT_PLAYERS' round flags): the pass
-; and speed options. ACT_PASSBOMB lets the player through soft blocks and
-; ACT_PASSWALL through bombs (CELL_BLOCKS_MOVE), whatever their names say.
+; and speed options.
 .MOD_STAGE_POWERS
   LDA GAME_MODE
   BNE mod_powers_done
   LDA GAME_WPASS
   BEQ mod_no_wpass
-  STA ACT_PASSBOMB
+  STA ACT_PASSWALL
 .mod_no_wpass
   LDA GAME_BPASS
   BEQ mod_no_bpass
-  STA ACT_PASSWALL
+  STA ACT_PASSBOMB
 .mod_no_bpass
   LDA GAME_SPEED
   CMP ACT_SPEED
@@ -158,9 +157,9 @@
   STA SNAP_SCORE,X
   DEX
   BPL mod_snap
-  LDA ACTOR_FIRE
-  STA SNAP_FIRE
   LDA ACTOR_BOMBS
+  STA SNAP_FIRE
+  LDA ACTOR_FIRE
   STA SNAP_BOMBS
 .mod_snap_done
   RTS
@@ -174,9 +173,9 @@
   DEX
   BPL mod_restore
   LDA SNAP_FIRE
-  STA ACTOR_FIRE
-  LDA SNAP_BOMBS
   STA ACTOR_BOMBS
+  LDA SNAP_BOMBS
+  STA ACTOR_FIRE
   JSR MOD_START_LIVES
   STA LIVES
   RTS
