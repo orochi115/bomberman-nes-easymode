@@ -3346,6 +3346,10 @@ ENDIF
 
 ; Point DATA_PTR at the bonus string that follows LOAD_BONUS_PAL and call DRAW_INLINE_STR. The US string and the JP string are at different addresses in this bank.
 .DRAW_BONUS_TEXT
+IF ZH
+  LDA #ZH_SET_BONUS
+  JMP ZH_SCREEN
+ENDIF
   LDA #LO(D5_9FAE)
   STA DATA_PTR
   LDA #HI(D5_9FAE)
@@ -3378,6 +3382,10 @@ ENDIF
   STA GAME_MODE
   JSR CLEAR_ATTRS
   JSR LOAD_MODE_GFX
+IF ZH
+  LDA #ZH_SET_SOUND
+  JSR ZH_LOAD_SET
+ENDIF
   JSR NMI_ON
   JSR DRAW_SND_ROOM_TEXT
   JSR INIT_MODE1_SEL
@@ -3565,6 +3573,11 @@ ENDIF
 ; 16 tiles for a nibble, used by DRAW_SND_VALUE. 30h..39h then 41h..46h.
 .SND_HEX_GLYPH
   EQUB &30,&31,&32,&33,&34,&35,&36,&37,&38,&39,&41,&42,&43,&44,&45,&46
+IF ZH
+.DRAW_SND_ROOM_TEXT
+  LDA #ZH_SET_SOUND
+  JMP ZH_QUEUE_SCREEN
+ELSE
 IF REGION = 2
 
 .DRAW_SND_ROOM_TEXT
@@ -3581,9 +3594,10 @@ ELSE
 ; Queue the four sound-room strings through QUEUE_XY_BYTES.
 ; Each record is X, Y, length, then tiles.
 
-; JP string table JP_SND_ROOM_TEXT / US D5_A15E. JP records insert extra 40 tile bytes.
+; JP string table JP_SND_ROOM_TEXT / US D5_A15E. EU ED5_A15E. JP records insert extra 40 tile bytes.
 .DRAW_SND_ROOM_TEXT
   LDA #LO(D5_A15E)
+ENDIF
 ENDIF
   STA DATA_PTR
 IF REGION = 2
@@ -3610,6 +3624,7 @@ ENDIF
   LDA #HI(D5_A188)
   STA DATA_PTR_HI
   JMP QUEUE_XY_BYTES
+ENDIF
 
 ; Queue a nametable run from a record at DATA_PTR.
 ; In: (DATA_PTR) = X, Y, length, bytes. Advances DATA_PTR past the header.

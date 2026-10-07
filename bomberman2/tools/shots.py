@@ -182,6 +182,18 @@ class Shooter:
         self.vs_long(2, "btlong")
 
 
+    def soundroom(self):
+        nes = self.to_menu()
+        nes.ram[0x054F if self.region == "us" else 0x054D] = 1     # MENU_MODE1
+        press(nes, START)
+        self.film(nes, "sound", 300, 100)
+
+    def bonus(self):
+        nes = self.to_menu()
+        nes.ram[0x0550 if self.region == "us" else 0x054E] = 1     # MENU_BONUS
+        press(nes, START)
+        self.film(nes, "bonus", 600, 30)
+
     def ending(self):
         nes = self.start_stage(self.to_menu(), 5, 7)
         nes.ram[0xB7 if self.region == "us" else 0xA9] = 0xF0     # CLEAR_PHASE

@@ -94,6 +94,10 @@ SETS = {
     # Round result sprites in VS / battle play (sprite tiles 60-BF unused)
     'ROUND': dict(table='spr', colors=(3, 1, 0), blank=None, attr=1,
                   free=tiles('60-BF')),
+    # Bonus stage card (UI_SPR_CHR, only BONUS STAGE on a black screen)
+    'BONUS': dict(table='bg', colors=(2, 0, 0), blank=0x00, free=tiles('01-3F 5B-FF')),
+    # Sound room (UI_SPR_CHR; fill tile 40, letters and hex digits 30-5A)
+    'SOUND': dict(table='bg', colors=(2, 0, 3), blank=0x40, free=tiles('00-2F 5B-FF')),
     # Title: the background table is full, the text is drawn with sprites.
     'TITLE': dict(table='spr', colors=(2, 3, 0), blank=None, attr=0,
                   free=tiles('30-FF')),
@@ -387,9 +391,12 @@ def build(lang, region):
             addr = 0
         else:
             c = (32 - width) // 2 if s['col'] == 'c' else int(s['col'])
+            nt = 0x2000
+            if c >= 32:             # columns 32-63: the nametable at $2400
+                nt, c = 0x2400, c - 32
             if c + width > 32:
                 sys.exit('%s is too wide (%d tiles at column %d)' % (sid, width, c))
-            addr = 0x2000 + int(s['row']) * 32 + c
+            addr = nt + int(s['row']) * 32 + c
             consts_asm.append('ZH_%s_ADDR = &%04X' % (sid, addr))
             if s['auto']:
                 autos[s['set']].append(num)

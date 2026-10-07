@@ -7,7 +7,8 @@
 #   ID    ZH_<ID>; !ID is not printed by ZH_SCREEN; ID/US or ID/JP is only
 #         used for that region
 #   ROW   top tile row (strings are two tiles high), or - (run time)
-#   COL   left tile column, c to centre, or - (run time)
+#   COL   left tile column (32-63: the nametable at $2400), c to centre,
+#         or - (run time)
 #   TEXT  CJK characters are 16x16 (2x2 tiles); ASCII letters and digits use
 #         the screen's 8x8 font in the bottom row; space = 8px, full-width
 #         space = 16px; ◀ ▶ are 8x16 arrows; {XX} raw tile; {} empty;
@@ -26,6 +27,7 @@ MENU   MENU_OPTIONS  16  12   选项
 # Story mode status bar (replaces T: and LEFT)
 HUD    HUD_TIME      -   -    时间
 HUD    HUD_LEFT      1   22   剩余
+HUD    !HUD_PAUSE    1   46   暂停
 
 # Story stage card: SC, AREA (orange, palette 1 there), LEFT
 CARD   CARD_SCORE    4   8    得分
@@ -66,6 +68,15 @@ ROUND  RD_WIN2        -   -    玩家2胜
 ROUND  RD_WIN3        -   -    玩家3胜
 ROUND  RD_DRAW        -   -    平局！
 ROUND  RD_TIMEUP      -   -    时间到！
+
+# Bonus stage card
+BONUS  BONUS_TITLE    12  c    奖励关卡
+
+# Sound room
+SOUND  SND_TITLE      4   c    炸弹人2　音乐室
+SOUND  SND_MUSIC      9   10   音乐
+SOUND  SND_EFFECT     11  10   音效　
+SOUND  SND_PCM        13  10   采样
 
 # Title (sprites, replaces PUSH START)
 TITLE  PUSH_START    -   -    按开始键
