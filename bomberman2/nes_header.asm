@@ -1,5 +1,6 @@
-; iNES (NES 2.0) header, same bytes as the No-Intro dumps
-; Mapper 1 (MMC1), 8 x 16K PRG, 8K CHR-RAM, horizontal mirroring
+; NES 2.0 header, same bytes as the No-Intro dumps
+; Mapper 1 (MMC1), 8 x 16K PRG, 8K PRG-RAM (no battery), 8K CHR-RAM.
+; The mirroring bit is 0, but MMC1 sets the mirroring itself.
 
 INCLUDE "consts.asm"
 
@@ -15,10 +16,11 @@ ENDIF
   EQUB 0                ; CHR-RAM
   EQUB &10              ; Mapper 1
   EQUB &08              ; NES 2.0
-  EQUB 0, 0
-  EQUB &07              ; 8K CHR-RAM
-  EQUB &07
-  EQUB 0, 0, 0
+  EQUB 0, 0             ; mapper / submapper, ROM size high bits
+  EQUB &07              ; PRG-RAM: 64 << 7 = 8K, no battery-backed RAM
+  EQUB &07              ; CHR-RAM: 64 << 7 = 8K
+  EQUB 0, 0, 0          ; NTSC, no Vs. System, no misc ROMs
+; Default expansion device: Four Score (US) / Famicom four-player adapter (JP)
 IF REGION_JP
   EQUB &03
 ELSE

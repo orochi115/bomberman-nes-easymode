@@ -1,11 +1,4 @@
-# Binary output files
-bomberman
-bomberman.nes
-bomberman_jp
-bomberman_jp.nes
-
-# Other files
+# Emulator files
 *.cdl
 *.ram.nl
 *.dbg
-nes_header.bin
