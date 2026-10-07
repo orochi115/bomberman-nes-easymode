@@ -1638,10 +1638,24 @@ ENDIF
 .STAGE_LOOP
   JSR WAIT_NMI
   JSR UPDATE_PAUSE
+IF MOD
+  JSR MOD_SLOW_TICK         ; slow mode: TICK_NOW 0 = nothing moves
+ENDIF
   JSR UPDATE_PLAYERS
+IF MOD
+  LDA TICK_NOW
+  BNE stage_moves
+  INC TICK_NOW
+  JSR MOD_FROZEN_ENEMIES
+  JMP stage_frozen
+.stage_moves
+ENDIF
   JSR UPDATE_BLASTS
   JSR UPDATE_ENEMIES
   FARCALL 5, TICK_STAGE_CLOCK
+IF MOD
+.stage_frozen
+ENDIF
   FARCALL 5, DRAW_LIVES
   FARCALL 5, DRAW_HUD_SCORE
   ABS_LDA CLEAR_PHASE
@@ -2926,15 +2940,18 @@ ENDIF
 .L7_D1BE
 IF MOD
   JMP MOD_OPTIONS
-ENDIF
+ELSE
   FARCALL 5, RUN_PASS_SCREEN
+ENDIF
 
 ; (not seen executing during the coverage runs)
   RTS
 
 ; FARCALL bank 5 at MAKE_STAGE_CODE. Stores a nonzero RNG nibble, the area, the stage and ACTOR_BOMBS into PASS_EDIT and the following bytes.
 .MIX_STAGE_BYTES
+IF MOD = 0
   FARCALL 5, MAKE_STAGE_CODE
+ENDIF
   RTS
 
 ; (not seen executing during the coverage runs)

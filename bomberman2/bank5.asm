@@ -1081,6 +1081,12 @@ ENDIF
 ; Count down POWER_TIME via POWER_FRAME and POWER_LEFT, or else ITEM_KIND via ITEM_FRAME and ITEM_LEFT.
 ; Each tick is 3Ch frames. Below 4 remaining, play sound 9. At 3, clear FLASH_IDX. At the end, clear the flag and CLR_ACTOR_FLASH.
 .TICK_TIMED_POWERS
+IF MOD
+  LDA TICK_NOW              ; slow mode: timed powers wait too
+  BNE timed_powers
+  RTS
+.timed_powers
+ENDIF
   LDA POWER_TIME
   BEQ L5_875A
 
@@ -1989,6 +1995,7 @@ ENDIF
   STA PASS_MARK
   RTS
 
+IF MOD = 0                  ; the mod has no password screen
 ; Password screen. Loads CHR and palettes, copies PASS_CODE to PASS_EDIT, then loops on the editor until TRY_PASS_ENTRY returns carry clear.
 ; On exit stores 1 in KEEP_STAGE and STAGE_PHASE, stores 0 in GAME_MODE, and fades out. Does not return to its caller until that fade.
 .RUN_PASS_SCREEN
@@ -2775,6 +2782,8 @@ ENDIF
   DEX
   BPL L5_97B6
   RTS
+
+ENDIF
 
 ; Start the stage clock. Frame counter CLOCK_FRAME is 3Ch and W_055B is 0.
 ; SPECIAL_STAGE uses digits 0 and 3. A nonzero GAME_MODE uses 3 and 0. Story mode reads the two digits from STAGE_TIME_TAB. Called from STAGE_SETUP.

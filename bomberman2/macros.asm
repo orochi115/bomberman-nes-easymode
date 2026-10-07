@@ -19,6 +19,9 @@ ENDMACRO
 
 ; Pad with &FF up to addr
 MACRO FILLTO addr
+  IF MOD
+    PRINT "free before &", ~addr, ":", addr - P%
+  ENDIF
   ASSERT P% <= addr
   FOR n, P%, addr-1
     EQUB &FF
