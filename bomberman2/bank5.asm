@@ -9,6 +9,10 @@
 
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05 on both.
 .DRAW_LIVES
+IF MOD
+  LDA GAME_INF_LIVES        ; unlimited lives: no count on the HUD
+  BNE L5_802E
+ENDIF
   LDA GAME_MODE
   BNE L5_802E
   LDA LIVES
@@ -2829,6 +2833,10 @@ ENDIF
 ; Count the stage clock down once per frame unless CLEAR_PHASE, ROUND_RES, STAGE_PHASE, or a negative CLOCK_FRAME says to stop.
 ; At zero, call KILL_PLAYERS. When only the last digit remains, 3Bh and 1Dh play sound 8. Then falls into DRAW_STAGE_CLOCK.
 .TICK_STAGE_CLOCK
+IF MOD
+  JSR MOD_TIME_FROZEN
+  BNE clock_hidden
+ENDIF
   ABS_LDA CLEAR_PHASE
   ORA ROUND_RES
   ABS_ORA STAGE_PHASE
@@ -2879,6 +2887,13 @@ ENDIF
 
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_STAGE_CLOCK
+IF MOD
+  JSR MOD_TIME_FROZEN
+  BEQ clock_shown
+.clock_hidden
+  RTS                       ; unlimited time: no clock
+.clock_shown
+ENDIF
 IF ZH
   ; 时间 is drawn once by ZH_TIME_LABEL, only the digits here, at
   ; CLOCK_HUD_COL + 4 (the label takes the columns from CLOCK_HUD_COL - 1)
@@ -2909,6 +2924,8 @@ IF ZH
 
 ; Queue 时间 (two rows) at CLOCK_HUD_COL - 1, rows 1-2
 .ZH_TIME_LABEL
+  JSR MOD_TIME_FROZEN
+  BNE clock_hidden
   LDY GAME_MODE
   LDX CLOCK_HUD_COL,Y
   DEX
@@ -3013,9 +3030,15 @@ ENDIF
 
 ; Queue LIVES_TEXT and the LIVES digit at column 16h, row 2. Called for story mode and from the bonus stage.
 .DRAW_LIVES_HUD
+IF MOD AND NOT(ZH)
+  LDA GAME_INF_LIVES
+  BNE lives_hidden
+ENDIF
 IF ZH
   ; 时间 and 剩余 (two rows each), then the lives digit
   JSR ZH_TIME_LABEL
+  LDA GAME_INF_LIVES
+  BNE lives_hidden
   LDA #ZH_HUD_LEFT
   JSR ZH_QUEUE
   LDA LIVES
@@ -3056,6 +3079,11 @@ ENDIF
   STA PPU_RUN_CTRL
   LDX #&06
   JMP QUEUE_PPU_RUN
+
+IF MOD
+.lives_hidden
+  RTS
+ENDIF
 
 ; Five tiles queued before the life digit: 4Ch, 45h, 46h, 54h, 40h.
 .LIVES_TEXT
@@ -7030,6 +7058,16 @@ ENDIF
 
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_CARD_LIVES
+IF MOD
+  LDA GAME_INF_LIVES
+  BEQ card_lives
+  RTS                       ; unlimited lives: no count
+.card_lives
+ENDIF
+IF ZH
+  LDA #ZH_CARD_LEFT
+  JSR ZH_QUEUE
+ENDIF
   LDA LIVES
   STA LIVES_SHOWN
   ORA #&30

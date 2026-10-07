@@ -32,7 +32,7 @@ HUD    !HUD_PAUSE    1   46   暂停
 # Story stage card: SC, AREA (orange, palette 1 there), LEFT
 CARD   CARD_SCORE    4   8    得分
 CARD:1,0,0 CARD_AREA 11  12   　区域　
-CARD   CARD_LEFT     20  13   剩余
+CARD   !CARD_LEFT    20  13   剩余
 
 # Game over (GAME OVER in pink: palette 3 there)
 GAMEOVER:2,1,3 GO_TITLE 9  7    {13}　　游戏结束　　{13}
