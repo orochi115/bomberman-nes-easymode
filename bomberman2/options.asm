@@ -38,11 +38,11 @@ I_SOUND = 16 : I_BONUS = 17
 .OPT_MIN
   EQUB 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 .OPT_MAX
-  EQUB 5, 7, 10, 7, 4, 4, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2
+  EQUB 5, 7, 10, 4, 7, 4, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2
 
 ASSERT CFG_AREA >= 1 AND CFG_AREA <= 6 AND CFG_STAGE >= 1 AND CFG_STAGE <= 8
-ASSERT CFG_LIVES >= 1 AND CFG_LIVES <= 10 AND CFG_FIRE >= 1 AND CFG_FIRE <= 8
-ASSERT CFG_BOMBS >= 1 AND CFG_BOMBS <= 5 AND CFG_SPEED >= 0 AND CFG_SPEED <= 4
+ASSERT CFG_LIVES >= 1 AND CFG_LIVES <= 10 AND CFG_FIRE >= 1 AND CFG_FIRE <= 5
+ASSERT CFG_BOMBS >= 1 AND CFG_BOMBS <= 8 AND CFG_SPEED >= 0 AND CFG_SPEED <= 4
 ASSERT CFG_TIME <= 1 AND CFG_REVIVE <= 1 AND CFG_SLOW <= 1 AND CFG_REMOTE <= 2
 ASSERT CFG_WPASS <= 1 AND CFG_BPASS <= 1 AND CFG_FPASS <= 1 AND CFG_XRAY <= 1
 ASSERT CFG_INVINC <= 1 AND CFG_FUSE <= 2
@@ -169,12 +169,14 @@ ENDMACRO
   LDY #O_STAGE
   LDA (ZH_SRC),Y
   STA STAGE_NUM
+  ; The names are swapped: ACTOR_BOMBS is the flame length (DETONATE_BOMB),
+  ; ACTOR_FIRE the number of bombs (ALLOC_BOMB_SLOT)
   LDY #O_FIRE
   LDA (ZH_SRC),Y
-  STA ACTOR_FIRE
+  STA ACTOR_BOMBS
   LDY #O_BOMBS
   LDA (ZH_SRC),Y
-  STA ACTOR_BOMBS
+  STA ACTOR_FIRE
 .apply_rules
   LDY #O_LIVES
   LDA (ZH_SRC),Y
@@ -665,3 +667,53 @@ ENDIF
   LDX #&FF
   TXS
   JMP MENU_LOOP
+
+; ---------------------------------------------------------------------------
+; X-ray (STAGE_LOOP, story mode): the soft blocks that still hide the item
+; or the exit blink between the block and what it hides, half a second
+; each. The map byte stays a soft block, so they still have to be bombed.
+.MOD_XRAY_BLINK
+  LDA GAME_XRAY
+  BEQ mod_blink_done
+  LDA GAME_MODE
+  BNE mod_blink_done
+  LDA FRAME_CNT
+  AND #&1F
+  BNE mod_blink_done
+  LDY #0
+  JSR mod_blink_cell
+  LDY #3
+.mod_blink_cell             ; Y = 0 (item) or 3 (exit)
+  STY ZH_W
+  LDA XRAY_CELLS,Y
+  BMI mod_blink_done
+  LDA XRAY_CELLS+1,Y
+  TAY
+  JSR MAP_ROW_PTR
+  LDX ZH_W
+  LDY XRAY_CELLS,X
+  LDA (MAP_PTR),Y
+  AND #&FC
+  CMP #&20                  ; still an intact soft block (21h / 22h)?
+  BNE mod_blink_gone
+  LDA FRAME_CNT
+  AND #&20
+  BEQ mod_blink_block
+  LDA XRAY_CELLS+2,X        ; what it hides
+  BNE mod_blink_queue
+.mod_blink_block
+  LDA #&39
+.mod_blink_queue
+  PHA
+  LDA XRAY_CELLS+1,X
+  TAY
+  LDA XRAY_CELLS,X
+  TAX
+  PLA
+  JMP QUEUE_TILE_Y2
+.mod_blink_gone
+  LDA #&FF
+  STA XRAY_CELLS,X
+.mod_blink_done
+  RTS
+

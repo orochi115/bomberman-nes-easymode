@@ -113,61 +113,43 @@
   LDA #0
   RTS
 
-; Tile of a soft block that hides an item (A = TILESET) or the exit (A =
-; 0Ch): the soft block 39h, or with x-ray the tile OPEN_BURIED reveals
-; (BURIED_REVEAL_TILE). The map byte stays a soft block. X, Y are kept.
+; A soft block that hides an item (A = TILESET) or the exit (A = 0Ch) at
+; column X, row Y is being placed (PLACE_ONE_PICKUP, PLACE_STORY_BOMB).
+; Remember it for x-ray (MOD_XRAY_BLINK). Out: A = the soft block tile 39h.
+; X, Y are kept.
 .MOD_XRAY_TILE
-  STX ZH_TMP
-  LDX GAME_XRAY
-  BEQ mod_soft_block
+  STY ZH_TMP
+  LDY #0                    ; slot 0: item
+  CMP #&0C
+  BNE mod_xray_slot
+  LDY #3                    ; slot 1: exit
+.mod_xray_slot
+  STX ZH_W
   TAX
   LDA MOD_REVEAL_TILE,X
-  LDX ZH_TMP
-  RTS
-.mod_soft_block
-  LDX ZH_TMP
+  STA XRAY_CELLS+2,Y
+  LDA ZH_W
+  STA XRAY_CELLS,Y
+  TAX
+  LDA ZH_TMP
+  STA XRAY_CELLS+1,Y
+  TAY
   LDA #&39
   RTS
+
+; Stage entry: nothing to show yet
+.MOD_XRAY_CLEAR
+  LDA #&FF
+  STA XRAY_CELLS
+  STA XRAY_CELLS+3
+  RTS
+
 .MOD_REVEAL_TILE            ; = BURIED_REVEAL_TILE (bank 5)
   EQUB &20,&21,&22,&22,&22,&22,&22,&22,&22,&22,&22,&2C,&29
 
-; Revive mode, end of the death animation (MOVE_ACTOR, bank 5 mapped). If a
-; life is left (or lives are unlimited): lose it and get up where you died,
-; flashing and invulnerable for about 4 seconds (the heart item's
-; POWER_TIME), with a full clock. C=1 if revived. The last life dies
-; normally; STAGE_LOST then restarts the stage (MOD_RESTORE).
-.MOD_REVIVE
-  LDA GAME_MODE
-  BNE mod_no_revive
-  LDA GAME_REVIVE
-  BEQ mod_no_revive
-  LDA GAME_INF_LIVES
-  BNE mod_revive
-  LDA LIVES
-  BEQ mod_no_revive
-  DEC LIVES
-.mod_revive
-  LDA #0
-  STA ACT_W_DEATH
-  STA ACT_W_FRAME
-  STA KNOCK_DIR
-  STA POWER_FRAME
-  LDA #1
-  STA ACT_W_FTMR
-  STA POWER_TIME
-  LDA #4
-  STA POWER_LEFT
-  JSR SET_ACTOR_FLASH
-  JSR INIT_STAGE_CLOCK
-  JSR PLAY_AREA_BGM
-  SEC
-  RTS
-.mod_no_revive
-  CLC
-  RTS
-
 ; Revive mode: remember the score and power-ups when a stage is entered
 .MOD_SNAPSHOT
+  JSR MOD_XRAY_CLEAR
   LDA GAME_REVIVE
   BEQ mod_snap_done
   LDX #7

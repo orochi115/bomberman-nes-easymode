@@ -62,7 +62,10 @@ def tiles(spec):
     return out
 
 
-UI_POOL = tiles('0A 0B 0E 0F 1A 1B 1E 1F 2A-2F 36-3F 46 4A 4B 51 58-5A 5D 74 75 7E 7F 89 C4-CF FC-FF')
+# Never free on the UI_SPR_CHR screens: the big digits (UI metatiles 64-6D:
+# 04-0F 14-1F 2A-2D 3A-3D C6-C9), the 8px digits 30-39.
+UI_POOL = tiles('2E 2F 36-39 3E 3F 46 4A 4B 51 58-5A 5D 74 75 7E 7F 89 C4 C5 CA-CF FC-FF')
+UI_LETTERS = tiles('41-4F 51-5A')   # the 8px letters, except P (P1, P2 ...)
 
 # Screen sets. table: 'bg' ($1000) or 'spr' ($0000). colors: palette index of
 # body, shadow, background. blank: the screen's empty tile (top row of 8px
@@ -77,20 +80,19 @@ SETS = {
     # (B D G-K M-O Q R V-Z) and 84-9F (never uploaded during play).
     'HUD': dict(table='bg', colors=(2, 3, 3), blank=0x65,
                 free=tiles('42 44 47-4B 4D-4F 51 52 56-5A 84-9F')),
-    # Story stage card (UI_SPR_CHR via LOAD_MODE_GFX). It shows 00 04 05 13
-    # 14 15 30-39 (score) 43 45 46 4C 53 54 62 63 72 73 and the big digits
-    # and AREA (C0-FF kept).
+    # Story stage card (UI_SPR_CHR via LOAD_MODE_GFX): 00-3F (big and small
+    # digits), SC / LEFT letters, 62 63 72 73 (-) and AREA (C0-FF) are kept.
     'CARD': dict(table='bg', colors=(2, 0, 0), blank=0x00,
-                 free=tiles('01-03 06-12 16-2F 3A-42 44 47-4B 4D-52 55-61 64-71 74-BF')),
+                 free=tiles('41-42 44 47-4B 4D-52 55-61 64-71 74-BF')),
     # Game over (UI_SPR_CHR via LOAD_MENU_CHR): box 00-03 10-13, GAME OVER
     # 6C-7F 81 90 91, CONTINUE END, password brackets FA FB.
     'GAMEOVER': dict(table='bg', colors=(2, 0, 3), blank=0x13,
                      free=tiles('04-0F 14-2F 3A-40 5B-6B 82-8F 92-F9')),
     # Versus / battle screens with UI_SPR_CHR: tiles none of them shows
     # (measured over VS and battle play, cards and the result screen)
-    'VSCARD': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL),
-    'VSRES': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL),
-    'BTSEL': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL),
+    'VSCARD': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL + UI_LETTERS),
+    'VSRES': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL + UI_LETTERS),
+    'BTSEL': dict(table='bg', colors=(2, 0, 3), blank=0x13, free=UI_POOL + UI_LETTERS),
     # Round result sprites in VS / battle play (sprite tiles 60-BF unused)
     'ROUND': dict(table='spr', colors=(3, 1, 0), blank=None, attr=1,
                   free=tiles('60-BF')),
