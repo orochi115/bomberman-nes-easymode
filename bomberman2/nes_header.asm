@@ -1,5 +1,6 @@
 ; NES 2.0 header, same bytes as the No-Intro dumps
-; Mapper 1 (MMC1), 8 x 16K PRG, 8K PRG-RAM (no battery), 8K CHR-RAM.
+; Mapper 1 (MMC1), 8 x 16K PRG (16 in MOD builds), 8K PRG-RAM (no battery),
+; 8K CHR-RAM.
 ; The mirroring bit is 0, but MMC1 sets the mirroring itself.
 
 INCLUDE "consts.asm"
