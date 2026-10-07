@@ -12,4 +12,7 @@ menu layout), the ending text and a few bytes of the reset code:
 - PRG CRC32: 9684657F
 - CHR CRC32: A775822E
 
+The header is iNES 1.0 by default. `./make.sh . us 2` (or `jp 2`) writes the NES 2.0 header of the
+No-Intro dumps instead, so the whole file is identical to `Bomberman (USA).nes` / `Bomberman (Japan).nes`.
+
 Enjoy!
