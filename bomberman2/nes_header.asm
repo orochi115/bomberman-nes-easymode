@@ -8,10 +8,15 @@ INCLUDE "consts.asm"
 ORG &0000
 
 .HEADERSTART
-IF MOD AND INES1
-  ; iNES 1.0 (build.sh -H 1): for emulators and loaders that only know iNES
+IF INES1
+  ; iNES 1.0 (make.sh ... 1, build.sh -H 1): for emulators and loaders that
+  ; only know iNES
   EQUS "NES", &1A
+IF MOD
   EQUB 16               ; 16 x 16K PRG-ROM
+ELSE
+  EQUB 8                ; 8 x 16K PRG-ROM
+ENDIF
   EQUB 0                ; CHR-RAM
   EQUB &10              ; Mapper 1, no battery
   EQUB &00              ; mapper high nibble 0, iNES 1.0

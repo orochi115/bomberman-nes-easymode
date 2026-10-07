@@ -6,6 +6,7 @@ rebuilds **both** the USA and the Japanese ROM byte for byte from one source.
 ```
 ./make.sh us     # build/bomberman2_us.nes = Bomberman II (USA).nes
 ./make.sh jp     # build/bomberman2_jp.nes = Bomberman II (Japan).nes
+./make.sh us 1   # the same with an iNES 1.0 header (only the PRG is compared)
 ```
 
 Needs [beebasm](https://github.com/stardot/beebasm) (default `../../beebasm/beebasm`, or set
@@ -27,7 +28,7 @@ Differences between the regions are `IF REGION_JP ... ELSE ... ENDIF` blocks
 ```
 ./build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm] [-H 1|2]   # build/bomberman2_cn_REGION_LANG.nes
 ./run-ares.sh [same options]                            # build and open in ares (macOS)
-./run-casual.sh                                         # = run-ares.sh -l zh -c config/casual.asm -r jp
+./run-casual.sh                                         # = run-ares.sh -l zh -c config/casual.asm -r jp -H 1
 ```
 
 `-r` picks the original the mod is based on (USA or Japan), `-l` the language
