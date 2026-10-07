@@ -233,9 +233,9 @@ ENDIF
 IF MOD
 ; Revive mode, end of the death animation (MOVE_ACTOR, bank 5 mapped). If a
 ; life is left (or lives are unlimited): lose it and get up where you died,
-; flashing and invulnerable for about 4 seconds (the heart item's
-; POWER_TIME), with a full clock. C=1 if revived. The last life dies
-; normally; STAGE_LOST then restarts the stage (MOD_RESTORE).
+; flashing and invulnerable for 4 seconds (REVIVE_TIMER), with a full
+; clock. C=1 if revived. The last life dies normally; STAGE_LOST then
+; restarts the stage (MOD_RESTORE).
 .MOD_REVIVE
   LDA GAME_MODE
   BNE mod_no_revive
@@ -251,12 +251,12 @@ IF MOD
   STA ACT_W_DEATH
   STA ACT_W_FRAME
   STA KNOCK_DIR
-  STA POWER_FRAME
   LDA #1
   STA ACT_W_FTMR
-  STA POWER_TIME
-  LDA #4
-  STA POWER_LEFT
+  ; Its own invulnerability (not the heart item's POWER_TIME, which beeps
+  ; while it runs out)
+  LDA #REVIVE_FRAMES
+  STA REVIVE_TIMER
   JSR SET_ACTOR_FLASH
   JSR INIT_STAGE_CLOCK
   JSR PLAY_AREA_BGM
@@ -264,6 +264,22 @@ IF MOD
   RTS
 .mod_no_revive
   CLC
+  RTS
+
+REVIVE_FRAMES = 240         ; 4 seconds
+
+; Count the revive invulnerability down (TICK_TIMED_POWERS: game frames of
+; a live player). At the end the flashing stops, unless an item still runs.
+.MOD_REVIVE_TICK
+  LDA REVIVE_TIMER
+  BEQ revive_tick_done
+  DEC REVIVE_TIMER
+  BNE revive_tick_done
+  LDA POWER_TIME
+  ORA ITEM_KIND
+  BNE revive_tick_done
+  JMP CLR_ACTOR_FLASH
+.revive_tick_done
   RTS
 
 ; Slow mode, frozen frame: bombs keep pulsing (STEP_BOMB's animation, every
@@ -1163,6 +1179,7 @@ IF MOD
   BNE timed_powers
   RTS
 .timed_powers
+  JSR MOD_REVIVE_TICK
 ENDIF
   LDA POWER_TIME
   BEQ L5_875A

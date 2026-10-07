@@ -53,4 +53,5 @@ SNAP_FIRE       = &6688
 SNAP_BOMBS      = &6689
 XRAY_CELLS      = &668A ; x-ray: item, exit: column, row (FF = none), tile
 FROZEN_ANIM     = &6690 ; slow mode: frame counter of the bomb animation
+REVIVE_TIMER    = &6691 ; revive mode: frames of invulnerability left
 
