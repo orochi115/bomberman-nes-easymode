@@ -410,6 +410,10 @@ ENDIF
   STA ACT_W_FTMR
   CPX #&0A
   BCC L5_8336
+IF MOD
+  JSR MOD_REVIVE            ; C=1: revived where the player died
+  BCS L5_8336
+ENDIF
   LDA #&00
   STA ACT_W_FLAG
   STA ACT_W_DEATH
@@ -2814,7 +2818,9 @@ ENDIF
 .TICK_STAGE_CLOCK
 IF MOD
   JSR MOD_TIME_FROZEN
-  BNE clock_hidden
+  BEQ clock_runs
+  RTS                       ; unlimited time
+.clock_runs
 ENDIF
   ABS_LDA CLEAR_PHASE
   ORA ROUND_RES
@@ -2867,55 +2873,7 @@ ENDIF
 ; PPU-run source low byte. JP 28 / US 2A. High byte is 05.
 .DRAW_STAGE_CLOCK
 IF MOD
-  JSR MOD_TIME_FROZEN
-  BEQ clock_shown
-.clock_hidden
-  RTS                       ; unlimited time: no clock
-.clock_shown
-ENDIF
-IF ZH
-  ; 时间 is drawn once by ZH_TIME_LABEL, only the digits here, at
-  ; CLOCK_HUD_COL + 4 (the label takes the columns from CLOCK_HUD_COL - 1)
-  LDA CLOCK_DIG2
-  ORA #&30
-  STA W_052A
-  LDA CLOCK_DIG1
-  ORA #&30
-  STA W_052B
-  LDA W_055B
-  ORA #&30
-  STA W_052C
-  LDY GAME_MODE
-  LDA CLOCK_HUD_COL,Y
-  CLC
-  ADC #&04
-  TAX
-  LDY #&02
-  JSR XY_TO_NT_ADDR
-  LDA #LO(W_052A)
-  STA DATA_PTR
-  LDA #HI(W_052A)
-  STA DATA_PTR_HI
-  LDA #&00
-  STA PPU_RUN_CTRL
-  LDX #&03
-  JMP QUEUE_PPU_RUN
-
-; Queue 时间 (two rows) at CLOCK_HUD_COL - 1, rows 1-2
-.ZH_TIME_LABEL
-  JSR MOD_TIME_FROZEN
-  BNE clock_hidden
-  LDY GAME_MODE
-  LDX CLOCK_HUD_COL,Y
-  DEX
-  LDY #&01
-  JSR XY_TO_NT_ADDR
-  LDA DEST_PTR
-  STA ZH_ADDR
-  LDA DEST_PTR_HI
-  STA ZH_ADDR_HI
-  LDA #ZH_HUD_TIME
-  JMP ZH_QUEUE
+  JMP MOD_DRAW_CLOCK        ; mod.asm: no clock, or 时间 + digits
 .clock_original
 ENDIF
   LDA #&54
@@ -2960,10 +2918,7 @@ ENDIF
 ; GAME_MODE 1 draws MATCH_0 and MATCH_1. Any other value draws those two plus MATCH_2. Each value is one digit.
 .DRAW_MODE_HUD
 IF ZH
-  LDA GAME_MODE
-  BEQ mode_hud_original
-  JSR ZH_TIME_LABEL
-.mode_hud_original
+  JSR MOD_MODE_HUD          ; VS / battle: 时间
 ENDIF
   LDA #&50
   STA W_052A
@@ -3009,31 +2964,9 @@ ENDIF
 
 ; Queue LIVES_TEXT and the LIVES digit at column 16h, row 2. Called for story mode and from the bonus stage.
 .DRAW_LIVES_HUD
-IF MOD AND NOT(ZH)
-  LDA GAME_INF_LIVES
-  BNE lives_hidden
-ENDIF
-IF ZH
-  ; 时间 and 剩余 (two rows each), then the lives digit
-  JSR ZH_TIME_LABEL
-  LDA GAME_INF_LIVES
-  BNE lives_hidden
-  LDA #ZH_HUD_LEFT
-  JSR ZH_QUEUE
-  LDA LIVES
-  ORA #&30
-  STA W_052A
-  LDX #&1B
-  LDY #&02
-  JSR XY_TO_NT_ADDR
-  LDA #LO(W_052A)
-  STA DATA_PTR
-  LDA #HI(W_052A)
-  STA DATA_PTR_HI
-  LDA #&00
-  STA PPU_RUN_CTRL
-  LDX #&01
-  JMP QUEUE_PPU_RUN
+IF MOD
+  JMP MOD_LIVES_HUD         ; mod.asm: no count, or 时间 / 剩余 + digit
+.lives_original
 ENDIF
   LDX #&00
 
@@ -3058,11 +2991,6 @@ ENDIF
   STA PPU_RUN_CTRL
   LDX #&06
   JMP QUEUE_PPU_RUN
-
-IF MOD
-.lives_hidden
-  RTS
-ENDIF
 
 ; Five tiles queued before the life digit: 4Ch, 45h, 46h, 54h, 40h.
 .LIVES_TEXT
