@@ -559,9 +559,15 @@ ENDMACRO
 
 ; ---------------------------------------------------------------------------
 ; Pause (UPDATE_PAUSE after the pause sound): the HUD slides to the hint,
-; START resumes, SELECT goes back to the title, Left / Right look round a
-; wide map (the player and the enemies are drawn at the view).
+; START resumes, SELECT goes back to the opening, Left / Right look round a
+; wide map (the player and the enemies are drawn at the view). START with
+; SELECT held goes straight back to the opening.
 .MOD_PAUSE
+  LDA JOY_HELD
+  AND #&20
+  BEQ pause_show
+  JMP pause_quit_now
+.pause_show
 IF ZH
   LDA #ZH_HUD_PAUSE
   JSR ZH_QUEUE
@@ -652,6 +658,7 @@ ENDIF
 .pause_quit
   LDA #&06
   JSR AUDIO_CALL
+.pause_quit_now
   LDX PAUSE_X
   LDA #&83
   JSR AUDIO_CALL            ; undo the audio pause
@@ -659,12 +666,21 @@ ENDIF
   JSR AUDIO_CALL            ; and stop the music
   JSR FADE_PALETTE
   JSR PPU_OFF
-  LDA #&00
-  STA SPLIT_SCROLL_X
-  STA SPLIT_CTRL_BIT
   LDX #&FF
   TXS
-  JMP MENU_LOOP
+  ; As RESET: RESET_VIDEO (scroll, split, OAM, PPU queue and the PPU CTRL
+  ; shadow without NMI), NMI_ON, then GAME_LOOP (the opening, then the
+  ; title). RESET_VIDEO leaves bank 2 (sound) mapped, so it returns
+  ; through these fixed bank addresses rather than to this bank
+  LDA #HI(GAME_LOOP-1)
+  PHA
+  LDA #LO(GAME_LOOP-1)
+  PHA
+  LDA #HI(NMI_ON-1)
+  PHA
+  LDA #LO(NMI_ON-1)
+  PHA
+  JMP RESET_VIDEO
 
 ; ---------------------------------------------------------------------------
 ; X-ray (STAGE_LOOP, story mode): the soft blocks that still hide the item
