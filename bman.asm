@@ -1262,6 +1262,12 @@ INCLUDE "input.asm"
 .QUIT_TO_MENU
   LDA #DISABLE:STA APU_MUSIC ; Stop melody playing
   JSR WAITUNPRESS
+
+  ; Leave the PPU as RESET_GAME does: NMI and screen off, scroll, tile
+  ; buffer, sprites and palette reset, so the game's NMI work can't
+  ; disturb drawing the title screen
+  JSR PPU_RESET
+  LDA #0:STA SPR_TAB_TOGGLE
   JMP GAME_MENU
 
 
