@@ -27,7 +27,7 @@ Differences between the regions are `IF` / `ELIF` / `ELSE` blocks
 ## Chinese / options mod (branch bomberman2-cn)
 
 ```
-./build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm] [-H 1|2]   # build/bomberman2_cn_REGION_LANG.nes
+./build.sh [-r us|jp|eu] [-l zh|en] [-c config/NAME.asm] [-H 1|2]   # build/bomberman2_cn_REGION_LANG.nes
 ./run-ares.sh [same options]                            # build and open in ares (macOS)
 ./run-casual.sh                                         # = run-ares.sh -l zh -c config/casual.asm -r jp
 ```

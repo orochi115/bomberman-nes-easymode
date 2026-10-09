@@ -3741,7 +3741,6 @@ ENDIF
   LDA #HI(D5_A188)
   STA DATA_PTR_HI
   JMP QUEUE_XY_BYTES
-ENDIF
 
 ; Queue a nametable run from a record at DATA_PTR.
 ; In: (DATA_PTR) = X, Y, length, bytes. Advances DATA_PTR past the header.

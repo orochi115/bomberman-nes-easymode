@@ -12,8 +12,9 @@ from emu import NES
 from m6502 import ROMS
 from shots import region_of
 
-ACTOR_X = {"us": 0x72, "jp": 0x64}
-ACTOR_Y = {"us": 0x78, "jp": 0x6A}
+# EU bank 0 matches JP, so actor slots follow the JP map.
+ACTOR_X = {"us": 0x72, "jp": 0x64, "eu": 0x64}
+ACTOR_Y = {"us": 0x78, "jp": 0x6A, "eu": 0x6A}
 
 
 def states(rom, frames):
