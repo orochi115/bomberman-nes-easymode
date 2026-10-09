@@ -1,6 +1,6 @@
 #!/bin/bash
-# Usage: make.sh [us|jp] [1|2] [shift N]
-#   us|jp     region (default us)
+# Usage: make.sh [us|jp|eu] [1|2] [shift N]
+#   us|jp|eu  region (default us). eu = Dynablaster (Europe), PAL
 #   1|2       header: 2 = NES 2.0 as in the No-Intro dumps (default), 1 = iNES
 #             1.0 (then only the PRG is compared with the dump)
 #   shift N   relocation test build: N padding bytes at the start of every bank
@@ -18,9 +18,10 @@ shift_n=0
 [ "$2" == "shift" ] && shift_n=${3:-1}
 
 case "${region}" in
-  us) defs="-D REGION_JP=0"; want="Bomberman II (USA).nes" ;;
-  jp) defs="-D REGION_JP=1"; want="Bomberman II (Japan).nes" ;;
-  *) echo "Usage: $0 [us|jp] [1|2] [shift N]"; exit 1 ;;
+  us) defs="-D REGION=0"; want="Bomberman II (USA).nes" ;;
+  jp) defs="-D REGION=1"; want="Bomberman II (Japan).nes" ;;
+  eu) defs="-D REGION=2"; want="Dynablaster (Europe).nes" ;;
+  *) echo "Usage: $0 [us|jp|eu] [1|2] [shift N]"; exit 1 ;;
 esac
 [ "${header}" == "1" ] && defs="${defs} -D INES1=1"
 

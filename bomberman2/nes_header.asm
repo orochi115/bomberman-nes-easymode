@@ -15,7 +15,11 @@ IF INES1
   EQUB &10              ; Mapper 1, no battery
   EQUB &00              ; mapper high nibble 0, iNES 1.0
   EQUB 0                ; PRG-RAM: 0 = the usual 8K
-  EQUB 0                ; NTSC
+  IF REGION_EU
+    EQUB 1              ; PAL
+  ELSE
+    EQUB 0              ; NTSC
+  ENDIF
   EQUB 0, 0, 0, 0, 0, 0
 ELSE
   EQUS "NES", &1A
@@ -26,8 +30,13 @@ ELSE
   EQUB 0, 0             ; mapper / submapper, ROM size high bits
   EQUB &07              ; PRG-RAM: 64 << 7 = 8K, no battery-backed RAM
   EQUB &07              ; CHR-RAM: 64 << 7 = 8K
-  EQUB 0, 0, 0          ; NTSC, no Vs. System, no misc ROMs
-; Default expansion device: Four Score (US) / Famicom four-player adapter (JP)
+  IF REGION_EU
+    EQUB 1              ; PAL
+  ELSE
+    EQUB 0              ; NTSC
+  ENDIF
+  EQUB 0, 0             ; no Vs. System, no misc ROMs
+; Default expansion device: Four Score (US/EU) / Famicom four-player adapter (JP)
 IF REGION_JP
   EQUB &03
 ELSE
