@@ -5687,7 +5687,11 @@ ENDIF
   JSR DRAW_INTRO_SPRITE
   JSR MARK_OAM
   LDA JOY_NEW
+IF MOD
+  AND #&90                  ; A or START skips the area intro
+ELSE
   AND #&10
+ENDIF
   BNE L5_AD41
   DEC TEMP4
   LDA TEMP4
