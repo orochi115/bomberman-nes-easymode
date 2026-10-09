@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build the Chinese / options mod (256K PRG).
-# Usage: build.sh [-r us|jp] [-l zh|en] [-c config/NAME.asm] [-H 1|2]
+# Usage: build.sh [-r us|jp|eu] [-l zh|en] [-c config/NAME.asm] [-H 1|2]
 #   -r  region of the base ROM (default us)
 #   -l  language (default zh)
 #   -c  rules of NORMAL MODE and options defaults (default config/default.asm)
@@ -21,13 +21,14 @@ while getopts "r:l:c:H:" opt; do
     l) lang=$OPTARG ;;
     c) config=$OPTARG ;;
     H) header=$OPTARG ;;
-    *) echo "Usage: $0 [-r us|jp] [-l zh|en] [-c config/NAME.asm] [-H 1|2]"; exit 1 ;;
+    *) echo "Usage: $0 [-r us|jp|eu] [-l zh|en] [-c config/NAME.asm] [-H 1|2]"; exit 1 ;;
   esac
 done
 case $region in
   us) defs="-D REGION=0" ;;
   jp) defs="-D REGION=1" ;;
-  *) echo "region must be us or jp"; exit 1 ;;
+  eu) defs="-D REGION=2" ;;
+  *) echo "region must be us, jp or eu"; exit 1 ;;
 esac
 case $lang in
   zh|en) ;;

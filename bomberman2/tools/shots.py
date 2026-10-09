@@ -2,8 +2,8 @@
 
 Usage: shots.py ROM OUTDIR [script ...]
 Scripts: title, menu, stage (area 0 HUD), pause, areas (HUD of every area),
-gameover. ROM may be any build (original or mod); the region is read from the
-iNES header (byte 15: 3 = JP).
+gameover. ROM may be any build (original or mod). Region comes from the
+header: NES 2.0 byte 12 bit 0 is PAL (EU); byte 15 = 3 is JP.
 Each shot is OUTDIR/<script>_<n>.png (view) and *_full.png (all nametables).
 """
 
@@ -20,6 +20,10 @@ STAGE_VARS = cover.STAGE_VARS
 
 
 def region_of(rom):
+    nes2 = (rom[7] & 0x0C) == 0x08
+    pal = (rom[12] if nes2 else rom[9]) & 1
+    if pal:
+        return "eu"
     return "jp" if rom[15] == 3 else "us"
 
 

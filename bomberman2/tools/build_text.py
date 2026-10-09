@@ -31,7 +31,7 @@ ZH_SCREEN.
 An ID ending in /US or /JP is only used for that region. SET:B,S,G draws the
 string's glyphs with other colours (body, shadow, background).
 
-Usage: build_text.py [--lang zh|en] [--region us|jp] [--preview]
+Usage: build_text.py [--lang zh|en] [--region us|jp|eu] [--preview]
 """
 import os
 import re
@@ -43,7 +43,7 @@ OUT = os.path.join(SRC, 'build')
 
 FONT = os.path.join(SRC, 'fonts', 'fusion-pixel-12px-monospaced-zh_hans.bdf')
 LANGS = ('zh', 'en')
-REGIONS = ('us', 'jp')
+REGIONS = ('us', 'jp', 'eu')
 
 FIRST_BANK, LAST_BANK = 8, 14
 BANK_SIZE = 0x3FBC - 64   # up to RESET_STUB, with some room to spare
@@ -261,7 +261,11 @@ def parse_strings(path, region):
                 sid, reg = sid.split('/')
                 if reg.lower() not in REGIONS:
                     sys.exit('%s:%d: unknown region %s' % (path, n, reg))
-                if reg.lower() != region:
+                # EU text matches the US script.
+                if region == 'eu':
+                    if reg.lower() != 'us':
+                        continue
+                elif reg.lower() != region:
                     continue
             auto = not sid.startswith('!')
             sid = sid.lstrip('!')
