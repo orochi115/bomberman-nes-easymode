@@ -331,6 +331,8 @@ ENEMY_INDEX             = &62E0 ; Slot currently drawn or tested.
 ENEMY_SPAWN             = &62E1 ; Type kept while looking for an empty cell.
 ENEMY_MASK              = &62E2 ; Map-byte mask. Seen values include 70h, 50h, 40h and F0h.
 ENEMY_STEP              = &62E3 ; Step size for ENEMY_MOVE_SPEED.
+X_62E4                  = &62E4
+X_62E5                  = &62E5
 PARADE_IDX              = &62E6 ; SPAWN_PARADE point index. Wraps at 41h.
 TYPE10_TRY              = &62E7 ; Attempt counter for SPAWN_TYPE_10.
 TYPE10_ARM              = &62E8 ; ARM_TYPE10_TIMER stores 1 when this is 0.
@@ -1340,18 +1342,6 @@ ELIF REGION_JP
   WINS_GOAL               = &0561 ; Wins required. 5 unless battle mode picked 1-5.
 ELIF REGION = 2
   WINS_GOAL               = &0561 ; Wins required. 5 unless battle mode picked 1-5.
-ENDIF
-
-IF REGION = 0
-  X_62E4                  = &62E4
-ELIF REGION_JP
-  X_62E4                  = &62E4
-ENDIF
-
-IF REGION = 0
-  X_62E5                  = &62E5
-ELIF REGION_JP
-  X_62E5                  = &62E5
 ENDIF
 
 IF REGION = 0

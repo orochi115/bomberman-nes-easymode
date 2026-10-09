@@ -114,10 +114,9 @@ def scen_menu_random(nes, rng):
         press(nes, rng.choice(DIRS + [A, B, START, SELECT]), frames=rng.randint(2, 20))
 
 
-# AREA_NUM, STAGE_NUM, LIVES per region (the JP RAM layout differs, see vars.asm)
-# EU bank 0 matches JP, so the stage counters live at the JP addresses.
+# AREA_NUM, STAGE_NUM, LIVES per region (the RAM layouts differ, see vars.asm)
 STAGE_VARS = {"us": (0x4B, 0x4C, 0x04E5), "jp": (0x3D, 0x3E, 0x04E5),
-              "eu": (0x3D, 0x3E, 0x04E5)}
+              "eu": (0x4A, 0x4B, 0x04E5)}
 
 
 def play_stage(base, area, rnd, frames, rng):

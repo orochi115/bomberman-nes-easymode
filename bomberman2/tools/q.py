@@ -30,19 +30,24 @@ class Source:
         self.lines = []          # (bank, lineno, text)
         self.labels = {}         # name -> index into lines
         self.routine_of = []     # index -> routine name
-        self.region = []         # index -> 'both' | 'jp' | 'us'
+        self.region = []         # index -> 'both' or regions joined by '+'
         for n in range(8):
             path = os.path.join(ROOT, "bank%d.asm" % n)
-            routine, reg = "(bank %d start)" % n, "both"
+            routine, reg, seen = "(bank %d start)" % n, "both", []
             prev_blank = True
             for ln, text in enumerate(open(path, encoding="utf-8"), 1):
                 text = text.rstrip("\n")
                 s = text.strip()
-                if s == "IF REGION_JP":
-                    reg = "jp"
-                elif s == "ELSE" and reg == "jp":
-                    reg = "us"
-                elif s == "ENDIF" and reg in ("jp", "us"):
+                m = re.match(r"(IF|ELIF) (REGION.*)$", s)
+                if m:
+                    conds = re.split(r"\s+OR\s+", m.group(2).split(";")[0].strip())
+                    mine = [{"REGION_JP": "jp", "REGION = 0": "us", "REGION = 2": "eu"}.get(c, c)
+                            for c in conds]
+                    seen = mine if m.group(1) == "IF" else seen + mine
+                    reg = "+".join(mine)
+                elif s == "ELSE" and reg != "both":
+                    reg = "+".join(r for r in ("us", "jp", "eu") if r not in seen)
+                elif s == "ENDIF" and reg != "both":
                     reg = "both"
                 if s.startswith(".") and not s.startswith(".."):
                     name = s[1:].split()[0]
