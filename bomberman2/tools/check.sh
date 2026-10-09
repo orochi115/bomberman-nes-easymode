@@ -43,7 +43,7 @@ EOT
     out=$(python3 tools/shifttest.py $r build/bomberman2_${r}_shift$s.nes $sc 2>&1) || echo "FAIL"
     echo "$out" | sed "s/^/  $r shift $s: /"')
   echo "$results" | grep -v "^FAIL$"
-  echo "$results" | grep -q "^FAIL$\|DIFF" && fail=1
+  echo "$results" | grep -qE "^FAIL$|DIFF" && fail=1
 fi
 
 if [ $fail -eq 0 ]; then echo "CHECK PASSED"; else echo "CHECK FAILED"; exit 1; fi
