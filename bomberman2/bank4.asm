@@ -533,7 +533,11 @@ ENDIF
   EQUB &00,&33,&33,&33,&33,&33,&33,&33,&33,&33,&03,&33,&10,&11,&00,&00
   EQUB &00,&00,&00,&33,&33,&33,&00,&33,&33,&33,&00,&00,&00,&00,&00,&00
   EQUB &00
-IF REGION_JP
+IF REGION = 2
+  EQUB &33,&33
+.UI_META_MAP
+  EQUB &00,&00,&00,&00
+ELIF REGION_JP
 ELSE
   EQUB &33,&33
 
@@ -595,7 +599,11 @@ ELSE
 ENDIF
   EQUB &13,&13,&13,&FC,&13,&13,&13,&FD,&13,&13,&45,&4C,&13,&13,&4E,&44
   EQUB &13,&13,&13,&13,&FA,&13,&13,&13,&13,&FB,&13,&13,&44,&89
-IF REGION_JP
+IF REGION = 2
+  EQUB &13,&44,&13,&13,&13,&45,&13,&13
+.PASS_META_ATTR
+  EQUB &00,&00,&00
+ELIF REGION_JP
 ELSE
   EQUB &13,&44,&13,&13,&13,&45,&13,&13
 
@@ -782,21 +790,23 @@ ENDIF
 
 ; Area 0 layout variant B. Same strip format as AREA0_LAYOUT_A. Chosen when LAYOUT_VARIANT is 1.
 .AREA0_LAYOUT_B
-  EQUB &40,&00,&52,&00,&5A,&00,&6C,&00,&74,&00,&86,&00,&8E,&00,&52,&00
-  EQUB &A0,&00,&B2,&00,&74,&00,&86,&00,&8E,&00,&52,&00,&A0,&00,&B2,&00
-  EQUB &74,&00,&52,&00,&A0,&00,&B2,&00,&74,&00,&86,&00,&8E,&00,&52,&00
-  EQUB &A0,&00,&B2,&00,&74,&00,&BA,&00,&C2,&00,&52,&00,&D4,&00,&E6,&00
-  EQUB &FF,&2A,&2B,&40,&47,&4F,&4D,&47,&4F,&FF,&4D,&47,&4F,&4D,&47,&4F
-  EQUB &41,&50,&F0,&2A,&2B,&41,&00,&03,&41,&50,&FF,&2A,&2B,&43,&00,&4C
-  EQUB &00,&4C,&00,&FF,&4C,&00,&4C,&00,&4C,&00,&43,&50,&F0,&2A,&2B,&44
-  EQUB &00,&03,&44,&50,&FF,&2A,&2B,&41,&00,&4C,&00,&4C,&00,&FF,&4C,&00
-  EQUB &4C,&00,&4C,&00,&41,&50,&F0,&2A,&2B,&48,&00,&03,&48,&50,&FF,&2A
-  EQUB &2B,&49,&00,&4C,&00,&4C,&00,&FF,&4C,&00,&4C,&00,&4C,&00,&49,&50
-  EQUB &FF,&2A,&2B,&48,&00,&4C,&00,&4C,&00,&FF,&4C,&00,&4C,&00,&4C,&00
-  EQUB &48,&50,&F0,&2A,&2B,&49,&00,&03,&49,&50,&F0,&2A,&2B,&4A,&00,&03
-  EQUB &4A,&50,&FF,&2A,&2B,&4B,&00,&4C,&00,&4C,&00,&FF,&4C,&00,&4C,&00
-  EQUB &4C,&00,&4B,&50,&FF,&2A,&2B,&42,&46,&4E,&45,&46,&4E,&FF,&45,&46
-  EQUB &4E,&45,&46,&4E,&41,&50,&E0,&2A,&2B,&50,&80,&50
+  EQUB &40,&00,&52,&00,&5A,&00,&6C,&00,&74,&00,&86
+.D4_A048
+  EQUB &00,&8E,&00,&52,&00,&A0,&00,&B2,&00,&74,&00,&86,&00,&8E,&00,&52
+  EQUB &00,&A0,&00,&B2,&00,&74,&00,&52,&00,&A0,&00,&B2,&00,&74,&00,&86
+  EQUB &00,&8E,&00,&52,&00,&A0,&00,&B2,&00,&74,&00,&BA,&00,&C2,&00,&52
+  EQUB &00,&D4,&00,&E6,&00,&FF,&2A,&2B,&40,&47,&4F,&4D,&47,&4F,&FF,&4D
+  EQUB &47,&4F,&4D,&47,&4F,&41,&50,&F0,&2A,&2B,&41,&00,&03,&41,&50,&FF
+  EQUB &2A,&2B,&43,&00,&4C,&00,&4C,&00,&FF,&4C,&00,&4C,&00,&4C,&00,&43
+  EQUB &50,&F0,&2A,&2B,&44,&00,&03,&44,&50,&FF,&2A,&2B,&41,&00,&4C,&00
+  EQUB &4C,&00,&FF,&4C,&00,&4C,&00,&4C,&00,&41,&50,&F0,&2A,&2B,&48,&00
+  EQUB &03,&48,&50,&FF,&2A,&2B,&49,&00,&4C,&00,&4C,&00,&FF,&4C,&00,&4C
+  EQUB &00,&4C,&00,&49,&50,&FF,&2A,&2B,&48,&00,&4C,&00,&4C,&00,&FF,&4C
+  EQUB &00,&4C,&00,&4C,&00,&48,&50,&F0,&2A,&2B,&49,&00,&03,&49,&50,&F0
+  EQUB &2A,&2B,&4A,&00,&03,&4A,&50,&FF,&2A,&2B,&4B,&00,&4C,&00,&4C,&00
+  EQUB &FF,&4C,&00,&4C,&00,&4C,&00,&4B,&50,&FF,&2A,&2B,&42,&46,&4E,&45
+  EQUB &46,&4E,&FF,&45,&46,&4E,&45,&46,&4E,&41,&50,&E0,&2A,&2B,&50,&80
+  EQUB &50
 
 ; Area 1 layout variant B.
 .AREA1_LAYOUT_B
@@ -964,7 +974,22 @@ ENDIF
 ; US-only title nametable bytes (logo row E7 F3 ...). JP has no bytes in this gap.
 .TITLE_NT_RLE_2
   EQUB &FF,&FF,&00,&FF,&FF,&00,&FF,&FF,&00,&FF
-IF REGION_JP
+IF REGION = 2
+  EQUB &03,&00,&F4,&F7,&00,&F5,&F8,&F9,&00,&FE,&00,&EA,&EB,&EB,&EA,&00
+  EQUB &F3,&F1,&F9,&F2,&FA,&F8,&00,&F2,&FA,&FB,&F4,&FF,&29,&00,&FC,&FD
+  EQUB &EC,&ED,&F8,&F2,&ED,&F9,&00,&EE,&EF,&00,&F8,&FD,&F8,&F4,&ED,&F8
+  EQUB &F9,&FA,&FF,&A4,&00
+.ED4_A8F4
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00
+ELIF REGION_JP
+  EQUB &FF,&00
+
+; 64 attribute bytes for both title nametable uploads.
+
+; One attribute byte. JP 01 / US 00.
+.TITLE_ATTR
+  EQUB &50,&50,&50,&00,&00,&50,&50,&10,&55,&55,&55,&55,&55,&55,&55,&15
+  EQUB &04,&05,&05,&85,&25,&05,&05,&01
 ELSE
   EQUB &03,&00,&E7,&F3,&00,&E6,&E5,&E9,&00,&ED,&00,&EB,&EC,&EC,&F9,&00
   EQUB &E3,&E1,&E9,&E2,&E8,&E5,&00,&E2,&E8,&EA,&E7,&FF,&28,&00,&F4,&F5
@@ -973,24 +998,35 @@ ELSE
 
 ; US title nametable RLE for the first screen (column 0). Same repeat format as TITLE_NT_RLE_2.
 .TITLE_NT_RLE_1
-  EQUB &FF,&FF,&00,&FF,&FF,&00,&FF,&FF,&00,&FF
-ENDIF
-  EQUB &FF,&00
+  EQUB &FF,&FF,&00,&FF,&FF,&00,&FF,&FF,&00,&FF,&FF,&00
 
 ; 64 attribute bytes for both title nametable uploads.
 
 ; One attribute byte. JP 01 / US 00.
 .TITLE_ATTR
   EQUB &50,&50,&50,&00,&00,&50,&50,&10,&55,&55,&55,&55,&55,&55,&55,&15
-  EQUB &04,&05,&05,&85,&25,&05,&05
-IF REGION_JP
-  EQUB &01
-ELSE
-  EQUB &00
+  EQUB &04,&05,&05,&85,&25,&05,&05,&00
 ENDIF
-  EQUB &00,&44,&55,&59,&56,&55,&11,&00,&00,&04,&55,&55,&55,&55,&01,&00
+  EQUB &00,&44,&55
+IF REGION = 2
+  EQUB &AA,&EE,&FF,&33,&00,&00,&44
+ELSE
+  EQUB &59,&56
+ENDIF
+  EQUB &55
+IF REGION = 2
+  EQUB &AA,&EE,&FF,&33,&00,&00,&44
+ELSE
+  EQUB &11,&00,&00,&04
+ENDIF
+  EQUB &55
+IF REGION = 2
+  EQUB &AA,&EE,&FF,&33,&00,&00,&00,&00,&00,&00,&00
+ELSE
+  EQUB &55,&55,&55,&01
+ENDIF
   EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00,&00
-  EQUB &00,&00,&00,&00,&00,&00,&00,&00
+  EQUB &00,&00,&00,&00,&00,&00,&00,&00,&00
 
 ; Pre-stage card layout for GAME_MODE = 2. Strip format as AREA0_LAYOUT_A. UI metatiles. Drawn by DRAW_BATTLE_CARD_MAP.
 .BATTLE_CARD_LAY
@@ -1114,12 +1150,104 @@ ENDIF
   EQUB &40,&00,&4F,&00,&5E,&00,&6B,&00,&78,&00,&85,&00,&94,&00,&A1,&00
   EQUB &AE,&00,&BC,&00,&CA,&00,&DA,&00,&E9,&00,&F7,&00,&05,&01
 IF REGION_JP
-  EQUB &16,&01,&24,&01,&32,&01,&41,&01,&4F,&01,&5B,&01,&68,&01,&76,&01
-  EQUB &85,&01,&94,&01,&A4,&01,&B0,&01,&BE,&01,&CB,&01,&DA,&01,&E7,&01
+  EQUB &16
+ELSE
+  EQUB &15
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &24
+ELSE
+  EQUB &23
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &32
+ELSE
+  EQUB &31
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &41
+ELSE
+  EQUB &40
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &4F
+ELSE
+  EQUB &4E
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &5B
+ELSE
+  EQUB &5A
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &68
+ELSE
+  EQUB &67
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &76
+ELSE
+  EQUB &75
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &85
+ELSE
+  EQUB &84
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &94
+ELSE
+  EQUB &93
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &A4
+ELSE
+  EQUB &A3
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &B0
+ELSE
+  EQUB &AF
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &BE
+ELSE
+  EQUB &BD
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &CB
+ELSE
+  EQUB &CA
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &DA
+ELSE
+  EQUB &D9
+ENDIF
+  EQUB &01
+IF REGION_JP
+  EQUB &E7
+ELSE
+  EQUB &E6
+ENDIF
+  EQUB &01
+IF REGION_JP
   EQUB &F5
 ELSE
-  EQUB &15,&01,&23,&01,&31,&01,&40,&01,&4E,&01,&5A,&01,&67,&01,&75,&01
-  EQUB &84,&01,&93,&01,&A3,&01,&AF,&01,&BD,&01,&CA,&01,&D9,&01,&E6,&01
   EQUB &F4
 ENDIF
   EQUB &01,&3F,&7D,&00,&48,&09,&0B,&0D,&FE,&0F,&02,&03,&04,&01,&03,&01
@@ -1203,7 +1331,29 @@ ENDIF
 
 ; Title palette, 32 bytes. LOAD_TITLE_PAL copies 8 rows from here.
 .TITLE_PAL
-  EQUB &0F,&26,&30,&2A,&0F,&27,&30,&2A,&0F,&21,&30,&2A,&0F,&0F,&0F,&2A
+  EQUB &0F
+IF REGION = 2
+  EQUB &01,&25
+ELSE
+  EQUB &26
+ENDIF
+  EQUB &30
+IF REGION = 2
+  EQUB &0F,&01,&24
+ELSE
+  EQUB &2A,&0F,&27
+ENDIF
+  EQUB &30
+IF REGION = 2
+  EQUB &0F,&01,&23,&30,&0F,&01
+ELSE
+  EQUB &2A,&0F
+ENDIF
+  EQUB &21,&30
+IF REGION = 2
+ELSE
+  EQUB &2A,&0F,&0F,&0F,&2A
+ENDIF
   EQUB &16,&10,&30,&0F,&16,&26,&38,&0F,&16,&22,&30,&0F,&16,&0F,&0F,&0F
 
 ; 16 background palette bytes shared by the password screen, game over, and modes 1 and 2.
@@ -1693,15 +1843,27 @@ ELSE
   LDX #&20
 ENDIF
   LDY #&00
-IF REGION_JP
+IF REGION_JP OR REGION = 2
   JSR XY_TO_NT_ADDR
   JSR UPLOAD_RLE_NAMETABLE
+  JSR WAIT_VBLANK
 ELSE
   JSR SET_NAMETABLE_XY
+  JSR WAIT_VBLANK
 ENDIF
+  JMP NMI_ON
+IF REGION = 2
+
+; (not seen executing during the coverage runs)
+.DRAW_NAMETABLE_RLE_1
+  JSR NMI_OFF
+  LDX #&00
+  LDY #&00
+  JSR XY_TO_NT_ADDR
+  JSR UPLOAD_RLE_NAMETABLE
   JSR WAIT_VBLANK
   JMP NMI_ON
-IF REGION_JP
+ELIF REGION_JP
 ELSE
 
 ; US only. Same upload as DRAW_NAMETABLE_RLE_2 but from column 0, nametable 2000h.
@@ -1776,7 +1938,7 @@ ENDIF
   LDA DEST_PTR
   ORA DEST_PTR_HI
   BNE RLE_WRITE_BYTE
-IF REGION_JP
+IF REGION_JP OR REGION = 2
   LDX #&00
   LDY #&00
 ELSE

@@ -37,7 +37,8 @@ BRANCHES = {"BPL", "BMI", "BVC", "BVS", "BCC", "BCS", "BNE", "BEQ"}
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROMDIR = os.environ.get("BM2_ROMDIR") or os.path.normpath(os.path.join(HERE, "..", "..", ".."))
 ROMS = {"us": os.path.join(ROMDIR, "Bomberman II (USA).nes"),
-        "jp": os.path.join(ROMDIR, "Bomberman II (Japan).nes")}
+        "jp": os.path.join(ROMDIR, "Bomberman II (Japan).nes"),
+        "eu": os.path.join(ROMDIR, "Dynablaster (Europe).nes")}
 
 NBANKS = 8
 FIXED = 7

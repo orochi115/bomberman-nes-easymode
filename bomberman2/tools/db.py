@@ -57,7 +57,7 @@ def key_of(arg):
             return "ram:%04X" % int(a[2:], 16)
         n, addr = a[1], a[3:]
         return ("jp:" if jp else "") + "%s:%s" % (n, addr)
-    m = re.match(r"^(jp:|us:)?(\d):([0-9A-Fa-f]{4})$", arg)
+    m = re.match(r"^(jp:|us:|eu:)?(\d):([0-9A-Fa-f]{4})$", arg)
     if m:
         n, a = int(m.group(2)), int(m.group(3), 16)
         if not (0 <= n <= 7):
@@ -201,7 +201,7 @@ def main():
         cmd_comment(key_of(a[1]), a[2], a[3])
     elif cmd == "pointer" and len(a) >= 3:
         key = key_of(a[1])
-        args = [key_of(x) if re.match(r"^(jp:|us:)?\d:[0-9A-Fa-f]{4}$", x) else x for x in a[2:]]
+        args = [key_of(x) if re.match(r"^(jp:|us:|eu:)?\d:[0-9A-Fa-f]{4}$", x) else x for x in a[2:]]
         mine = own_shard("pointers.tsv")
         write_rows(mine, lambda r: norm_key(r[0]) != norm_key(key), "\t".join([key] + args))
         print("pointer %s %s" % (key, " ".join(args)))

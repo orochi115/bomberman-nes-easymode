@@ -13,7 +13,7 @@ ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 def main():
     os.makedirs(os.path.join(ROOT, "coverage"), exist_ok=True)
-    for region in ("us", "jp"):
+    for region in ("us", "jp", "eu"):
         files = sorted(glob.glob(os.path.join(ROOT, "cov", region + "_*.cdl")))
         packed = os.path.join(ROOT, "coverage", region)
         if os.path.exists(packed + ".cdl"):

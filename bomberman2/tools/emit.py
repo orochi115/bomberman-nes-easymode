@@ -716,6 +716,55 @@ class Emitter:
         out.append("MMC1_PRG                = &FFFF")
         return "\n".join(out) + "\n"
 
+    def emit_vars_multi(self, others):
+        """RAM symbols for US (self) plus JP and EU emitters in `others`."""
+        def lines(used):
+            out = []
+            for name, v in sorted(used.items(), key=lambda x: (x[1], x[0])):
+                line = "%-24s= %s" % (name, h4(v) if v > 0xFF else h2(v))
+                c = None
+                for k, nm in self.names.items():
+                    if nm == name and k[0] == "ram":
+                        c = self.symcomment.get(k)
+                        break
+                out.append(line + (" ; " + c if c else ""))
+            return out
+        regions = ["us", "jp", "eu"]
+        have = {"us": self.ram_used, "jp": others["jp"].ram_used, "eu": others["eu"].ram_used}
+        names = set()
+        for used in have.values():
+            names |= set(used)
+        shared = {}
+        groups = {}
+        for name in names:
+            vals = tuple(have[r].get(name) for r in regions)
+            if vals[0] is not None and vals[0] == vals[1] == vals[2]:
+                shared[name] = vals[0]
+            else:
+                groups.setdefault(vals, []).append(name)
+        out = ["; RAM, WRAM and register names", "; Generated from db/symbols.tsv (ram:XXXX keys, US addresses).",
+               "; Z_xx / W_xxxx / X_xxxx are unnamed zero page / RAM / WRAM ($6000) locations.", ""]
+        out += lines(shared)
+        cond = {"eu": "REGION = 2", "jp": "REGION_JP", "us": "REGION = 0"}
+        for vals, group in sorted(groups.items(), key=lambda kv: tuple(-1 if v is None else v for v in kv[0])):
+            out.append("")
+            first = True
+            for region, value in zip(regions, vals):
+                if value is None:
+                    continue
+                used = {name: value for name in group}
+                kw = "IF" if first else "ELIF"
+                out.append("%s %s" % (kw, cond[region]))
+                out += ["  " + l for l in lines(used)]
+                first = False
+            out.append("ENDIF")
+        out.append("")
+        out.append("MMC1_CONTROL            = &9FFF")
+        out.append("MMC1_CHR0               = &BFFF")
+        out.append("MMC1_CHR1               = &DFFF")
+        out.append("MMC1_PRG                = &FFFF")
+        return "\n".join(out) + "\n"
+
     def run(self, outdir):
         self.collect()
         self.ram_used = {}

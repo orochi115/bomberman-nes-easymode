@@ -25,8 +25,8 @@ while getopts "r:l:c:H:" opt; do
   esac
 done
 case $region in
-  us) defs="-D REGION_JP=0" ;;
-  jp) defs="-D REGION_JP=1" ;;
+  us) defs="-D REGION=0" ;;
+  jp) defs="-D REGION=1" ;;
   *) echo "region must be us or jp"; exit 1 ;;
 esac
 case $lang in

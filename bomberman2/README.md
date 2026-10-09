@@ -1,11 +1,12 @@
 # Source code of NES game Bomberman II
 
 A disassembly of Bomberman II (Hudson Soft, 1991/1992; MMC1, 8 × 16K PRG, CHR-RAM) that
-rebuilds **both** the USA and the Japanese ROM byte for byte from one source.
+rebuilds the USA, Japanese and European (Dynablaster) ROMs byte for byte from one source.
 
 ```
 ./make.sh us     # build/bomberman2_us.nes = Bomberman II (USA).nes
 ./make.sh jp     # build/bomberman2_jp.nes = Bomberman II (Japan).nes
+./make.sh eu     # build/bomberman2_eu.nes = Dynablaster (Europe).nes (PAL)
 ./make.sh us 1   # the same with an iNES 1.0 header (only the PRG is compared)
 ```
 
@@ -20,8 +21,8 @@ Needs [beebasm](https://github.com/stardot/beebasm) (default `../../beebasm/beeb
 | `macros.asm` | `FARCALL` (cross-bank call), `FILLTO`, forced absolute addressing, reset stub |
 | `consts.asm`, `nesregs.asm`, `nes_header.asm` | region switch, hardware registers, iNES header |
 
-Differences between the regions are `IF REGION_JP ... ELSE ... ENDIF` blocks
-(`beebasm -D REGION_JP=1`).
+Differences between the regions are `IF` / `ELIF` / `ELSE` blocks
+(`beebasm -D REGION=0` USA, `1` Japan, `2` Europe). `REGION_JP` is true when `REGION = 1`.
 
 ## Chinese / options mod (branch bomberman2-cn)
 

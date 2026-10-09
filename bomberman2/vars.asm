@@ -278,8 +278,6 @@ TITLE_PHASE             = &0521 ; 1 wait, 2 scroll, 0 done.
 TITLE_DELAY             = &0522 ; Delay inside the title phase.
 TITLE_ROW               = &0523 ; Title rows already drawn.
 TITLE_JOLT              = &0524 ; Shake index on the title screen.
-TITLE_SPR0              = &0525 ; Title actor frame.
-TITLE_SPR1              = &0526 ; Second title actor frame.
 PPU_QUEUE               = &0600 ; 256-byte ring drained by NMI
 OAM_Y                   = &0700 ; OAM buffer at 0700h. Sprite Y, indexed by 4.
 OAM_TILE                = &0701 ; OAM tile. Sprite 0 uses tile 01h when the split is on.
@@ -339,7 +337,6 @@ PARADE_IDX              = &62E6 ; SPAWN_PARADE point index. Wraps at 41h.
 TYPE10_TRY              = &62E7 ; Attempt counter for SPAWN_TYPE_10.
 TYPE10_ARM              = &62E8 ; ARM_TYPE10_TIMER stores 1 when this is 0.
 TYPE10_TIME             = &62E9 ; ARM_TYPE10_TIMER stores F0h here.
-X_62EA                  = &62EA
 BURST_TIME              = &62EB ; Countdown. At 0 the same type is placed eight times.
 BURST_COL               = &62EC ; Column stored with BURST_TIME.
 BURST_ROW               = &62ED ; Row stored with BURST_TIME.
@@ -351,254 +348,1006 @@ SCRIPT_FLAG             = &62F2 ; Script ops 09, 0A and 0B store 1, 0 and 2. End
 MAP_TMP_A               = &6493 ; Holds the tile index while COPY_LAYOUT_CELL switches banks.
 MAP_TMP_X               = &6494 ; Holds the column while COPY_LAYOUT_CELL switches banks.
 
-; Variables at different addresses in the Japanese version
-IF REGION_JP
-  GAME_MODE               = &3B ; 0 story, 1 vs, 2 battle. Selects the pre-stage card and enemy update.
-  KEEP_STAGE              = &3C ; Nonzero: STAGE_BOOT keeps the current area and stage.
-  AREA_NUM                = &3D ; Area 0-5. Area 6 is the ending, not a map.
-  STAGE_NUM               = &3E ; Stage 0-7 inside the area.
-  INTRO_AREA              = &3F ; Last area whose intro card has played.
-  SPECIAL_STAGE           = &40 ; Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
-  BONUS_BOMBS             = &41 ; RUN_BONUS_STAGE saves actor 0 bomb count here.
-  BONUS_FIRE              = &42 ; RUN_BONUS_STAGE saves actor 0 flame length here.
-  BONUS_STAGE             = &43 ; RUN_BONUS_STAGE saves STAGE_NUM here.
-  BONUS_AREA              = &44 ; RUN_BONUS_STAGE saves AREA_NUM here.
-  STAGE_PHASE             = &45 ; 0 in play. Counts after a round. F0h exits as a loss or a demo abort.
-  SPR_PTR                 = &46 ; Metasprite stream for DRAW_METASPRITE.
-  SPR_PTR_HI              = &47 ; High byte of SPR_PTR.
-  SPR_X                   = &48 ; Metasprite origin X.
-  SPR_X_HI                = &49 ; Metasprite origin X high.
-  SPR_Y                   = &4A ; Metasprite origin Y. DRAW_METASPRITE decrements it first.
-  SPR_Y_HI                = &4B ; Metasprite origin Y high.
-  SPR_FLIP                = &4C ; Flip bits EOR-ed into each sprite attribute. Bit 6 flips X, bit 7 flips Y.
-  SPR_COUNT               = &4D ; Sprites left in the current metasprite.
-  SPR_DX                  = &4E ; Sprite X after the metasprite offset and scroll.
-  SPR_DX_HI               = &4F ; High byte of SPR_DX. Nonzero skips the sprite.
-  SPR_DY                  = &50 ; Sprite Y written to OAM.
-  SPR_DY_HI               = &51 ; High byte of SPR_DY.
-  SPR_TILE                = &52 ; Tile byte written to OAM.
-  SPR_ATTR                = &53 ; Attribute byte written to OAM.
-  TILE_GFX                = &54 ; Pointer to 4 CHR bytes per tile id. Set from the area layout.
-  TILE_GFX_HI             = &55 ; High byte of TILE_GFX.
-  TILE_MAP                = &56 ; Pointer to map-byte values per tile id.
-  TILE_MAP_HI             = &57 ; High byte of TILE_MAP.
-  TILE_ATTR               = &58 ; Pointer to attribute nibbles per tile id.
-  TILE_ATTR_HI            = &59 ; High byte of TILE_ATTR.
-  ACTOR_INDEX             = &5A ; Actor slot 0-2 being updated.
-  ACTOR_FLAG              = &5B ; 3 bytes. Nonzero if that actor is active. Bit 6 flashes the sprite.
-  ACTOR_COL               = &5E ; 3 bytes. Map column of each actor.
-  ACTOR_ROW               = &61 ; 3 bytes. Map row of each actor.
-  ACTOR_X                 = &64 ; 3 bytes. Pixel X of each actor.
-  ACTOR_XSUB              = &67 ; 3 bytes. X subpixel. INIT_PLAYERS stores 0.
-  ACTOR_Y                 = &6A ; 3 bytes. Pixel Y of each actor.
-  ACTOR_DIR               = &6D ; 3 bytes. Facing 0-3.
-  ACTOR_FRAME             = &70 ; 3 bytes. Walk frame.
-  ACTOR_FTIMER            = &73 ; 3 bytes. Frame timer.
-  ACTOR_DEATH             = &76 ; 3 bytes. Nonzero while the death animation runs.
-  ACTOR_TIMED             = &79 ; 3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
-  ACTOR_TFRAME            = &7C ; 3 bytes. Timed-state frame count.
-  ACTOR_TSTEP             = &7F ; 3 bytes. Timed-state steps left.
-  ACTOR_BOMBS             = &82 ; 3 bytes. Bombs at a time minus 1, max 7 (ALLOC_BOMB_SLOT). Demo records and the mode table also write slot 0.
-  ACTOR_FIRE              = &85 ; 3 bytes. Flame length minus 1, max 4 (BLAST_RADIUS in DETONATE_BOMB).
-  ACTOR_SPDLO             = &88 ; 3 bytes. Speed accumulator low.
-  ACTOR_SPDHI             = &8B ; 3 bytes. Speed accumulator high.
-  ACT_W_FLAG              = &8E ; Work copy of ACTOR_FLAG for ACTOR_INDEX.
-  ACT_W_COL               = &8F ; Work copy of the actor column.
-  ACT_W_ROW               = &90 ; Work copy of the actor row.
-  ACT_W_X                 = &91 ; Work copy of pixel X.
-  ACT_W_XSUB              = &92 ; Work copy of the X subpixel.
-  ACT_W_Y                 = &93 ; Work copy of pixel Y.
-  ACT_W_DIR               = &94 ; Work copy of facing.
-  ACT_W_FRAME             = &95 ; Work copy of the walk frame.
-  ACT_W_FTMR              = &96 ; Work copy of the frame timer.
-  ACT_W_DEATH             = &97 ; Work copy of the death flag.
-  ACT_W_TIMED             = &98 ; Work copy of ACTOR_TIMED.
-  ACT_W_TFR               = &99 ; Work copy of the timed frame count.
-  ACT_W_TSTEP             = &9A ; Work copy of timed steps left.
-  ACT_W_BOMBS             = &9B ; Work copy of the bomb count.
-  ACT_W_FIRE              = &9C ; Work copy of the flame length.
-  ACT_W_SPDLO             = &9D ; Work copy of speed low.
-  ACT_W_SPDHI             = &9E ; Work copy of speed high.
-  ACT_PASSWALL            = &9F ; Nonzero: the actor walks through soft blocks (map bit 5, CELL_BLOCKS_MOVE).
-  ACT_PASSBOMB            = &A0 ; Nonzero: the actor walks through bombs (map bit 4, CELL_BLOCKS_MOVE).
-  ACT_REMOTE              = &A1 ; 1: B detonates. Bombs with kick 0 do not count down.
-  ITEM_KIND               = &A2 ; Kind of the active timed item.
-  ITEM_FRAME              = &A3 ; Frame counter for ITEM_KIND.
-  ITEM_LEFT               = &A4 ; Steps left for ITEM_KIND.
-  ACT_SPEED               = &A5 ; Speed gear.
-  EXIT_OPEN               = &A6 ; Nonzero after the exit item. PREP_STAGE_B4 then calls RUN_BONUS_STAGE.
-  KNOCK_DIR               = &A7 ; Negative while in knockback. Low 2 bits are the direction.
-  KNOCK_LEFT              = &A8 ; Knockback steps remaining.
-  CLEAR_PHASE             = &A9 ; Nonzero while a stage is ending. STAGE_LOOP leaves at F0h.
-  FLAME_DIR               = &AA ; Four direction bits for SPREAD_FLAME.
-  DEMO_PTR                = &AB ; Pointer to the demo pad record selected by DEMO_SLOT.
-  DEMO_PTR_HI             = &AC ; High byte of DEMO_PTR.
-  W_052A                  = &0528
-  W_052B                  = &0529
-  W_052C                  = &052A
-  W_052D                  = &052B
-  W_052E                  = &052C
-  INTRO_FRAME             = &0530 ; Area-intro frame. Only area 5 steps it with AREA5_FRAME_DLY.
-  W_0533                  = &0531
-  W_0534                  = &0532
-  W_0535                  = &0533
-  CREDITS_MODE            = &0534 ; 1 scrolling, 2 waiting at the end, 0 finished.
-  CREDITS_TICK            = &0535 ; Credits scroll counter.
-  CREDITS_ROW             = &0536 ; Credits line number.
-  W_053A                  = &0538
-  PASS_DEC                = &0540 ; Decode buffer for a password.
-  W_0543                  = &0541
-  W_0544                  = &0542
-  W_0545                  = &0543
-  W_0546                  = &0544
-  W_0547                  = &0545
-  W_0548                  = &0546
-  W_0549                  = &0547
-  W_054A                  = &0548
-  W_054B                  = &0549
-  W_054C                  = &054A
-  W_054D                  = &054B
-  MENU_REDRAW             = &054C ; Nonzero redraws the front menu.
-  MENU_MODE1              = &054D ; Nonzero enters the mode-1 menu and does not return.
-  MENU_BONUS              = &054E ; Nonzero sets lives to 1 and runs the bonus stage.
-  PASS_EDGES              = &054F ; Bits from POLL_PASS_KEYS. Bit 7 is A, then B, Select, Start, up, down, left, right.
-  PASS_REPEAT             = &0550 ; Eight key-repeat timers for the password screen.
-  CLOCK_FRAME             = &0558 ; Stage-clock frame countdown from 3Ch. Negative stops the clock and picks the other round sprite.
-  W_055B                  = &0559
-  CLOCK_DIG1              = &055A ; First stage-clock digit from the time table.
-  CLOCK_DIG2              = &055B ; Second stage-clock digit from the time table.
-  MATCH_0                 = &055C ; First card counter. The loss path compares it with WINS_GOAL.
-  MATCH_1                 = &055D ; Second card counter.
-  MATCH_2                 = &055E ; Third card counter. The battle card draws all three.
-  W_0561                  = &055F
-  W_0562                  = &0560
-  WINS_GOAL               = &0561 ; Wins required. 5 unless battle mode picked 1-5.
-ELSE
+IF REGION = 0
   JOY_PROBE_1             = &45 ; US extra byte shifted from pad port 1
+ELIF REGION = 2
+  JOY_PROBE_1             = &45 ; US extra byte shifted from pad port 1
+ENDIF
+
+IF REGION = 0
   JOY_PROBE_2             = &46 ; US extra byte shifted from pad port 2
+ELIF REGION = 2
+  JOY_PROBE_2             = &46 ; US extra byte shifted from pad port 2
+ENDIF
+
+IF REGION = 0
   JOY_SIG_OK              = &48 ; US 1 when probe matched 10h and 20h
+ENDIF
+
+IF REGION = 0
   GAME_MODE               = &49 ; 0 story, 1 vs, 2 battle. Selects the pre-stage card and enemy update.
+ELIF REGION_JP
+  GAME_MODE               = &3B ; 0 story, 1 vs, 2 battle. Selects the pre-stage card and enemy update.
+ELIF REGION = 2
+  GAME_MODE               = &48 ; 0 story, 1 vs, 2 battle. Selects the pre-stage card and enemy update.
+ENDIF
+
+IF REGION = 0
   KEEP_STAGE              = &4A ; Nonzero: STAGE_BOOT keeps the current area and stage.
+ELIF REGION_JP
+  KEEP_STAGE              = &3C ; Nonzero: STAGE_BOOT keeps the current area and stage.
+ELIF REGION = 2
+  KEEP_STAGE              = &49 ; Nonzero: STAGE_BOOT keeps the current area and stage.
+ENDIF
+
+IF REGION = 0
   AREA_NUM                = &4B ; Area 0-5. Area 6 is the ending, not a map.
+ELIF REGION_JP
+  AREA_NUM                = &3D ; Area 0-5. Area 6 is the ending, not a map.
+ELIF REGION = 2
+  AREA_NUM                = &4A ; Area 0-5. Area 6 is the ending, not a map.
+ENDIF
+
+IF REGION = 0
   STAGE_NUM               = &4C ; Stage 0-7 inside the area.
+ELIF REGION_JP
+  STAGE_NUM               = &3E ; Stage 0-7 inside the area.
+ELIF REGION = 2
+  STAGE_NUM               = &4B ; Stage 0-7 inside the area.
+ENDIF
+
+IF REGION = 0
   INTRO_AREA              = &4D ; Last area whose intro card has played.
+ELIF REGION_JP
+  INTRO_AREA              = &3F ; Last area whose intro card has played.
+ELIF REGION = 2
+  INTRO_AREA              = &4C ; Last area whose intro card has played.
+ENDIF
+
+IF REGION = 0
   SPECIAL_STAGE           = &4E ; Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
+ELIF REGION_JP
+  SPECIAL_STAGE           = &40 ; Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
+ELIF REGION = 2
+  SPECIAL_STAGE           = &4D ; Nonzero on the bonus stage and for fixed spawns. KILL_PLAYERS then only advances CLEAR_PHASE.
+ENDIF
+
+IF REGION = 0
   BONUS_BOMBS             = &4F ; RUN_BONUS_STAGE saves actor 0 bomb count here.
+ELIF REGION_JP
+  BONUS_BOMBS             = &41 ; RUN_BONUS_STAGE saves actor 0 bomb count here.
+ELIF REGION = 2
+  BONUS_BOMBS             = &4E ; RUN_BONUS_STAGE saves actor 0 bomb count here.
+ENDIF
+
+IF REGION = 0
   BONUS_FIRE              = &50 ; RUN_BONUS_STAGE saves actor 0 flame length here.
+ELIF REGION_JP
+  BONUS_FIRE              = &42 ; RUN_BONUS_STAGE saves actor 0 flame length here.
+ELIF REGION = 2
+  BONUS_FIRE              = &4F ; RUN_BONUS_STAGE saves actor 0 flame length here.
+ENDIF
+
+IF REGION = 0
   BONUS_STAGE             = &51 ; RUN_BONUS_STAGE saves STAGE_NUM here.
+ELIF REGION_JP
+  BONUS_STAGE             = &43 ; RUN_BONUS_STAGE saves STAGE_NUM here.
+ELIF REGION = 2
+  BONUS_STAGE             = &50 ; RUN_BONUS_STAGE saves STAGE_NUM here.
+ENDIF
+
+IF REGION = 0
   BONUS_AREA              = &52 ; RUN_BONUS_STAGE saves AREA_NUM here.
+ELIF REGION_JP
+  BONUS_AREA              = &44 ; RUN_BONUS_STAGE saves AREA_NUM here.
+ELIF REGION = 2
+  BONUS_AREA              = &51 ; RUN_BONUS_STAGE saves AREA_NUM here.
+ENDIF
+
+IF REGION = 0
   STAGE_PHASE             = &53 ; 0 in play. Counts after a round. F0h exits as a loss or a demo abort.
+ELIF REGION_JP
+  STAGE_PHASE             = &45 ; 0 in play. Counts after a round. F0h exits as a loss or a demo abort.
+ELIF REGION = 2
+  STAGE_PHASE             = &52 ; 0 in play. Counts after a round. F0h exits as a loss or a demo abort.
+ENDIF
+
+IF REGION = 0
   SPR_PTR                 = &54 ; Metasprite stream for DRAW_METASPRITE.
+ELIF REGION_JP
+  SPR_PTR                 = &46 ; Metasprite stream for DRAW_METASPRITE.
+ELIF REGION = 2
+  SPR_PTR                 = &53 ; Metasprite stream for DRAW_METASPRITE.
+ENDIF
+
+IF REGION = 0
   SPR_PTR_HI              = &55 ; High byte of SPR_PTR.
+ELIF REGION_JP
+  SPR_PTR_HI              = &47 ; High byte of SPR_PTR.
+ELIF REGION = 2
+  SPR_PTR_HI              = &54 ; High byte of SPR_PTR.
+ENDIF
+
+IF REGION = 0
   SPR_X                   = &56 ; Metasprite origin X.
+ELIF REGION_JP
+  SPR_X                   = &48 ; Metasprite origin X.
+ELIF REGION = 2
+  SPR_X                   = &55 ; Metasprite origin X.
+ENDIF
+
+IF REGION = 0
   SPR_X_HI                = &57 ; Metasprite origin X high.
+ELIF REGION_JP
+  SPR_X_HI                = &49 ; Metasprite origin X high.
+ELIF REGION = 2
+  SPR_X_HI                = &56 ; Metasprite origin X high.
+ENDIF
+
+IF REGION = 0
   SPR_Y                   = &58 ; Metasprite origin Y. DRAW_METASPRITE decrements it first.
+ELIF REGION_JP
+  SPR_Y                   = &4A ; Metasprite origin Y. DRAW_METASPRITE decrements it first.
+ELIF REGION = 2
+  SPR_Y                   = &57 ; Metasprite origin Y. DRAW_METASPRITE decrements it first.
+ENDIF
+
+IF REGION = 0
   SPR_Y_HI                = &59 ; Metasprite origin Y high.
+ELIF REGION_JP
+  SPR_Y_HI                = &4B ; Metasprite origin Y high.
+ELIF REGION = 2
+  SPR_Y_HI                = &58 ; Metasprite origin Y high.
+ENDIF
+
+IF REGION = 0
   SPR_FLIP                = &5A ; Flip bits EOR-ed into each sprite attribute. Bit 6 flips X, bit 7 flips Y.
+ELIF REGION_JP
+  SPR_FLIP                = &4C ; Flip bits EOR-ed into each sprite attribute. Bit 6 flips X, bit 7 flips Y.
+ELIF REGION = 2
+  SPR_FLIP                = &59 ; Flip bits EOR-ed into each sprite attribute. Bit 6 flips X, bit 7 flips Y.
+ENDIF
+
+IF REGION = 0
   SPR_COUNT               = &5B ; Sprites left in the current metasprite.
+ELIF REGION_JP
+  SPR_COUNT               = &4D ; Sprites left in the current metasprite.
+ELIF REGION = 2
+  SPR_COUNT               = &5A ; Sprites left in the current metasprite.
+ENDIF
+
+IF REGION = 0
   SPR_DX                  = &5C ; Sprite X after the metasprite offset and scroll.
+ELIF REGION_JP
+  SPR_DX                  = &4E ; Sprite X after the metasprite offset and scroll.
+ELIF REGION = 2
+  SPR_DX                  = &5B ; Sprite X after the metasprite offset and scroll.
+ENDIF
+
+IF REGION = 0
   SPR_DX_HI               = &5D ; High byte of SPR_DX. Nonzero skips the sprite.
+ELIF REGION_JP
+  SPR_DX_HI               = &4F ; High byte of SPR_DX. Nonzero skips the sprite.
+ELIF REGION = 2
+  SPR_DX_HI               = &5C ; High byte of SPR_DX. Nonzero skips the sprite.
+ENDIF
+
+IF REGION = 0
   SPR_DY                  = &5E ; Sprite Y written to OAM.
+ELIF REGION_JP
+  SPR_DY                  = &50 ; Sprite Y written to OAM.
+ELIF REGION = 2
+  SPR_DY                  = &5D ; Sprite Y written to OAM.
+ENDIF
+
+IF REGION = 0
   SPR_DY_HI               = &5F ; High byte of SPR_DY.
+ELIF REGION_JP
+  SPR_DY_HI               = &51 ; High byte of SPR_DY.
+ELIF REGION = 2
+  SPR_DY_HI               = &5E ; High byte of SPR_DY.
+ENDIF
+
+IF REGION = 0
   SPR_TILE                = &60 ; Tile byte written to OAM.
+ELIF REGION_JP
+  SPR_TILE                = &52 ; Tile byte written to OAM.
+ELIF REGION = 2
+  SPR_TILE                = &5F ; Tile byte written to OAM.
+ENDIF
+
+IF REGION = 0
   SPR_ATTR                = &61 ; Attribute byte written to OAM.
+ELIF REGION_JP
+  SPR_ATTR                = &53 ; Attribute byte written to OAM.
+ELIF REGION = 2
+  SPR_ATTR                = &60 ; Attribute byte written to OAM.
+ENDIF
+
+IF REGION = 0
   TILE_GFX                = &62 ; Pointer to 4 CHR bytes per tile id. Set from the area layout.
+ELIF REGION_JP
+  TILE_GFX                = &54 ; Pointer to 4 CHR bytes per tile id. Set from the area layout.
+ELIF REGION = 2
+  TILE_GFX                = &61 ; Pointer to 4 CHR bytes per tile id. Set from the area layout.
+ENDIF
+
+IF REGION = 0
   TILE_GFX_HI             = &63 ; High byte of TILE_GFX.
+ELIF REGION_JP
+  TILE_GFX_HI             = &55 ; High byte of TILE_GFX.
+ELIF REGION = 2
+  TILE_GFX_HI             = &62 ; High byte of TILE_GFX.
+ENDIF
+
+IF REGION = 0
   TILE_MAP                = &64 ; Pointer to map-byte values per tile id.
+ELIF REGION_JP
+  TILE_MAP                = &56 ; Pointer to map-byte values per tile id.
+ELIF REGION = 2
+  TILE_MAP                = &63 ; Pointer to map-byte values per tile id.
+ENDIF
+
+IF REGION = 0
   TILE_MAP_HI             = &65 ; High byte of TILE_MAP.
+ELIF REGION_JP
+  TILE_MAP_HI             = &57 ; High byte of TILE_MAP.
+ELIF REGION = 2
+  TILE_MAP_HI             = &64 ; High byte of TILE_MAP.
+ENDIF
+
+IF REGION = 0
   TILE_ATTR               = &66 ; Pointer to attribute nibbles per tile id.
+ELIF REGION_JP
+  TILE_ATTR               = &58 ; Pointer to attribute nibbles per tile id.
+ELIF REGION = 2
+  TILE_ATTR               = &65 ; Pointer to attribute nibbles per tile id.
+ENDIF
+
+IF REGION = 0
   TILE_ATTR_HI            = &67 ; High byte of TILE_ATTR.
+ELIF REGION_JP
+  TILE_ATTR_HI            = &59 ; High byte of TILE_ATTR.
+ELIF REGION = 2
+  TILE_ATTR_HI            = &66 ; High byte of TILE_ATTR.
+ENDIF
+
+IF REGION = 0
   ACTOR_INDEX             = &68 ; Actor slot 0-2 being updated.
+ELIF REGION_JP
+  ACTOR_INDEX             = &5A ; Actor slot 0-2 being updated.
+ELIF REGION = 2
+  ACTOR_INDEX             = &67 ; Actor slot 0-2 being updated.
+ENDIF
+
+IF REGION = 0
   ACTOR_FLAG              = &69 ; 3 bytes. Nonzero if that actor is active. Bit 6 flashes the sprite.
+ELIF REGION_JP
+  ACTOR_FLAG              = &5B ; 3 bytes. Nonzero if that actor is active. Bit 6 flashes the sprite.
+ELIF REGION = 2
+  ACTOR_FLAG              = &68 ; 3 bytes. Nonzero if that actor is active. Bit 6 flashes the sprite.
+ENDIF
+
+IF REGION = 0
   ACTOR_COL               = &6C ; 3 bytes. Map column of each actor.
+ELIF REGION_JP
+  ACTOR_COL               = &5E ; 3 bytes. Map column of each actor.
+ELIF REGION = 2
+  ACTOR_COL               = &6B ; 3 bytes. Map column of each actor.
+ENDIF
+
+IF REGION = 0
   ACTOR_ROW               = &6F ; 3 bytes. Map row of each actor.
+ELIF REGION_JP
+  ACTOR_ROW               = &61 ; 3 bytes. Map row of each actor.
+ELIF REGION = 2
+  ACTOR_ROW               = &6E ; 3 bytes. Map row of each actor.
+ENDIF
+
+IF REGION = 0
   ACTOR_X                 = &72 ; 3 bytes. Pixel X of each actor.
+ELIF REGION_JP
+  ACTOR_X                 = &64 ; 3 bytes. Pixel X of each actor.
+ELIF REGION = 2
+  ACTOR_X                 = &71 ; 3 bytes. Pixel X of each actor.
+ENDIF
+
+IF REGION = 0
   ACTOR_XSUB              = &75 ; 3 bytes. X subpixel. INIT_PLAYERS stores 0.
+ELIF REGION_JP
+  ACTOR_XSUB              = &67 ; 3 bytes. X subpixel. INIT_PLAYERS stores 0.
+ELIF REGION = 2
+  ACTOR_XSUB              = &74 ; 3 bytes. X subpixel. INIT_PLAYERS stores 0.
+ENDIF
+
+IF REGION = 0
   ACTOR_Y                 = &78 ; 3 bytes. Pixel Y of each actor.
+ELIF REGION_JP
+  ACTOR_Y                 = &6A ; 3 bytes. Pixel Y of each actor.
+ELIF REGION = 2
+  ACTOR_Y                 = &77 ; 3 bytes. Pixel Y of each actor.
+ENDIF
+
+IF REGION = 0
   ACTOR_DIR               = &7B ; 3 bytes. Facing 0-3.
+ELIF REGION_JP
+  ACTOR_DIR               = &6D ; 3 bytes. Facing 0-3.
+ELIF REGION = 2
+  ACTOR_DIR               = &7A ; 3 bytes. Facing 0-3.
+ENDIF
+
+IF REGION = 0
   ACTOR_FRAME             = &7E ; 3 bytes. Walk frame.
+ELIF REGION_JP
+  ACTOR_FRAME             = &70 ; 3 bytes. Walk frame.
+ELIF REGION = 2
+  ACTOR_FRAME             = &7D ; 3 bytes. Walk frame.
+ENDIF
+
+IF REGION = 0
   ACTOR_FTIMER            = &81 ; 3 bytes. Frame timer.
+ELIF REGION_JP
+  ACTOR_FTIMER            = &73 ; 3 bytes. Frame timer.
+ELIF REGION = 2
+  ACTOR_FTIMER            = &80 ; 3 bytes. Frame timer.
+ENDIF
+
+IF REGION = 0
   ACTOR_DEATH             = &84 ; 3 bytes. Nonzero while the death animation runs.
+ELIF REGION_JP
+  ACTOR_DEATH             = &76 ; 3 bytes. Nonzero while the death animation runs.
+ELIF REGION = 2
+  ACTOR_DEATH             = &83 ; 3 bytes. Nonzero while the death animation runs.
+ENDIF
+
+IF REGION = 0
   ACTOR_TIMED             = &87 ; 3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
+ELIF REGION_JP
+  ACTOR_TIMED             = &79 ; 3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
+ELIF REGION = 2
+  ACTOR_TIMED             = &86 ; 3 bytes. Bit 7 is a timed state. Low 2 bits pick A6_TIME_TAB.
+ENDIF
+
+IF REGION = 0
   ACTOR_TFRAME            = &8A ; 3 bytes. Timed-state frame count.
+ELIF REGION_JP
+  ACTOR_TFRAME            = &7C ; 3 bytes. Timed-state frame count.
+ELIF REGION = 2
+  ACTOR_TFRAME            = &89 ; 3 bytes. Timed-state frame count.
+ENDIF
+
+IF REGION = 0
   ACTOR_TSTEP             = &8D ; 3 bytes. Timed-state steps left.
+ELIF REGION_JP
+  ACTOR_TSTEP             = &7F ; 3 bytes. Timed-state steps left.
+ELIF REGION = 2
+  ACTOR_TSTEP             = &8C ; 3 bytes. Timed-state steps left.
+ENDIF
+
+IF REGION = 0
   ACTOR_BOMBS             = &90 ; 3 bytes. Bombs at a time minus 1, max 7 (ALLOC_BOMB_SLOT). Demo records and the mode table also write slot 0.
+ELIF REGION_JP
+  ACTOR_BOMBS             = &82 ; 3 bytes. Bombs at a time minus 1, max 7 (ALLOC_BOMB_SLOT). Demo records and the mode table also write slot 0.
+ELIF REGION = 2
+  ACTOR_BOMBS             = &8F ; 3 bytes. Bombs at a time minus 1, max 7 (ALLOC_BOMB_SLOT). Demo records and the mode table also write slot 0.
+ENDIF
+
+IF REGION = 0
   ACTOR_FIRE              = &93 ; 3 bytes. Flame length minus 1, max 4 (BLAST_RADIUS in DETONATE_BOMB).
+ELIF REGION_JP
+  ACTOR_FIRE              = &85 ; 3 bytes. Flame length minus 1, max 4 (BLAST_RADIUS in DETONATE_BOMB).
+ELIF REGION = 2
+  ACTOR_FIRE              = &92 ; 3 bytes. Flame length minus 1, max 4 (BLAST_RADIUS in DETONATE_BOMB).
+ENDIF
+
+IF REGION = 0
   ACTOR_SPDLO             = &96 ; 3 bytes. Speed accumulator low.
+ELIF REGION_JP
+  ACTOR_SPDLO             = &88 ; 3 bytes. Speed accumulator low.
+ELIF REGION = 2
+  ACTOR_SPDLO             = &95 ; 3 bytes. Speed accumulator low.
+ENDIF
+
+IF REGION = 0
   ACTOR_SPDHI             = &99 ; 3 bytes. Speed accumulator high.
+ELIF REGION_JP
+  ACTOR_SPDHI             = &8B ; 3 bytes. Speed accumulator high.
+ELIF REGION = 2
+  ACTOR_SPDHI             = &98 ; 3 bytes. Speed accumulator high.
+ENDIF
+
+IF REGION = 0
   ACT_W_FLAG              = &9C ; Work copy of ACTOR_FLAG for ACTOR_INDEX.
+ELIF REGION_JP
+  ACT_W_FLAG              = &8E ; Work copy of ACTOR_FLAG for ACTOR_INDEX.
+ELIF REGION = 2
+  ACT_W_FLAG              = &9B ; Work copy of ACTOR_FLAG for ACTOR_INDEX.
+ENDIF
+
+IF REGION = 0
   ACT_W_COL               = &9D ; Work copy of the actor column.
+ELIF REGION_JP
+  ACT_W_COL               = &8F ; Work copy of the actor column.
+ELIF REGION = 2
+  ACT_W_COL               = &9C ; Work copy of the actor column.
+ENDIF
+
+IF REGION = 0
   ACT_W_ROW               = &9E ; Work copy of the actor row.
+ELIF REGION_JP
+  ACT_W_ROW               = &90 ; Work copy of the actor row.
+ELIF REGION = 2
+  ACT_W_ROW               = &9D ; Work copy of the actor row.
+ENDIF
+
+IF REGION = 0
   ACT_W_X                 = &9F ; Work copy of pixel X.
+ELIF REGION_JP
+  ACT_W_X                 = &91 ; Work copy of pixel X.
+ELIF REGION = 2
+  ACT_W_X                 = &9E ; Work copy of pixel X.
+ENDIF
+
+IF REGION = 0
   ACT_W_XSUB              = &A0 ; Work copy of the X subpixel.
+ELIF REGION_JP
+  ACT_W_XSUB              = &92 ; Work copy of the X subpixel.
+ELIF REGION = 2
+  ACT_W_XSUB              = &9F ; Work copy of the X subpixel.
+ENDIF
+
+IF REGION = 0
   ACT_W_Y                 = &A1 ; Work copy of pixel Y.
+ELIF REGION_JP
+  ACT_W_Y                 = &93 ; Work copy of pixel Y.
+ELIF REGION = 2
+  ACT_W_Y                 = &A0 ; Work copy of pixel Y.
+ENDIF
+
+IF REGION = 0
   ACT_W_DIR               = &A2 ; Work copy of facing.
+ELIF REGION_JP
+  ACT_W_DIR               = &94 ; Work copy of facing.
+ELIF REGION = 2
+  ACT_W_DIR               = &A1 ; Work copy of facing.
+ENDIF
+
+IF REGION = 0
   ACT_W_FRAME             = &A3 ; Work copy of the walk frame.
+ELIF REGION_JP
+  ACT_W_FRAME             = &95 ; Work copy of the walk frame.
+ELIF REGION = 2
+  ACT_W_FRAME             = &A2 ; Work copy of the walk frame.
+ENDIF
+
+IF REGION = 0
   ACT_W_FTMR              = &A4 ; Work copy of the frame timer.
+ELIF REGION_JP
+  ACT_W_FTMR              = &96 ; Work copy of the frame timer.
+ELIF REGION = 2
+  ACT_W_FTMR              = &A3 ; Work copy of the frame timer.
+ENDIF
+
+IF REGION = 0
   ACT_W_DEATH             = &A5 ; Work copy of the death flag.
+ELIF REGION_JP
+  ACT_W_DEATH             = &97 ; Work copy of the death flag.
+ELIF REGION = 2
+  ACT_W_DEATH             = &A4 ; Work copy of the death flag.
+ENDIF
+
+IF REGION = 0
   ACT_W_TIMED             = &A6 ; Work copy of ACTOR_TIMED.
+ELIF REGION_JP
+  ACT_W_TIMED             = &98 ; Work copy of ACTOR_TIMED.
+ELIF REGION = 2
+  ACT_W_TIMED             = &A5 ; Work copy of ACTOR_TIMED.
+ENDIF
+
+IF REGION = 0
   ACT_W_TFR               = &A7 ; Work copy of the timed frame count.
+ELIF REGION_JP
+  ACT_W_TFR               = &99 ; Work copy of the timed frame count.
+ELIF REGION = 2
+  ACT_W_TFR               = &A6 ; Work copy of the timed frame count.
+ENDIF
+
+IF REGION = 0
   ACT_W_TSTEP             = &A8 ; Work copy of timed steps left.
+ELIF REGION_JP
+  ACT_W_TSTEP             = &9A ; Work copy of timed steps left.
+ELIF REGION = 2
+  ACT_W_TSTEP             = &A7 ; Work copy of timed steps left.
+ENDIF
+
+IF REGION = 0
   ACT_W_BOMBS             = &A9 ; Work copy of the bomb count.
+ELIF REGION_JP
+  ACT_W_BOMBS             = &9B ; Work copy of the bomb count.
+ELIF REGION = 2
+  ACT_W_BOMBS             = &A8 ; Work copy of the bomb count.
+ENDIF
+
+IF REGION = 0
   ACT_W_FIRE              = &AA ; Work copy of the flame length.
+ELIF REGION_JP
+  ACT_W_FIRE              = &9C ; Work copy of the flame length.
+ELIF REGION = 2
+  ACT_W_FIRE              = &A9 ; Work copy of the flame length.
+ENDIF
+
+IF REGION = 0
   ACT_W_SPDLO             = &AB ; Work copy of speed low.
+ELIF REGION_JP
+  ACT_W_SPDLO             = &9D ; Work copy of speed low.
+ELIF REGION = 2
+  ACT_W_SPDLO             = &AA ; Work copy of speed low.
+ENDIF
+
+IF REGION = 0
   ACT_W_SPDHI             = &AC ; Work copy of speed high.
+ELIF REGION_JP
+  ACT_W_SPDHI             = &9E ; Work copy of speed high.
+ELIF REGION = 2
+  ACT_W_SPDHI             = &AB ; Work copy of speed high.
+ENDIF
+
+IF REGION = 0
   ACT_PASSWALL            = &AD ; Nonzero: the actor walks through soft blocks (map bit 5, CELL_BLOCKS_MOVE).
+ELIF REGION_JP
+  ACT_PASSWALL            = &9F ; Nonzero: the actor walks through soft blocks (map bit 5, CELL_BLOCKS_MOVE).
+ELIF REGION = 2
+  ACT_PASSWALL            = &AC ; Nonzero: the actor walks through soft blocks (map bit 5, CELL_BLOCKS_MOVE).
+ENDIF
+
+IF REGION = 0
   ACT_PASSBOMB            = &AE ; Nonzero: the actor walks through bombs (map bit 4, CELL_BLOCKS_MOVE).
+ELIF REGION_JP
+  ACT_PASSBOMB            = &A0 ; Nonzero: the actor walks through bombs (map bit 4, CELL_BLOCKS_MOVE).
+ELIF REGION = 2
+  ACT_PASSBOMB            = &AD ; Nonzero: the actor walks through bombs (map bit 4, CELL_BLOCKS_MOVE).
+ENDIF
+
+IF REGION = 0
   ACT_REMOTE              = &AF ; 1: B detonates. Bombs with kick 0 do not count down.
+ELIF REGION_JP
+  ACT_REMOTE              = &A1 ; 1: B detonates. Bombs with kick 0 do not count down.
+ELIF REGION = 2
+  ACT_REMOTE              = &AE ; 1: B detonates. Bombs with kick 0 do not count down.
+ENDIF
+
+IF REGION = 0
   ITEM_KIND               = &B0 ; Kind of the active timed item.
+ELIF REGION_JP
+  ITEM_KIND               = &A2 ; Kind of the active timed item.
+ELIF REGION = 2
+  ITEM_KIND               = &AF ; Kind of the active timed item.
+ENDIF
+
+IF REGION = 0
   ITEM_FRAME              = &B1 ; Frame counter for ITEM_KIND.
+ELIF REGION_JP
+  ITEM_FRAME              = &A3 ; Frame counter for ITEM_KIND.
+ELIF REGION = 2
+  ITEM_FRAME              = &B0 ; Frame counter for ITEM_KIND.
+ENDIF
+
+IF REGION = 0
   ITEM_LEFT               = &B2 ; Steps left for ITEM_KIND.
+ELIF REGION_JP
+  ITEM_LEFT               = &A4 ; Steps left for ITEM_KIND.
+ELIF REGION = 2
+  ITEM_LEFT               = &B1 ; Steps left for ITEM_KIND.
+ENDIF
+
+IF REGION = 0
   ACT_SPEED               = &B3 ; Speed gear.
+ELIF REGION_JP
+  ACT_SPEED               = &A5 ; Speed gear.
+ELIF REGION = 2
+  ACT_SPEED               = &B2 ; Speed gear.
+ENDIF
+
+IF REGION = 0
   EXIT_OPEN               = &B4 ; Nonzero after the exit item. PREP_STAGE_B4 then calls RUN_BONUS_STAGE.
+ELIF REGION_JP
+  EXIT_OPEN               = &A6 ; Nonzero after the exit item. PREP_STAGE_B4 then calls RUN_BONUS_STAGE.
+ELIF REGION = 2
+  EXIT_OPEN               = &B3 ; Nonzero after the exit item. PREP_STAGE_B4 then calls RUN_BONUS_STAGE.
+ENDIF
+
+IF REGION = 0
   KNOCK_DIR               = &B5 ; Negative while in knockback. Low 2 bits are the direction.
+ELIF REGION_JP
+  KNOCK_DIR               = &A7 ; Negative while in knockback. Low 2 bits are the direction.
+ELIF REGION = 2
+  KNOCK_DIR               = &B4 ; Negative while in knockback. Low 2 bits are the direction.
+ENDIF
+
+IF REGION = 0
   KNOCK_LEFT              = &B6 ; Knockback steps remaining.
+ELIF REGION_JP
+  KNOCK_LEFT              = &A8 ; Knockback steps remaining.
+ELIF REGION = 2
+  KNOCK_LEFT              = &B5 ; Knockback steps remaining.
+ENDIF
+
+IF REGION = 0
   CLEAR_PHASE             = &B7 ; Nonzero while a stage is ending. STAGE_LOOP leaves at F0h.
+ELIF REGION_JP
+  CLEAR_PHASE             = &A9 ; Nonzero while a stage is ending. STAGE_LOOP leaves at F0h.
+ELIF REGION = 2
+  CLEAR_PHASE             = &B6 ; Nonzero while a stage is ending. STAGE_LOOP leaves at F0h.
+ENDIF
+
+IF REGION = 0
   FLAME_DIR               = &B8 ; Four direction bits for SPREAD_FLAME.
+ELIF REGION_JP
+  FLAME_DIR               = &AA ; Four direction bits for SPREAD_FLAME.
+ELIF REGION = 2
+  FLAME_DIR               = &B7 ; Four direction bits for SPREAD_FLAME.
+ENDIF
+
+IF REGION = 0
   DEMO_PTR                = &B9 ; Pointer to the demo pad record selected by DEMO_SLOT.
+ELIF REGION_JP
+  DEMO_PTR                = &AB ; Pointer to the demo pad record selected by DEMO_SLOT.
+ELIF REGION = 2
+  DEMO_PTR                = &B8 ; Pointer to the demo pad record selected by DEMO_SLOT.
+ENDIF
+
+IF REGION = 0
   DEMO_PTR_HI             = &BA ; High byte of DEMO_PTR.
+ELIF REGION_JP
+  DEMO_PTR_HI             = &AC ; High byte of DEMO_PTR.
+ELIF REGION = 2
+  DEMO_PTR_HI             = &B9 ; High byte of DEMO_PTR.
+ENDIF
+
+IF REGION = 0
+  TITLE_SPR0              = &0525 ; Title actor frame.
+ELIF REGION_JP
+  TITLE_SPR0              = &0525 ; Title actor frame.
+ENDIF
+
+IF REGION = 0
+  TITLE_SPR1              = &0526 ; Second title actor frame.
+ELIF REGION_JP
+  TITLE_SPR1              = &0526 ; Second title actor frame.
+ENDIF
+
+IF REGION = 0
   NT_SAVE_COL             = &0527 ; Column saved by the US SET_NAMETABLE_XY.
+ENDIF
+
+IF REGION = 0
   NT_SAVE_ROW             = &0528 ; Row saved by the US SET_NAMETABLE_XY.
+ENDIF
+
+IF REGION = 0
   W_052A                  = &052A
+ELIF REGION_JP
+  W_052A                  = &0528
+ELIF REGION = 2
+  W_052A                  = &0528
+ENDIF
+
+IF REGION = 0
   W_052B                  = &052B
+ELIF REGION_JP
+  W_052B                  = &0529
+ELIF REGION = 2
+  W_052B                  = &0529
+ENDIF
+
+IF REGION = 0
   W_052C                  = &052C
+ELIF REGION_JP
+  W_052C                  = &052A
+ELIF REGION = 2
+  W_052C                  = &052A
+ENDIF
+
+IF REGION = 0
   W_052D                  = &052D
+ELIF REGION_JP
+  W_052D                  = &052B
+ELIF REGION = 2
+  W_052D                  = &052B
+ENDIF
+
+IF REGION = 0
   W_052E                  = &052E
+ELIF REGION_JP
+  W_052E                  = &052C
+ELIF REGION = 2
+  W_052E                  = &052C
+ENDIF
+
+IF REGION = 0
   INTRO_FRAME             = &0532 ; Area-intro frame. Only area 5 steps it with AREA5_FRAME_DLY.
+ELIF REGION_JP
+  INTRO_FRAME             = &0530 ; Area-intro frame. Only area 5 steps it with AREA5_FRAME_DLY.
+ELIF REGION = 2
+  INTRO_FRAME             = &0530 ; Area-intro frame. Only area 5 steps it with AREA5_FRAME_DLY.
+ENDIF
+
+IF REGION = 0
   W_0533                  = &0533
+ELIF REGION_JP
+  W_0533                  = &0531
+ELIF REGION = 2
+  W_0533                  = &0531
+ENDIF
+
+IF REGION = 0
   W_0534                  = &0534
+ELIF REGION_JP
+  W_0534                  = &0532
+ELIF REGION = 2
+  W_0534                  = &0532
+ENDIF
+
+IF REGION = 0
   W_0535                  = &0535
+ELIF REGION_JP
+  W_0535                  = &0533
+ELIF REGION = 2
+  W_0535                  = &0533
+ENDIF
+
+IF REGION = 0
   CREDITS_MODE            = &0536 ; 1 scrolling, 2 waiting at the end, 0 finished.
+ELIF REGION_JP
+  CREDITS_MODE            = &0534 ; 1 scrolling, 2 waiting at the end, 0 finished.
+ELIF REGION = 2
+  CREDITS_MODE            = &0534 ; 1 scrolling, 2 waiting at the end, 0 finished.
+ENDIF
+
+IF REGION = 0
   CREDITS_TICK            = &0537 ; Credits scroll counter.
+ELIF REGION_JP
+  CREDITS_TICK            = &0535 ; Credits scroll counter.
+ELIF REGION = 2
+  CREDITS_TICK            = &0535 ; Credits scroll counter.
+ENDIF
+
+IF REGION = 0
   CREDITS_ROW             = &0538 ; Credits line number.
+ELIF REGION_JP
+  CREDITS_ROW             = &0536 ; Credits line number.
+ELIF REGION = 2
+  CREDITS_ROW             = &0536 ; Credits line number.
+ENDIF
+
+IF REGION = 0
   W_053A                  = &053A
+ELIF REGION_JP
+  W_053A                  = &0538
+ELIF REGION = 2
+  W_053A                  = &0538
+ENDIF
+
+IF REGION = 0
   PASS_DEC                = &0542 ; Decode buffer for a password.
+ELIF REGION_JP
+  PASS_DEC                = &0540 ; Decode buffer for a password.
+ELIF REGION = 2
+  PASS_DEC                = &0540 ; Decode buffer for a password.
+ENDIF
+
+IF REGION = 0
   W_0543                  = &0543
+ELIF REGION_JP
+  W_0543                  = &0541
+ELIF REGION = 2
+  W_0543                  = &0541
+ENDIF
+
+IF REGION = 0
   W_0544                  = &0544
+ELIF REGION_JP
+  W_0544                  = &0542
+ELIF REGION = 2
+  W_0544                  = &0542
+ENDIF
+
+IF REGION = 0
   W_0545                  = &0545
+ELIF REGION_JP
+  W_0545                  = &0543
+ELIF REGION = 2
+  W_0545                  = &0543
+ENDIF
+
+IF REGION = 0
   W_0546                  = &0546
+ELIF REGION_JP
+  W_0546                  = &0544
+ELIF REGION = 2
+  W_0546                  = &0544
+ENDIF
+
+IF REGION = 0
   W_0547                  = &0547
+ELIF REGION_JP
+  W_0547                  = &0545
+ELIF REGION = 2
+  W_0547                  = &0545
+ENDIF
+
+IF REGION = 0
   W_0548                  = &0548
+ELIF REGION_JP
+  W_0548                  = &0546
+ELIF REGION = 2
+  W_0548                  = &0546
+ENDIF
+
+IF REGION = 0
   W_0549                  = &0549
+ELIF REGION_JP
+  W_0549                  = &0547
+ELIF REGION = 2
+  W_0549                  = &0547
+ENDIF
+
+IF REGION = 0
   W_054A                  = &054A
+ELIF REGION_JP
+  W_054A                  = &0548
+ELIF REGION = 2
+  W_054A                  = &0548
+ENDIF
+
+IF REGION = 0
   W_054B                  = &054B
+ELIF REGION_JP
+  W_054B                  = &0549
+ELIF REGION = 2
+  W_054B                  = &0549
+ENDIF
+
+IF REGION = 0
   W_054C                  = &054C
+ELIF REGION_JP
+  W_054C                  = &054A
+ELIF REGION = 2
+  W_054C                  = &054A
+ENDIF
+
+IF REGION = 0
   W_054D                  = &054D
+ELIF REGION_JP
+  W_054D                  = &054B
+ELIF REGION = 2
+  W_054D                  = &054B
+ENDIF
+
+IF REGION = 0
   MENU_REDRAW             = &054E ; Nonzero redraws the front menu.
+ELIF REGION_JP
+  MENU_REDRAW             = &054C ; Nonzero redraws the front menu.
+ELIF REGION = 2
+  MENU_REDRAW             = &054C ; Nonzero redraws the front menu.
+ENDIF
+
+IF REGION = 0
   MENU_MODE1              = &054F ; Nonzero enters the mode-1 menu and does not return.
+ELIF REGION_JP
+  MENU_MODE1              = &054D ; Nonzero enters the mode-1 menu and does not return.
+ELIF REGION = 2
+  MENU_MODE1              = &054D ; Nonzero enters the mode-1 menu and does not return.
+ENDIF
+
+IF REGION = 0
   MENU_BONUS              = &0550 ; Nonzero sets lives to 1 and runs the bonus stage.
+ELIF REGION_JP
+  MENU_BONUS              = &054E ; Nonzero sets lives to 1 and runs the bonus stage.
+ELIF REGION = 2
+  MENU_BONUS              = &054E ; Nonzero sets lives to 1 and runs the bonus stage.
+ENDIF
+
+IF REGION = 0
   PASS_EDGES              = &0551 ; Bits from POLL_PASS_KEYS. Bit 7 is A, then B, Select, Start, up, down, left, right.
+ELIF REGION_JP
+  PASS_EDGES              = &054F ; Bits from POLL_PASS_KEYS. Bit 7 is A, then B, Select, Start, up, down, left, right.
+ELIF REGION = 2
+  PASS_EDGES              = &054F ; Bits from POLL_PASS_KEYS. Bit 7 is A, then B, Select, Start, up, down, left, right.
+ENDIF
+
+IF REGION = 0
   PASS_REPEAT             = &0552 ; Eight key-repeat timers for the password screen.
+ELIF REGION_JP
+  PASS_REPEAT             = &0550 ; Eight key-repeat timers for the password screen.
+ELIF REGION = 2
+  PASS_REPEAT             = &0550 ; Eight key-repeat timers for the password screen.
+ENDIF
+
+IF REGION = 0
   CLOCK_FRAME             = &055A ; Stage-clock frame countdown from 3Ch. Negative stops the clock and picks the other round sprite.
+ELIF REGION_JP
+  CLOCK_FRAME             = &0558 ; Stage-clock frame countdown from 3Ch. Negative stops the clock and picks the other round sprite.
+ELIF REGION = 2
+  CLOCK_FRAME             = &0558 ; Stage-clock frame countdown from 3Ch. Negative stops the clock and picks the other round sprite.
+ENDIF
+
+IF REGION = 0
   W_055B                  = &055B
+ELIF REGION_JP
+  W_055B                  = &0559
+ELIF REGION = 2
+  W_055B                  = &0559
+ENDIF
+
+IF REGION = 0
   CLOCK_DIG1              = &055C ; First stage-clock digit from the time table.
+ELIF REGION_JP
+  CLOCK_DIG1              = &055A ; First stage-clock digit from the time table.
+ELIF REGION = 2
+  CLOCK_DIG1              = &055A ; First stage-clock digit from the time table.
+ENDIF
+
+IF REGION = 0
   CLOCK_DIG2              = &055D ; Second stage-clock digit from the time table.
+ELIF REGION_JP
+  CLOCK_DIG2              = &055B ; Second stage-clock digit from the time table.
+ELIF REGION = 2
+  CLOCK_DIG2              = &055B ; Second stage-clock digit from the time table.
+ENDIF
+
+IF REGION = 0
   MATCH_0                 = &055E ; First card counter. The loss path compares it with WINS_GOAL.
+ELIF REGION_JP
+  MATCH_0                 = &055C ; First card counter. The loss path compares it with WINS_GOAL.
+ELIF REGION = 2
+  MATCH_0                 = &055C ; First card counter. The loss path compares it with WINS_GOAL.
+ENDIF
+
+IF REGION = 0
   MATCH_1                 = &055F ; Second card counter.
+ELIF REGION_JP
+  MATCH_1                 = &055D ; Second card counter.
+ELIF REGION = 2
+  MATCH_1                 = &055D ; Second card counter.
+ENDIF
+
+IF REGION = 0
   MATCH_2                 = &0560 ; Third card counter. The battle card draws all three.
+ELIF REGION_JP
+  MATCH_2                 = &055E ; Third card counter. The battle card draws all three.
+ELIF REGION = 2
+  MATCH_2                 = &055E ; Third card counter. The battle card draws all three.
+ENDIF
+
+IF REGION = 0
   W_0561                  = &0561
+ELIF REGION_JP
+  W_0561                  = &055F
+ELIF REGION = 2
+  W_0561                  = &055F
+ENDIF
+
+IF REGION = 0
   W_0562                  = &0562
+ELIF REGION_JP
+  W_0562                  = &0560
+ELIF REGION = 2
+  W_0562                  = &0560
+ENDIF
+
+IF REGION = 0
   WINS_GOAL               = &0563 ; Wins required. 5 unless battle mode picked 1-5.
+ELIF REGION_JP
+  WINS_GOAL               = &0561 ; Wins required. 5 unless battle mode picked 1-5.
+ELIF REGION = 2
+  WINS_GOAL               = &0561 ; Wins required. 5 unless battle mode picked 1-5.
+ENDIF
+
+IF REGION = 0
+  X_62EA                  = &62EA
+ELIF REGION_JP
+  X_62EA                  = &62EA
 ENDIF
 
 MMC1_CONTROL            = &9FFF
