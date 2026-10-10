@@ -5688,7 +5688,7 @@ ENDIF
   JSR MARK_OAM
   LDA JOY_NEW
 IF MOD
-  AND #&90                  ; A or START skips the area intro
+  AND #&D0                  ; A, B or START skips the area intro
 ELSE
   AND #&10
 ENDIF
@@ -6184,7 +6184,11 @@ ENDIF
   CMP #&02
   BEQ L5_B1E0
   LDA JOY_NEW
+IF MOD
+  AND #&D0                  ; A, B or START skips the opening
+ELSE
   AND #&90
+ENDIF
   BEQ OPENING_WAIT
 .L5_B1E0
   JSR FADE_PALETTE

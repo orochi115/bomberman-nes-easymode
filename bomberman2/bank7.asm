@@ -2084,7 +2084,11 @@ ENDIF
   RTS
 .L7_CCA1
   LDA JOY_NEW
+IF MOD
+  AND #&D0                  ; A, B or START ends the demo
+ELSE
   AND #&90
+ENDIF
   BEQ L7_CCA0
 
 ; (not seen executing during the coverage runs)
