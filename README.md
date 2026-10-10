@@ -42,11 +42,20 @@ selected with the `REGION_JP` symbol (`beebasm -D REGION_JP -i bman.asm`),
 which switches the `IF REGION_JP` blocks in bman.asm, and the CHR banks are
 made from `bomber_jp.chr`. The Japanese version differs only in the title
 screen (logo, copyright text, menu layout), the ending text and a few bytes of
-the reset code. `./make.sh [dir] [us|jp]` still works and runs `build.sh -r`.
+the reset code.
 
-The ROM is CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
+`./build.sh` passes `-D MOD=1`. Every change from the original game sits in
+`IF MOD` (the fixed bank in `bman.asm` is the mod source or the original
+source, and `ext.asm` / `options.asm` / `pause.asm` are assembled only for the
+mod). `./make.sh [us|jp] [1|2]` leaves `MOD` at 0 and checks the ROM against
+`Bomberman (USA).nes` or `Bomberman (Japan).nes` next to this repo. Header
+`2` (the default) is the NES 2.0 dump; header `1` compares PRG and CHR only.
+`make.sh` and `build.sh` both write `bomberman.nes` / `bomberman_jp.nes`.
+
+With `MOD` the ROM is CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
 The original code stays at $C000-$FFFF; new code lives in ext.asm,
-options.asm and pause.asm at $8000-$BFFF.
+options.asm and pause.asm at $8000-$BFFF. Without `MOD` the ROM is the
+original 16KB PRG and 8KB CHR.
 
 ## Text
 

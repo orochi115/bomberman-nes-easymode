@@ -138,8 +138,10 @@ LAST_INPUT          = &7B ; Last input bitmask from gamepad
 INVULNERABLE        = &7D ; Invulnerable to monsters for this stage (Boolean)
 BONUS_ENEMY_TYPE    = &7E
 
-; Options screen settings ($7F..$8C), kept until reset
+; Options screen settings ($7F..$8C), kept until reset.
+; The original password buffer uses the same bytes (MOD = 0).
 OPT_STAGE           = &7F ; 1..50
+PW_BUFF             = &7F ; Password is stored here (20 bytes) .. $92
 OPT_LIVES           = &80 ; 1..9, OPT_LIVES_INF = unlimited
 OPT_POWER           = &81 ; 1..5 (bomb range in squares)
 OPT_BOMBS           = &82 ; 1..10
@@ -169,9 +171,13 @@ TIMELEFT            = &93
 
 DEBUG               = &94 ; Shows location of bonus and exit tiles
 OPT_CURSOR          = &95 ; Options screen cursor (0..NUM_OPTS-1)
+PW_CXSUM4           = &95 ; Checksum for whole password (MOD = 0)
 MTAB_PTR            = &97 ; Pointer to enemy table
 ZH_PTR              = &99 ; Pointer to Chinese string record (2 bytes)
+PW_CXSUM1           = &99 ; Checksum for characters 1..4 of password
+PW_CXSUM2           = &9A ; Checksum for characters 6..9 of password
 ZH_TEMP             = &9B
+PW_CXSUM3           = &9B ; Checksum for characters 11..14 of password
 
 ; Extra bonus item criteria
 ENEMIES_LEFT        = &9C
@@ -222,6 +228,9 @@ SPR_TAB_TOGGLE      = &DB
 ; PPU address for PRINT_ZH_AT (2 bytes, hi then lo)
 ZH_ADDR             = &DC
 ZH_TEMP2            = &DE
+BOMB_PWR            = &DC ; BONUS_POWER in the original password
+STAGE_LO            = &DD ; Low nibble of STAGE in the original password
+STAGE_HI            = &DE ; High nibble of STAGE in the original password
 
 APU_SOUND           = &DF
 APU_PATTERN         = &E0
@@ -235,6 +244,7 @@ APU_SDELAY          = &E4
 ; ---------------------------------------------------------------------------
 ; Bottom of the stack page (the stack never gets this deep)
 VBUF                = &0100 ; VRAM update buffer written by the NMI (128 bytes)
+password_buffer     = &0180 ; Original password screen (MOD = 0)
 VBUF_READY          = &0180 ; Boolean, VBUF waiting to be written
 OPT_ITEM            = &0181 ; Options screen item being drawn
 OPT_PAD             = &0182 ; Options screen gamepad state ..

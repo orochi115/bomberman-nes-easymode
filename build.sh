@@ -57,8 +57,8 @@ case "$HEADER" in
   2) HDEFS="" ;;
   *) echo "Unknown header $HEADER (expected 1 or 2)" >&2; exit 1 ;;
 esac
-"$BEEBASM" $HDEFS -i nes_header.asm
-"$BEEBASM" $DEFS -i bman.asm
+"$BEEBASM" $HDEFS -D MOD=1 -i nes_header.asm
+"$BEEBASM" $DEFS -D MOD=1 -i bman.asm
 cat nes_header.bin $PRG bomber_text.chr > $PRG.nes
 
 echo "ROM: $SRC/$PRG.nes ($LANG_OPT, $REGION, $CONFIG, $(wc -c < $PRG.nes | tr -d ' ') bytes)"

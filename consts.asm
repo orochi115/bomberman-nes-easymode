@@ -1,6 +1,10 @@
 ; Build region, override with: beebasm -D REGION_JP ...
 REGION_JP =? FALSE ; FALSE = USA, TRUE = Japan
 
+; Chinese / options build (build.sh). make.sh leaves this at 0 and matches the
+; original ROMs. Same idea as Bomberman II: every gameplay change is IF MOD.
+MOD =? 0
+
 ; Hardware
 HW_FPS = 60
 HW_SCREEN_X = 256
@@ -108,6 +112,12 @@ GAZE_RIGHT = 1
 GAZE_UP = 2
 GAZE_LEFT = 3
 GAZE_DOWN = 4
+
+; Password screen (original game, assembled when MOD = 0)
+PW_FIRST_CHAR = 'A'
+PW_LAST_CHAR = 'P'
+PW_MAX_CHARS = 20
+PW_CURSOR_FLASH_SPEED = 10
 
 ; Misc
 END_OF_STRING = &FF
