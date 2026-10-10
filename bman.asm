@@ -578,6 +578,14 @@ INCLUDE "input.asm"
 
   ; Play melody 1
   LDA #1:STA APU_MUSIC
+  JMP GAME_MENU
+
+; Back to the title from the demo, game over or the options screen: NMI and
+; screen off, scroll, tile buffer, sprites and palette reset first, so the
+; previous screen's NMI work can't disturb drawing the title screen
+.TITLE_SCREEN
+  JSR PPU_RESET
+  LDA #0:STA SPR_TAB_TOGGLE
 
 .GAME_MENU
   LDX #&FF:TXS ; Clear stack
@@ -923,7 +931,7 @@ INCLUDE "input.asm"
   LDA JOYPAD1
   BEQ WAIT_PRESS
 
-  JMP GAME_MENU
+  JMP TITLE_SCREEN
 }
 
 ; ---------------------------------------------------------------------------
@@ -945,7 +953,7 @@ INCLUDE "input.asm"
   BEQ DO_RESET
 
   ; Jump back to the game menu
-  JMP GAME_MENU
+  JMP TITLE_SCREEN
 }
 
 ; ---------------------------------------------------------------------------
@@ -1222,11 +1230,19 @@ INCLUDE "input.asm"
 .PAUSED
   JSR NEXTFRAME ; Wait for start of next frame
   LDA #1:STA SPR_TAB_INDEX
+
+  ; In the demo START, A or B (which choose a title menu item) end it
+  LDA DEMOPLAY
+  BEQ CHECK_PAUSE
+  LDA JOYPAD1
+  AND #(PAD_START + PAD_A + PAD_B)
+  BNE ABORT_DEMOPLAY
+  RTS
+
+.CHECK_PAUSE
   LDA JOYPAD1
   AND #PAD_START
   BEQ NOT_PAUSED
-  LDA DEMOPLAY
-  BNE ABORT_DEMOPLAY
 
   ; SELECT + START quits to the title screen
   LDA JOYPAD1
