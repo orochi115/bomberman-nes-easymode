@@ -14,7 +14,7 @@ bank 7 的 `$C000-$D7FF`（`bank7.asm` 中 `FILLTO &D800` 之前的部分），�
 ## 任务
 1. 读懂内核：主循环 / 游戏状态机（`L7_C946` 一带）、NMI 流程、PPU 队列、手柄读取、随机数、bank 切换、乘除等工具例程。
 2. 给范围内所有 `S7_*` 命名并写块注释，有意义的 `L7_*`、`D7_*` 也命名。
-3. **建立 `harness/notes/glossary.md`**：模块前缀、通用术语、和第一代源码（`../bman.asm`）对应的名字。后续所有任务都会遵守它。
+3. **建立 `harness/notes/glossary.md`**：模块前缀、通用术语、和第一代源码（`../bomberman/bman.asm`）对应的名字。后续所有任务都会遵守它。
 4. RAM：内核专用的变量（PPU 影子寄存器、队列指针、bank 记录、手柄状态、帧计数等）可以直接命名；其余写进笔记的「RAM 变量提议」。
 5. 处理 `python3 tools/suspects.py us --bank 7` 中 `$C000-$D7FF` 的嫌疑项。
 6. 笔记写在 `harness/notes/T01-core.md`。

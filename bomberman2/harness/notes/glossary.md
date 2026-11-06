@@ -16,7 +16,7 @@
 - `DEMO_` 演示关记录
 - `MMC1_` / `CUR_BANK` / `SAVED_BANK` bank 切换
 
-## 和第一代 `../bman.asm`、`../vars.asm` 对齐的名字
+## 和第一代 `../bomberman/bman.asm`、`../bomberman/vars.asm` 对齐的名字
 
 - `FRAME_CNT` 每帧加一（这里由 NMI 写，地址是 $14，不是一代的 $33）
 - `JOYPAD1` 按住的键。另有 `JOYPAD1_NEW`（本帧新按下）、`JOYPAD1_OLD`

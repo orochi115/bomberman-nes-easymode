@@ -72,7 +72,7 @@
 - **命名风格**：全大写，用下划线分隔。
   - 动词开头表示例程，如 `DRAW_STATUS_BAR`、`UPDATE_ENEMIES`；名词表示数据和变量，如 `ENEMY_SPEED_TABLE`、`PLAYER_X`。
   - 同一模块用统一前缀，如 `SND_`、`PPU_`、`ENEMY_`。
-  - 名字最长 40 字符。参考第一代的源码 `../bman.asm` 和 `../vars.asm`，已有的叫法尽量沿用，例如 `FRAME_CNT`、`STAGE`、`JOYPAD1`。
+  - 名字最长 40 字符。参考第一代的源码 `../bomberman/bman.asm` 和 `../bomberman/vars.asm`，已有的叫法尽量沿用，例如 `FRAME_CNT`、`STAGE`、`JOYPAD1`。
   - **共享约定写在 `harness/notes/glossary.md`**：命名前先读；你确立了新前缀或新术语，就追加进去。
 - **注释里引用别的例程、数据或 RAM 时，写占位名或正式名**，例如 `S5_BA56`、`Z_28`、`FAR_CALL`。不要写 `BA56h`、`$28` 这种裸地址。
   生成器会自动把注释里的占位名替换成当前的正式名，所以以后改名，注释也会跟着更新。

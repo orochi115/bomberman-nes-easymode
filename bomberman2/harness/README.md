@@ -19,7 +19,7 @@
 3. 全部验收后跑 `T08-ram`，再跑 `T09-jp`。
 
 ```bash
-cd bomberman-nes/bomberman2
+cd bomberman2
 harness/run.sh T01-core
 ```
 
