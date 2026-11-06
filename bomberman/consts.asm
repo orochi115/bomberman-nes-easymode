@@ -1,0 +1,156 @@
+; Build region, override with: beebasm -D REGION_JP ...
+REGION_JP =? FALSE ; FALSE = USA, TRUE = Japan
+
+; build.sh enables the translation / options mod; make.sh builds the original.
+MOD =? 0
+
+; Hardware
+HW_FPS = 60
+HW_SCREEN_X = 256
+HW_SCREEN_Y = 240
+
+; Tiles
+TILE_OFFS = &2000
+TILE_SIZE = 8
+TILE_WIDTH = 32
+TILE_HEIGHT = 30
+
+; Palettes
+BASE_PAL = &3F00
+BG_PAL_0 = &3F01
+BG_PAL_1 = &3F05
+BG_PAL_2 = &3F09
+BG_PAL_3 = &3F0D
+SPR_PAL_0 = &3F11
+SPR_PAL_1 = &3F15
+SPR_PAL_2 = &3F19
+SPR_PAL_3 = &3F1D
+PAL_SIZE = 16
+
+; Booleans for flags
+NO = 0
+YES = 1
+DISABLE = 0
+ENABLE = 1
+
+; Bonus states
+BONUS_NOT_MET = 0
+BONUS_ACHIEVED = 1
+BONUS_COLLECTED = 2
+
+; Input
+PAD_RIGHT  = &01
+PAD_LEFT   = &02
+PAD_DOWN   = &04
+PAD_UP     = &08
+PAD_START  = &10
+PAD_SELECT = &20
+PAD_B      = &40
+PAD_A      = &80
+
+; Sprites
+SPR_SIZE = 16
+SPR_HALFSIZE = SPR_SIZE/2
+
+OAM_CACHE = &0200
+OAM_FLIP_NONE = &00
+OAM_FLIP_X = &40
+OAM_FLIP_Y = &80
+
+; Stage
+SECONDSPERLEVEL = 200
+SECONDSPERBONUSLEVEL = 30
+LIVESATSTART = 3
+SCORE_DIGITS = 7
+
+; Maps
+MAP_FIRST_LEVEL = 1
+MAP_LEVELS = 50
+
+MAP_WIDTH = 32
+MAP_HEIGHT = 13
+
+MAP_HERE   = 0
+MAP_RIGHT  = 1
+MAP_UP     = 2
+MAP_LEFT   = 3
+MAP_DOWN   = 4
+
+MAP_EMPTY        = 0
+MAP_CONCRETE     = 1
+MAP_BRICK        = 2
+MAP_BOMB         = 3
+MAP_HIDDEN_EXIT  = 4
+MAP_HIDDEN_BONUS = 5
+MAP_BONUS        = 6
+MAP_EXIT         = 8
+
+; Bomb related
+MAX_BOMB = 10
+MAX_BOMB_RANGE = 5
+DEMO_BOMB_RANGE = 4
+IF MOD
+DEMO_FRAME_CNT = 162 ; FRAME_CNT when demo play starts (as in the original)
+ENDIF
+MAX_FIRE = (MAX_BOMB*8)
+
+; Enemy related
+MAX_ENEMY = 10
+
+; Enemy type code
+ENEMY_NONE   = 0
+ENEMY_VALCOM = 1
+ENEMY_ONEAL  = 2
+ENEMY_DAHL   = 3
+ENEMY_MINVO  = 4
+ENEMY_DORIA  = 5
+ENEMY_OVAPE  = 6
+ENEMY_PASS   = 7
+ENEMY_PONTAN = 8
+
+; Gaze directions
+GAZE_RIGHT = 1
+GAZE_UP = 2
+GAZE_LEFT = 3
+GAZE_DOWN = 4
+
+IF MOD = 0
+; Password related
+PW_FIRST_CHAR = 'A'
+PW_LAST_CHAR = 'P'
+PW_MAX_CHARS = 20
+PW_CURSOR_FLASH_SPEED = 10
+
+ENDIF
+; Misc
+END_OF_STRING = &FF
+
+; Mini tiles
+SCORE_00 = &46
+SCORE_0 = &47
+SCORE_1 = &EC
+SCORE_2 = &ED
+SCORE_4 = &EE
+SCORE_8 = &EF
+SCORE_10 = &FC
+SCORE_20 = &FD
+SCORE_40 = &FE
+SCORE_80 = &FF
+
+; Tiles
+IF MOD
+BLANK_TILE = &B0
+ENDIF
+SOLIDWHITE = &3B
+COPYRIGHT = &FE
+FULLSTOP = &FD
+
+; Sound and music related
+NUM_TUNES = 10
+IF MOD
+; CNROM CHR banks (see ext.asm / tools/build_text.py)
+CHR_BANK_GAME = 0  ; In-game graphics
+CHR_BANK_TITLE = 1 ; Title menu
+CHR_BANK_TEXT = 2  ; Stage intro, game over, ending
+CHR_BANK_OPTS = 3  ; Options screen
+ENDIF

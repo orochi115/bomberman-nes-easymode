@@ -1,4 +1,6 @@
-# Bomberman II (NES) disassembly
+# Bomberman and Bomberman II (NES)
 
-This branch holds only Bomberman II: see [bomberman2/README.md](bomberman2/README.md).
-The Bomberman (1) disassembly is on the other branches of this repository (`master`).
+Both games are in this tree. Build either one from its own directory.
+
+- [Bomberman](bomberman/README.md)
+- [Bomberman II](bomberman2/README.md)

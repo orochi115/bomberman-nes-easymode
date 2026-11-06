@@ -1,0 +1,72 @@
+# English strings, processed by tools/build_text.py (same IDs as
+# text/zh_strings.txt; see there for the format).
+#
+# Strings are two tiles high and English uses the bottom row, so a ROW one
+# less than the original puts the text back where the original game had it.
+
+# Options screen layout: label width in tiles, gap either side of the value
+CONST OPT_LABEL_W 6
+CONST OPT_VALUE_GAP 0
+
+# In-game status bar
+GAME   HUD_TIME     1   1    TIME
+GAME   HUD_LEFT     1   24   LEFT
+GAME   PAUSE_HINT   1   c    PAUSE  <>:MAP  SELECT:TITLE
+
+# Title menu
+TITLE  MENU_START/US 19  9    START
+TITLE  MENU_OPTS/US 19  17   OPTIONS
+TITLE  MENU_TOP/US  21  10   TOP
+TITLE  CURSOR       -   -    {40}
+TITLE  TOP_SCORE/US 22  14   @
+
+# Title menu (Japanese version, below the taller logo)
+TITLE  MENU_START/JP 21  9    START
+TITLE  MENU_OPTS/JP  21  17   OPTIONS
+TITLE  MENU_TOP/JP   24  10   TOP
+TITLE  TOP_SCORE/JP  25  14   @
+
+# Stage intro, bonus stage, game over
+TEXT   STAGE_PRE    14  10   STAGE
+TEXT   STAGE_POST   -   -    {}
+TEXT   STAGE_NUM    15  16   @
+TEXT   BONUS_STAGE  14  10   BONUS STAGE
+TEXT   GAME_OVER    14  10   GAME OVER
+
+# Ending
+TEXT   END_1/US     3   8    CONGRATULATIONS
+TEXT   END_2/US     6   4    YOU HAVE SUCCEEDED IN
+TEXT   END_3/US     8   2    HELPING BOMBERMAN TO BECOME
+TEXT   END_4/US     10  2    A HUMAN BEING
+TEXT   END_5/US     12  4    MAYBE YOU CAN RECOGNIZE HIM
+TEXT   END_6/US     14  2    IN ANOTHER HUDSON SOFT GAME
+TEXT   END_7/US     17  11   GOOD BYE
+
+# Ending (Japanese version)
+TEXT   END_1/JP     6   8    CONGRATULATIONS
+TEXT   END_2/JP     8   3    BOMBER MAN BECOMES RUNNER
+TEXT   END_3/JP     10  2    SEE YOU AGAIN IN LODE RUNNER
+
+# Options screen
+OPTS   OPT_TITLE    2   c    OPTIONS
+OPTS   OPT_STAGE    5   3    STAGE
+OPTS   OPT_LIVES    8   3    LIVES
+OPTS   OPT_POWER    11  3    FIRE
+OPTS   OPT_BOMBS    14  3    BOMBS
+OPTS   OPT_TIME     17  3    TIME
+OPTS   OPT_REVIVE   20  3    REVIVE
+OPTS   OPT_SLOW     23  3    SLOW
+OPTS   OPT_SPEED    5   18   SPEED
+OPTS   OPT_REMOTE   8   18   REMOTE
+OPTS   OPT_NOCLIP   11  18   WPASS
+OPTS   OPT_BOMBWALK 14  18   BPASS
+OPTS   OPT_FIRESUIT 17  18   FPASS
+OPTS   OPT_DEBUG    20  18   XRAY
+OPTS   OPT_INVINC   23  18   INVINC
+OPTS   OPT_HINT     26  c    START TO PLAY
+OPTS   VAL_YES      -   -    ON
+OPTS   VAL_NO       -   -    OFF
+OPTS   VAL_INF      -   -    INF
+OPTS   ARROW_L      -   -    <
+OPTS   ARROW_R      -   -    >
+OPTS   OPT_CURSOR   -   -    {40}
