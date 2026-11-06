@@ -2,8 +2,8 @@
 
 ![JPG](/imgstore/whc4f9a3ebbbf486.jpg)
 
-This version adds a Chinese translation (English is a build option) and new
-options:
+The same source builds either the unmodified original or a mod with a Chinese
+translation (English is a build option) and new options. The mod adds:
 
 - All in-game text is in Chinese (12px Fusion Pixel font). The BOMBERMAN
   logo and the trademark lines are unchanged.
@@ -22,7 +22,22 @@ options:
 
 ## Building
 
-Needs [BeebAsm](https://github.com/stardot/beebasm) and Python 3.
+Needs [BeebAsm](https://github.com/stardot/beebasm); the mod also needs Python 3.
+Set `BEEBASM=/path/to/beebasm` if it is not on PATH or at
+`../beebasm/beebasm`.
+
+Build the unmodified original, including the CONTINUE password screen:
+
+    ./make.sh                    # USA, iNES 1.0 header
+    ./make.sh . jp               # Japan, iNES 1.0 header
+    ./make.sh . us 2             # USA, NES 2.0 header: identical to the No-Intro dump
+    ./make.sh . jp 2             # Japan, NES 2.0 header: identical to the No-Intro dump
+
+`make.sh [dir] [us|jp] [1|2]` always reassembles the original. It does not need
+the text generator, font, configuration or any generated mod files. The ROM
+is NROM (mapper 0): 16KB PRG-ROM and the original 8KB CHR-ROM.
+
+Build the translation / options mod:
 
     ./build.sh                    # English, original rules for START
     ./build.sh -l zh              # Chinese
@@ -37,16 +52,43 @@ screen defaults; `config/default.asm` is the original game. `-H` picks the
 header: NES 2.0 like the original dumps (default) or iNES 1.0 for old
 emulators and loaders.
 
-`-r jp` builds `bomberman_jp.nes` from the Japanese version instead. It is
-selected with the `REGION_JP` symbol (`beebasm -D REGION_JP -i bman.asm`),
+Both build scripts write `bomberman.nes` for USA and `bomberman_jp.nes` for
+Japan, replacing the previous build of that region. `-r jp` selects the
+Japanese base for the mod. The region is selected with the `REGION_JP` symbol
+(`beebasm -D REGION_JP -i bman.asm` builds the original Japanese PRG),
 which switches the `IF REGION_JP` blocks in bman.asm, and the CHR banks are
 made from `bomber_jp.chr`. The Japanese version differs only in the title
 screen (logo, copyright text, menu layout), the ending text and a few bytes of
-the reset code. `./make.sh [dir] [us|jp]` still works and runs `build.sh -r`.
+the reset code.
 
-The ROM is CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
-The original code stays at $C000-$FFFF; new code lives in ext.asm,
+`MOD` defaults to 0. `make.sh` passes `-D MOD=0`; `build.sh` passes
+`-D MOD=1` to both the PRG and header assembly. Conditional blocks protect
+the changed instructions and data; the unchanged code is shared. Original
+headers use `NES2=0|1`; mod headers retain `INES1=0|1`.
+
+The mod ROM is CNROM (mapper 3): 32KB PRG-ROM and four 8KB CHR banks.
+The existing code stays at $C000-$FFFF; new code lives in ext.asm,
 options.asm and pause.asm at $8000-$BFFF.
+
+## Verification
+
+    python3 tools/check.py
+
+The check builds in temporary directories, without using or overwriting any
+generated files in this checkout. It compares complete ROMs byte for byte
+against these fixed reference commits:
+
+- Original: `08c1dd3c04e9f08385f8f31e0e3f91cf2ec6f5f6` (`bm1/beebasm`).
+- Mod: `000c623052804d9d81522809b3834232b5396b71` (`bm1/cn` before adding `MOD`).
+
+It covers all 20 combinations: USA / Japan and both headers for the original;
+USA / Japan, English / Chinese, default / casual settings and both headers
+for the mod. It also checks the script defaults, direct original assembly
+with `MOD` omitted or set to 0, and rebuilding the original after the mod.
+Lengths remain 24,592 bytes for the original and 65,552 bytes for the mod.
+The check exits with an error and reports the scenario and first differing
+file offset if a ROM changes. It needs Git, BeebAsm and Python 3; reference
+ROMs are rebuilt locally from the commits, with no external ROM files needed.
 
 ## Text
 

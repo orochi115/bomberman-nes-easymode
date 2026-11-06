@@ -1,6 +1,9 @@
 ; Build region, override with: beebasm -D REGION_JP ...
 REGION_JP =? FALSE ; FALSE = USA, TRUE = Japan
 
+; build.sh enables the translation / options mod; make.sh builds the original.
+MOD =? 0
+
 ; Hardware
 HW_FPS = 60
 HW_SCREEN_X = 256
@@ -86,7 +89,9 @@ MAP_EXIT         = 8
 MAX_BOMB = 10
 MAX_BOMB_RANGE = 5
 DEMO_BOMB_RANGE = 4
+IF MOD
 DEMO_FRAME_CNT = 162 ; FRAME_CNT when demo play starts (as in the original)
+ENDIF
 MAX_FIRE = (MAX_BOMB*8)
 
 ; Enemy related
@@ -109,6 +114,14 @@ GAZE_UP = 2
 GAZE_LEFT = 3
 GAZE_DOWN = 4
 
+IF MOD = 0
+; Password related
+PW_FIRST_CHAR = 'A'
+PW_LAST_CHAR = 'P'
+PW_MAX_CHARS = 20
+PW_CURSOR_FLASH_SPEED = 10
+
+ENDIF
 ; Misc
 END_OF_STRING = &FF
 
@@ -125,15 +138,19 @@ SCORE_40 = &FE
 SCORE_80 = &FF
 
 ; Tiles
+IF MOD
 BLANK_TILE = &B0
+ENDIF
 SOLIDWHITE = &3B
 COPYRIGHT = &FE
 FULLSTOP = &FD
 
 ; Sound and music related
 NUM_TUNES = 10
-; CNROM CHR banks (see ext.asm / tools/build_zh.py)
+IF MOD
+; CNROM CHR banks (see ext.asm / tools/build_text.py)
 CHR_BANK_GAME = 0  ; In-game graphics
 CHR_BANK_TITLE = 1 ; Title menu
 CHR_BANK_TEXT = 2  ; Stage intro, game over, ending
 CHR_BANK_OPTS = 3  ; Options screen
+ENDIF

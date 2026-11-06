@@ -29,12 +29,17 @@
   CMP #BONUS_COLLECTED
   BEQ BONUS_DONE
 
+IF MOD
   ; The bonus doesn't time out while game time is frozen (slow mode)
   LDA TICK_NOW
   BEQ no_bonus_timeout
 
   ; Limit to every other frame
   LDA GAME_TICK
+ELSE
+  ; Limit to every other frame
+  LDA FRAME_CNT
+ENDIF
   AND #1
   BNE no_bonus_timeout
 

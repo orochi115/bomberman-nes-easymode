@@ -138,6 +138,7 @@ LAST_INPUT          = &7B ; Last input bitmask from gamepad
 INVULNERABLE        = &7D ; Invulnerable to monsters for this stage (Boolean)
 BONUS_ENEMY_TYPE    = &7E
 
+IF MOD
 ; Options screen settings ($7F..$8C), kept until reset
 OPT_STAGE           = &7F ; 1..50
 OPT_LIVES           = &80 ; 1..9, OPT_LIVES_INF = unlimited
@@ -163,15 +164,29 @@ GAME_TIME           = &90 ; Seconds per level, 0 = unlimited
 
 GAME_TICK           = &91 ; Game logic clock (replaces FRAME_CNT in game logic)
 TICK_NOW            = &92 ; Boolean, does game time advance this frame
+ELSE
+; Password is stored here (20 bytes) .. $92
+PW_BUFF             = &7F
+ENDIF
 
 ; Time in seconds left to play
 TIMELEFT            = &93
 
 DEBUG               = &94 ; Shows location of bonus and exit tiles
+IF MOD
 OPT_CURSOR          = &95 ; Options screen cursor (0..NUM_OPTS-1)
+ELSE
+PW_CXSUM4           = &95 ; Checksum for whole password
+ENDIF
 MTAB_PTR            = &97 ; Pointer to enemy table
+IF MOD
 ZH_PTR              = &99 ; Pointer to Chinese string record (2 bytes)
 ZH_TEMP             = &9B
+ELSE
+PW_CXSUM1           = &99 ; Checksum for characters 1..4 of password
+PW_CXSUM2           = &9A ; Checksum for characters 6..9 of password
+PW_CXSUM3           = &9B ; Checksum for characters 11..14 of password
+ENDIF
 
 ; Extra bonus item criteria
 ENEMIES_LEFT        = &9C
@@ -219,9 +234,19 @@ APU_SWEEP           = &D9 ; Hard coded to 08 for both of the pulse channels to d
 
 SPR_TAB_TOGGLE      = &DB
 
+IF MOD
 ; PPU address for PRINT_ZH_AT (2 bytes, hi then lo)
 ZH_ADDR             = &DC
 ZH_TEMP2            = &DE
+ELSE
+; Used for BONUS_POWER calculations with resume codes
+BOMB_PWR            = &DC
+
+; Used for low byte of STAGE in resume codes
+STAGE_LO            = &DD
+; Used for high byte of STAGE in resume codes
+STAGE_HI            = &DE
+ENDIF
 
 APU_SOUND           = &DF
 APU_PATTERN         = &E0
@@ -233,6 +258,7 @@ APU_SDELAY          = &E4
 ; ---------------------------------------------------------------------------
 ; Lower memory ($0100-$07FF).
 ; ---------------------------------------------------------------------------
+IF MOD
 ; Bottom of the stack page (the stack never gets this deep)
 VBUF                = &0100 ; VRAM update buffer written by the NMI (128 bytes)
 VBUF_READY          = &0180 ; Boolean, VBUF waiting to be written
@@ -247,6 +273,9 @@ PAUSE_SCROLL        = &0188 ; Horizontal scroll while looking round the map
 GAME_LIVES          = &0189 ; Lives setting of the game in progress (revive restarts)
 XRAY_PHASE          = &018A ; X-ray: half second shown (0 brick, 32 what it hides)
 
+ELSE
+password_buffer     = &0180
+ENDIF
 stage_buffer        = &0200
 
 ; Bomb vars (up to 10 bombs)
@@ -280,6 +309,7 @@ byte_5E4            = &05E4
 
 ; ?? 18 bytes unaccounted for
 
+IF MOD
 ; Free space after the enemy tables ($05EE-$05FF)
 SNAP_SCORE          = &05EE ; Score when the stage was entered (7 bytes)
 SNAP_POWER          = &05F5 ; Power-ups when the stage was entered ..
@@ -293,6 +323,7 @@ COSMETIC_CNT        = &05FC ; Animation counter for frozen frames (slow mode)
 GAME_INF_LIVES      = &05FD ; Boolean, unlimited lives (rule for the game in progress)
 TIME_FLASH          = &05FE ; Frames left of the red status bar flash (last 10 seconds)
 TIME_FLASH_ON       = &05FF ; Boolean, status bar currently shown red
+ENDIF
 
 TILE_TAB            = &0600
 
