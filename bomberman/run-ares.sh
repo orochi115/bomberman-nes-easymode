@@ -1,10 +1,10 @@
 #!/bin/sh
-# Build bomberman-nes with BeebAsm and launch it in ares (macOS).
+# Build the Bomberman mod with BeebAsm and launch it in ares (macOS).
 # Arguments are passed to build.sh, e.g. run-ares.sh -l en -r jp -c config/casual.asm
 set -eu
 
-ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/bomberman-nes"
+SRC="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
+ROOT="$(CDPATH= cd -- "$SRC/../.." && pwd)"
 BEEBASM="$ROOT/beebasm/beebasm"
 ARES_APP="/Applications/ares.app"
 

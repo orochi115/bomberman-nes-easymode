@@ -10,7 +10,7 @@
 set -eu
 
 SRC="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-ROOT="$(dirname "$SRC")"
+ROOT="$(CDPATH= cd -- "$SRC/../.." && pwd)"
 BEEBASM="${BEEBASM:-$ROOT/beebasm/beebasm}"
 if [ ! -x "$BEEBASM" ]; then
   BEEBASM="$(command -v beebasm)"

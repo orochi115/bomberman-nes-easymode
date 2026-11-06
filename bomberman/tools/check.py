@@ -14,7 +14,8 @@ import subprocess
 import tarfile
 import tempfile
 
-ROOT = Path(__file__).resolve().parent.parent
+GAME = Path(__file__).resolve().parent.parent
+REPO = GAME.parent
 ORIGINAL = "08c1dd3c04e9f08385f8f31e0e3f91cf2ec6f5f6"
 MODIFIED = "000c623052804d9d81522809b3834232b5396b71"
 
@@ -28,7 +29,7 @@ def run(args, cwd, env):
 
 
 def archive(revision, dest):
-    data = subprocess.check_output(["git", "archive", revision], cwd=ROOT)
+    data = subprocess.check_output(["git", "archive", revision], cwd=REPO)
     with tarfile.open(fileobj=io.BytesIO(data)) as source:
         for member in source:
             if member.isfile():
@@ -72,7 +73,7 @@ def main():
     parser.add_argument("--baseline-dir", type=Path,
                         help="use the 20 saved baseline ROMs instead of rebuilding the fixed commits")
     args = parser.parse_args()
-    candidate = os.environ.get("BEEBASM") or str(ROOT.parent / "beebasm/beebasm")
+    candidate = os.environ.get("BEEBASM") or str(REPO.parent / "beebasm/beebasm")
     assembler = shutil.which(candidate) or shutil.which("beebasm")
     if not assembler:
         raise RuntimeError("BeebAsm not found; set BEEBASM=/path/to/beebasm")
@@ -83,11 +84,15 @@ def main():
         current.mkdir()
         # Copy source from the checkout, including uncommitted tracked edits,
         # but never stale generated output or unrelated untracked files.
-        files = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
+        # The historical commits are flat. The checkout keeps this game under bomberman/.
+        files = subprocess.check_output(["git", "ls-files", "-z", "--", "bomberman"], cwd=REPO).decode().split("\0")
+        prefix = "bomberman/"
         for name in filter(None, files):
-            source = ROOT / name
+            if not name.startswith(prefix):
+                continue
+            source = REPO / name
             if source.is_file():
-                target = current / name
+                target = current / name[len(prefix):]
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
         if not args.baseline_dir:
