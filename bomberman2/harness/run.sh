@@ -18,7 +18,7 @@ WTROOT=${BM2_WORKTREES:-$(cd "$REPO/.." && pwd)/bm2-work}
 WT=$WTROOT/$TASK
 export BM2_TASK=$TASK
 export BM2_ROMDIR=${BM2_ROMDIR:-$(cd "$REPO/.." && pwd)}
-export BEEBASM=${BEEBASM:-$(cd "$REPO/.." && pwd)/beebasm/beebasm}
+export BEEBASM=${BEEBASM:-$REPO/third_party/beebasm/beebasm}
 
 if [ ! -d "$WT" ]; then
   mkdir -p "$WTROOT"

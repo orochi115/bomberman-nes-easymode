@@ -6,7 +6,10 @@
 #   shift N   relocation test build: N padding bytes at the start of every bank
 #             (output build/bomberman2_REGION_shiftN.nes, no checksum compare)
 cd "$(dirname "$0")"
-BEEBASM=${BEEBASM:-../../beebasm/beebasm}
+BEEBASM=${BEEBASM:-../third_party/beebasm/beebasm}
+if [ ! -x "${BEEBASM}" ] && [ -f ../third_party/beebasm/src/Makefile ]; then
+  make -C ../third_party/beebasm/src code
+fi
 ROMDIR=${BM2_ROMDIR:-../..}
 region=${1:-us}
 header=2

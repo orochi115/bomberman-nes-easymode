@@ -4,8 +4,11 @@
 set -eu
 
 SRC="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-ROOT="$(CDPATH= cd -- "$SRC/../.." && pwd)"
-BEEBASM="${BEEBASM:-$ROOT/beebasm/beebasm}"
+REPO="$(CDPATH= cd -- "$SRC/.." && pwd)"
+BEEBASM="${BEEBASM:-$REPO/third_party/beebasm/beebasm}"
+if [ ! -x "$BEEBASM" ] && [ -f "$REPO/third_party/beebasm/src/Makefile" ]; then
+  make -C "$REPO/third_party/beebasm/src" code
+fi
 if [ ! -x "$BEEBASM" ]; then
   BEEBASM="$(command -v beebasm)"
 fi

@@ -73,7 +73,7 @@ def main():
     parser.add_argument("--baseline-dir", type=Path,
                         help="use the 20 saved baseline ROMs instead of rebuilding the fixed commits")
     args = parser.parse_args()
-    candidate = os.environ.get("BEEBASM") or str(REPO.parent / "beebasm/beebasm")
+    candidate = os.environ.get("BEEBASM") or str(REPO / "third_party/beebasm/beebasm")
     assembler = shutil.which(candidate) or shutil.which("beebasm")
     if not assembler:
         raise RuntimeError("BeebAsm not found; set BEEBASM=/path/to/beebasm")

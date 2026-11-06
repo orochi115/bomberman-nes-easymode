@@ -4,13 +4,13 @@
 set -eu
 
 SRC="$(CDPATH= cd -- "$(dirname "$0")" && pwd)"
-ROOT="$(CDPATH= cd -- "$SRC/../.." && pwd)"
-BEEBASM="$ROOT/beebasm/beebasm"
+REPO="$(CDPATH= cd -- "$SRC/.." && pwd)"
+BEEBASM="${BEEBASM:-$REPO/third_party/beebasm/beebasm}"
 ARES_APP="/Applications/ares.app"
 
 if [ ! -x "$BEEBASM" ]; then
   echo "Building BeebAsm..."
-  make -C "$ROOT/beebasm/src" code
+  make -C "$REPO/third_party/beebasm/src" code
 fi
 
 # build.sh prints the ROM it wrote on its last line

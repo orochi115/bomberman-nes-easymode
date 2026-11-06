@@ -23,8 +23,9 @@ translation (English is a build option) and new options. The mod adds:
 ## Building
 
 Needs [BeebAsm](https://github.com/stardot/beebasm); the mod also needs Python 3.
-Set `BEEBASM=/path/to/beebasm` if it is not on PATH or at
-`../../beebasm/beebasm`.
+BeebAsm comes from the `third_party/beebasm` submodule (`git submodule update --init`).
+The scripts build `third_party/beebasm/beebasm` if it is missing. Set `BEEBASM`
+to use another binary instead.
 
 Build the unmodified original, including the CONTINUE password screen:
 

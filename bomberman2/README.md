@@ -10,8 +10,9 @@ rebuilds the USA, Japanese and European (Dynablaster) ROMs byte for byte from on
 ./make.sh us 1   # the same with an iNES 1.0 header (only the PRG is compared)
 ```
 
-Needs [beebasm](https://github.com/stardot/beebasm) (default `../../beebasm/beebasm`, or set
-`BEEBASM=...`) and the original ROMs in `../..` (or set `BM2_ROMDIR=...`) for the comparison.
+Needs [beebasm](https://github.com/stardot/beebasm) from the `third_party/beebasm`
+submodule (default `../third_party/beebasm/beebasm`, or set `BEEBASM=...`) and the
+original ROMs in `../..` (or set `BM2_ROMDIR=...`) for the comparison.
 
 | File | Contents |
 |---|---|

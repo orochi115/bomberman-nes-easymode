@@ -10,7 +10,10 @@
 # Output: build/bomberman2_cn_REGION_LANG.nes
 # (make.sh still builds the unmodified originals and compares them.)
 cd "$(dirname "$0")"
-BEEBASM=${BEEBASM:-../../beebasm/beebasm}
+BEEBASM=${BEEBASM:-../third_party/beebasm/beebasm}
+if [ ! -x "${BEEBASM}" ] && [ -f ../third_party/beebasm/src/Makefile ]; then
+  make -C ../third_party/beebasm/src code
+fi
 region=us
 lang=zh
 config=config/default.asm
